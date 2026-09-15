@@ -29,6 +29,12 @@ from antiagent.engine.evaluator import AntiAgentEvaluator
 
 def get_hook_command() -> str:
     """Returns the shell command to execute the hook."""
+    pkg_dir = Path(__file__).resolve().parent
+    for parent in pkg_dir.parents:
+        if parent.name.endswith(".app"):
+            resources_dir = parent / "Contents" / "Resources"
+            return f'/usr/bin/env PYTHONPATH="{resources_dir}" python3 -m antiagent.hook'
+
     py_exec = sys.executable or "python3"
     return f"{py_exec} -m antiagent.hook"
 
@@ -445,6 +451,10 @@ def main() -> None:
         help="Install to /Applications instead of ~/Applications",
     )
 
+    # build-dmg
+    build_dmg_parser = subparsers.add_parser("build-dmg", help="Build standalone AntiAgent.dmg and AntiAgent.zip")
+    build_dmg_parser.add_argument("--out", default="dist", help="Output directory (default: dist)")
+
     args = parser.parse_args()
 
     if args.command == "install":
@@ -475,6 +485,11 @@ def main() -> None:
     elif args.command == "install-app":
         from antiagent.desktop.builder import install_app
         install_app(to_global=args.is_global)
+    elif args.command == "build-dmg":
+        from antiagent.desktop.builder import build_dmg, build_zip
+        dmg = build_dmg(Path(args.out))
+        zip_file = build_zip(Path(args.out))
+        print(f"\n📦 Release packages ready:\n  • DMG: {dmg}\n  • ZIP: {zip_file}")
     else:
         parser.print_help()
 

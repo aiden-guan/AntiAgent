@@ -43,6 +43,15 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNavigati
         NSApp.activate(ignoringOtherApps: true)
     }
 
+    func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+        // Automatically retry connecting if the local daemon is still initializing
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+            if let url = URL(string: "http://127.0.0.1:4242") {
+                webView.load(URLRequest(url: url))
+            }
+        }
+    }
+
     func ensureBackendRunning() {
         let url = URL(string: "http://127.0.0.1:4242/api/status")!
         var isUp = false
@@ -59,10 +68,35 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNavigati
         if !isUp {
             let proc = Process()
             proc.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+
+            var env = ProcessInfo.processInfo.environment
+            let extraPaths = "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+            env["PATH"] = extraPaths + ":" + (env["PATH"] ?? "")
+
+            if let resPath = Bundle.main.resourcePath {
+                let existingPythonPath = env["PYTHONPATH"] ?? ""
+                env["PYTHONPATH"] = existingPythonPath.isEmpty ? resPath : "\(resPath):\(existingPythonPath)"
+            }
+            proc.environment = env
             proc.arguments = ["python3", "-m", "antiagent.dashboard", "--no-open"]
             try? proc.run()
             daemonProcess = proc
-            Thread.sleep(forTimeInterval: 0.8)
+
+            // Poll briefly until the backend starts
+            for _ in 0..<15 {
+                Thread.sleep(forTimeInterval: 0.1)
+                var ready = false
+                let checkSema = DispatchSemaphore(value: 0)
+                let checkTask = URLSession.shared.dataTask(with: url) { _, resp, _ in
+                    if let http = resp as? HTTPURLResponse, http.statusCode == 200 {
+                        ready = true
+                    }
+                    checkSema.signal()
+                }
+                checkTask.resume()
+                _ = checkSema.wait(timeout: .now() + 0.1)
+                if ready { break }
+            }
         }
     }
 

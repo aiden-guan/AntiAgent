@@ -90,8 +90,84 @@ def build_macos_app(output_dir: Path = None) -> Path:
     if source_icon.is_file():
         shutil.copy(source_icon, resources_dir / "AppIcon.icns")
 
-    print(f"✅ Successfully built native app: {app_bundle}")
+    # 4. Bundle self-contained antiagent python package into Contents/Resources
+    repo_antiagent = desktop_dir.parent.resolve()  # Path to antiagent package root
+    target_antiagent = resources_dir / "antiagent"
+    if target_antiagent.exists():
+        shutil.rmtree(target_antiagent)
+
+    shutil.copytree(
+        repo_antiagent,
+        target_antiagent,
+        ignore=shutil.ignore_patterns("__pycache__", "*.pyc", "desktop", ".DS_Store"),
+    )
+
+    print(f"✅ Successfully built standalone native app: {app_bundle}")
     return app_bundle
+
+
+def build_dmg(output_dir: Path = None) -> Path:
+    """Package AntiAgent.app into a downloadable drag-to-install AntiAgent.dmg."""
+    app_bundle = build_macos_app(output_dir)
+    if output_dir is None:
+        output_dir = Path(os.getcwd()) / "dist"
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    staging_dir = output_dir / "dmg_staging"
+    if staging_dir.exists():
+        shutil.rmtree(staging_dir)
+    staging_dir.mkdir(parents=True, exist_ok=True)
+
+    # 1. Copy AntiAgent.app to staging
+    shutil.copytree(app_bundle, staging_dir / "AntiAgent.app")
+
+    # 2. Add /Applications symlink for drag-and-drop installation
+    apps_symlink = staging_dir / "Applications"
+    if not apps_symlink.exists():
+        try:
+            os.symlink("/Applications", apps_symlink)
+        except Exception:
+            pass
+
+    # 3. Build DMG with hdiutil
+    dmg_path = output_dir / "AntiAgent.dmg"
+    if dmg_path.exists():
+        dmg_path.unlink()
+
+    cmd = [
+        "hdiutil",
+        "create",
+        "-volname", "AntiAgent",
+        "-srcfolder", str(staging_dir),
+        "-ov",
+        "-format", "UDZO",
+        str(dmg_path),
+    ]
+    print(f"📀 Creating installer disk image: {dmg_path.name}...")
+    res = subprocess.run(cmd, capture_output=True, text=True)
+    if res.returncode != 0:
+        raise RuntimeError(f"hdiutil failed: {res.stderr}")
+
+    # Clean up staging directory
+    shutil.rmtree(staging_dir, ignore_errors=True)
+    print(f"🎉 Created downloadable installer DMG: {dmg_path}")
+    return dmg_path
+
+
+def build_zip(output_dir: Path = None) -> Path:
+    """Package AntiAgent.app into a standalone AntiAgent.zip."""
+    app_bundle = build_macos_app(output_dir)
+    if output_dir is None:
+        output_dir = Path(os.getcwd()) / "dist"
+
+    zip_path = output_dir / "AntiAgent.zip"
+    if zip_path.exists():
+        zip_path.unlink()
+
+    cmd = ["ditto", "-c", "-k", "--sequesterRsrc", "--keepParent", str(app_bundle), str(zip_path)]
+    subprocess.run(cmd, check=True)
+    print(f"📦 Created downloadable ZIP archive: {zip_path}")
+    return zip_path
 
 
 def install_app(to_global: bool = False) -> Path:

@@ -4,6 +4,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/)
+[![macOS App Download](https://img.shields.io/badge/Download-macOS%20.dmg-success.svg)](https://github.com/aiden-guan/AntiAgent/releases/latest)
 [![Antigravity Ready](https://img.shields.io/badge/Antigravity-Lifecycle%20Hooks-purple.svg)](https://antigravity.google)
 [![Status](https://img.shields.io/badge/Status-Active-success.svg)]()
 
@@ -61,38 +62,54 @@ AntiAgent **reviews each proposed command and tool call in real time**:
 
 ## 🚀 Quickstart
 
-### 1. Installation
+### 📥 1. Download Standalone Desktop App (Recommended — Zero Setup!)
 
-Clone or install AntiAgent:
+The fastest and easiest way to use AntiAgent:
+
+<p align="left">
+  <a href="https://github.com/aiden-guan/AntiAgent/releases/latest/download/AntiAgent.dmg">
+    <img src="https://img.shields.io/badge/Download-AntiAgent.dmg%20for%20macOS-blue?style=for-the-badge&logo=apple&logoColor=white" alt="Download AntiAgent.dmg" height="40">
+  </a>
+  &nbsp;&nbsp;
+  <a href="https://github.com/aiden-guan/AntiAgent/releases/latest/download/AntiAgent.zip">
+    <img src="https://img.shields.io/badge/Download-AntiAgent.zip-grey?style=for-the-badge&logo=apple&logoColor=white" alt="Download AntiAgent.zip" height="40">
+  </a>
+</p>
+
+1. **Download [`AntiAgent.dmg`](https://github.com/aiden-guan/AntiAgent/releases/latest/download/AntiAgent.dmg)** from the latest release.
+2. Open the disk image and drag **`AntiAgent.app`** into your `/Applications` folder.
+3. Open **AntiAgent** (from Spotlight or Applications).
+4. Click **"🚀 Guide & Doctor"** in the top bar and click **"Enable"** next to **Global Hook** (or Workspace Hook). 
+   - *That's it! Antigravity is now protected across all your projects without touching a terminal.*
+
+---
+
+### 💻 2. Or Install via CLI (For Terminal Power Users)
+
+If you prefer using the command line or modifying the codebase directly:
 
 ```bash
+# 1. Clone or install AntiAgent:
 git clone https://github.com/aiden-guan/AntiAgent.git
 cd AntiAgent
 pip install -e .
-```
 
-### 2. Activate via Interactive Dashboard (Easiest!)
-
-Launch the local visual dashboard to manage everything in 1 click:
-
-```bash
+# 2. Launch the native desktop app or web dashboard:
+antiagent app
+# or
 antiagent dashboard
 ```
 
-The dashboard allows you to:
-- 🟢 **Enable / Disable Protection** with 1 click (workspace or global).
-- ⚡ **Use Antigravity Native Mode** (Works immediately out-of-the-box with **ZERO API keys** required!).
-- 🧪 **Test arbitrary commands** in the live security playground.
-- 📜 **Stream real-time audit logs** as the agent works.
-
-Or install directly via CLI:
+Or install protection directly from your terminal:
 ```bash
-# Per-workspace activation (creates .agents/hooks.json)
-antiagent install
-
-# Or install globally across all Antigravity projects:
+# Protect all Antigravity projects globally:
 antiagent install --global
+
+# Or install for current repository only:
+antiagent install
 ```
+
+---
 
 ### 3. Verify Installation
 
