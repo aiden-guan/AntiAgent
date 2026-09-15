@@ -130,7 +130,7 @@ AntiAgent supports three distinct safety profiles:
 | :--- | :---: | :---: | :---: | :---: | :---: |
 | **`balanced`** *(default)* | 🟢 Auto-Approve | 🟢 Auto-Approve | 🟢 Auto-Approve | 🟡 Ask User | 🟡 Ask User |
 | **`paranoid`** | 🟢 Auto-Approve | 🟡 Ask User | 🟡 Ask User | 🟡 Ask User | 🔴 Deny |
-| **`autonomous`** *(closest to ChatGPT/Claude subagent review)| 🟢 Auto-Approve | 🟢 Auto-Approve | 🟢 Auto-Approve | 🟢 Auto-Approve (if within bounds) | 🔴 Deny |
+| **`autonomous`** (closest to ChatGPT/Claude subagent review)| 🟢 Auto-Approve | 🟢 Auto-Approve | 🟢 Auto-Approve | 🟢 Auto-Approve (if within bounds) | 🔴 Deny |
 
 ### Setting Your Profile & LLM Provider
 
