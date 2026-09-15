@@ -50,6 +50,7 @@ coverage.xml
 
 # Antigravity local agent workspace hooks (generated on install)
 .agents/
+.antiagent.json
 
 # macOS
 .DS_Store

@@ -11,6 +11,7 @@ from typing import Any, Dict
 from antiagent.audit.logger import AuditLogger
 from antiagent.config import load_config
 from antiagent.constants import DECISION_ASK
+from antiagent.engine.context_extractor import TranscriptContextExtractor
 from antiagent.engine.evaluator import AntiAgentEvaluator
 
 
@@ -27,8 +28,17 @@ def handle_pre_tool_use(payload: Dict[str, Any]) -> Dict[str, Any]:
     primary_workspace = workspace_paths[0] if workspace_paths else None
     config = load_config(primary_workspace)
 
+    # Extract bounded task context if available (OpenAI "Approve for Me" model)
+    context = None
+    if conversation_id:
+        try:
+            extractor = TranscriptContextExtractor()
+            context = extractor.extract_context(conversation_id, step_idx=step_idx)
+        except Exception:
+            context = None
+
     evaluator = AntiAgentEvaluator(config, workspace_paths=workspace_paths)
-    result = evaluator.evaluate(tool_name, tool_args)
+    result = evaluator.evaluate(tool_name, tool_args, context=context)
 
     # Log to audit trail if enabled
     if config.audit_enabled:

@@ -16,6 +16,8 @@ from antiagent.constants import (
     PROFILE_AUTONOMOUS,
     PROFILE_PARANOID,
 )
+from antiagent.engine.context_extractor import TaskContext
+from antiagent.engine.supervisor.native_reviewer import ContextAwareNativeReviewer
 from antiagent.engine.supervisor.prompt import (
     SUPERVISOR_SYSTEM_PROMPT,
     format_review_prompt,
@@ -25,19 +27,21 @@ logger = logging.getLogger("antiagent.supervisor")
 
 
 class LLMSupervisor:
-    """Invokes an LLM reviewer to evaluate ambiguous or mutating actions."""
+    """Invokes an LLM reviewer or native semantic reviewer to evaluate actions."""
 
     def __init__(self, config: AntiAgentConfig):
         self.config = config
         self.timeout = 5.0  # Hook response timeout in seconds
+        self.native_reviewer = ContextAwareNativeReviewer()
 
     def review(
         self,
         tool_name: str,
         tool_args: dict,
         workspace_paths: Optional[List[str]] = None,
+        context: Optional[TaskContext] = None,
     ) -> Tuple[str, str]:
-        """Perform an AI supervisor review.
+        """Perform an AI supervisor review with bounded task context.
         Returns:
             (decision, reason)
         """
@@ -46,13 +50,13 @@ class LLMSupervisor:
 
         try:
             if provider == "native":
-                return self._review_native(tool_name, tool_args, paths)
+                return self._review_native(tool_name, tool_args, paths, context=context)
             elif provider == "gemini":
-                return self._review_gemini(tool_name, tool_args, paths)
+                return self._review_gemini(tool_name, tool_args, paths, context=context)
             elif provider == "openai":
-                return self._review_openai(tool_name, tool_args, paths)
+                return self._review_openai(tool_name, tool_args, paths, context=context)
             elif provider == "ollama":
-                return self._review_ollama(tool_name, tool_args, paths)
+                return self._review_ollama(tool_name, tool_args, paths, context=context)
             else:
                 return self._fallback_review(tool_name, tool_args, "offline")
         except Exception as e:
@@ -60,67 +64,28 @@ class LLMSupervisor:
             return self._fallback_review(tool_name, tool_args, f"error: {str(e)[:40]}")
 
     def _review_native(
-        self, tool_name: str, tool_args: dict, paths: List[str]
+        self,
+        tool_name: str,
+        tool_args: dict,
+        paths: List[str],
+        context: Optional[TaskContext] = None,
     ) -> Tuple[str, str]:
         """Antigravity Native Mode (Zero API Key required).
-        Performs contextual inspection without requiring an external Gemini or OpenAI API key.
+        Performs intuitive contextual semantic review using Bounded Task Context.
         """
-        profile = self.config.profile
-
-        # 1. Paranoid mode always flags mutating actions
-        if profile == PROFILE_PARANOID:
-            return (
-                DECISION_ASK,
-                f"[Antigravity Native] {tool_name} requires confirmation in paranoid mode.",
-            )
-
-        # 2. Workspace file creation and updates
-        if tool_name in ("write_to_file", "replace_file_content"):
-            target = tool_args.get("TargetFile") or ""
-            base_name = target.split("/")[-1] if target else "file"
-            return (
-                DECISION_ALLOW,
-                f"[Antigravity Native] Auto-approved safe workspace edit to '{base_name}'.",
-            )
-
-        # 3. Shell commands
-        if tool_name == "run_command":
-            cmd = tool_args.get("CommandLine", "").strip()
-
-            # Safe dev workflows like mkdir, git add, git commit
-            safe_patterns = [
-                r"^mkdir\s+(-p\s+)?",
-                r"^git\s+(add|commit|checkout\s+-b|switch\s+-c)\b",
-                r"^touch\s+",
-                r"^cp\s+.*",
-                r"^mv\s+.*",
-            ]
-            for pat in safe_patterns:
-                if re.match(pat, cmd):
-                    return (
-                        DECISION_ALLOW,
-                        f"[Antigravity Native] Auto-approved routine dev workflow: '{cmd[:35]}...'",
-                    )
-
-            if profile == PROFILE_AUTONOMOUS:
-                return (
-                    DECISION_ALLOW,
-                    f"[Antigravity Native] Auto-approved in autonomous mode.",
-                )
-
-            # In balanced mode, ask before executing unclassified shell commands
-            return (
-                DECISION_ASK,
-                f"[Antigravity Native] Proposed command '{cmd[:40]}' modifies system/workspace state. Confirmation requested.",
-            )
-
-        return (
-            DECISION_ASK,
-            f"[Antigravity Native] {tool_name} requires user confirmation.",
+        return self.native_reviewer.review(
+            tool_name=tool_name,
+            tool_args=tool_args,
+            workspace_paths=paths,
+            context=context,
+            profile=self.config.profile,
         )
-
     def _review_gemini(
-        self, tool_name: str, tool_args: dict, paths: List[str]
+        self,
+        tool_name: str,
+        tool_args: dict,
+        paths: List[str],
+        context: Optional[TaskContext] = None,
     ) -> Tuple[str, str]:
         api_key = self.config.api_key or os.getenv("GEMINI_API_KEY")
         if not api_key:
@@ -129,8 +94,9 @@ class LLMSupervisor:
         model = self.config.model or "gemini-2.5-flash"
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
 
+        ctx_summary = context.to_summary() if context else None
         user_content = format_review_prompt(
-            tool_name, tool_args, paths, self.config.profile
+            tool_name, tool_args, paths, self.config.profile, context_summary=ctx_summary
         )
 
         payload = {
@@ -160,7 +126,11 @@ class LLMSupervisor:
             return self._parse_llm_json(candidate)
 
     def _review_openai(
-        self, tool_name: str, tool_args: dict, paths: List[str]
+        self,
+        tool_name: str,
+        tool_args: dict,
+        paths: List[str],
+        context: Optional[TaskContext] = None,
     ) -> Tuple[str, str]:
         api_key = self.config.api_key or os.getenv("OPENAI_API_KEY")
         if not api_key:
@@ -169,8 +139,9 @@ class LLMSupervisor:
         model = self.config.model or "gpt-4o-mini"
         endpoint = self.config.endpoint_url or "https://api.openai.com/v1/chat/completions"
 
+        ctx_summary = context.to_summary() if context else None
         user_content = format_review_prompt(
-            tool_name, tool_args, paths, self.config.profile
+            tool_name, tool_args, paths, self.config.profile, context_summary=ctx_summary
         )
 
         payload = {
@@ -199,13 +170,18 @@ class LLMSupervisor:
             return self._parse_llm_json(content)
 
     def _review_ollama(
-        self, tool_name: str, tool_args: dict, paths: List[str]
+        self,
+        tool_name: str,
+        tool_args: dict,
+        paths: List[str],
+        context: Optional[TaskContext] = None,
     ) -> Tuple[str, str]:
         endpoint = self.config.endpoint_url or "http://localhost:11434/api/chat"
         model = self.config.model or "llama3.2"
 
+        ctx_summary = context.to_summary() if context else None
         user_content = format_review_prompt(
-            tool_name, tool_args, paths, self.config.profile
+            tool_name, tool_args, paths, self.config.profile, context_summary=ctx_summary
         )
 
         payload = {

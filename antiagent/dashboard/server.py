@@ -45,6 +45,8 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
             query = parse_qs(parsed_url.query)
             limit = int(query.get("limit", ["25"])[0])
             self._handle_api_audit(limit)
+        elif path == "/api/doctor":
+            self._handle_api_doctor()
         else:
             self.send_response(404)
             self.end_headers()
@@ -66,6 +68,8 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
             is_global = scope == "global"
             uninstall_hook(is_global=is_global, workspace_path=ws)
             self._send_json({"ok": True, "scope": scope})
+        elif path == "/api/install_app":
+            self._handle_api_install_app(body)
         elif path == "/api/workspace":
             new_ws = body.get("path")
             if new_ws:
@@ -152,6 +156,7 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
             "endpoint_url": cfg.endpoint_url or "",
             "auto_approve_reads": cfg.auto_approve_reads,
             "auto_approve_dev_commands": cfg.auto_approve_dev_commands,
+            "auto_review": cfg.auto_review,
             "audit_enabled": cfg.audit_enabled,
             "custom_allow_patterns": cfg.custom_allow_patterns,
             "custom_deny_patterns": cfg.custom_deny_patterns,
@@ -185,6 +190,8 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
             cfg.auto_approve_reads = bool(body["auto_approve_reads"])
         if "auto_approve_dev_commands" in body:
             cfg.auto_approve_dev_commands = bool(body["auto_approve_dev_commands"])
+        if "auto_review" in body:
+            cfg.auto_review = bool(body["auto_review"])
         if "audit_enabled" in body:
             cfg.audit_enabled = bool(body["audit_enabled"])
         if "custom_allow_patterns" in body:
@@ -210,10 +217,32 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
     def _handle_api_simulate(self, body: Dict[str, Any]) -> None:
         tool = body.get("tool", "run_command")
         args = body.get("args", {})
+        user_prompt = body.get("user_prompt", "")
+        goal = body.get("goal", "")
+
+        from antiagent.engine.context_extractor import TaskContext
+        context = None
+        if user_prompt or goal:
+            context = TaskContext(user_prompt=user_prompt, primary_goal=goal or user_prompt)
+
         cfg = load_config(self.workspace_path)
         evaluator = AntiAgentEvaluator(cfg, workspace_paths=[str(Path(self.workspace_path).resolve())])
-        result = evaluator.evaluate(tool, args)
+        result = evaluator.evaluate(tool, args, context=context)
         self._send_json({"decision": result.decision, "reason": result.reason})
+
+    def _handle_api_doctor(self) -> None:
+        from antiagent.engine.doctor import get_doctor_report
+        report = get_doctor_report(self.workspace_path)
+        self._send_json(report)
+
+    def _handle_api_install_app(self, body: Dict[str, Any]) -> None:
+        to_global = bool(body.get("global", False))
+        try:
+            from antiagent.desktop.builder import install_app
+            app_path = install_app(to_global=to_global)
+            self._send_json({"ok": True, "app_path": str(app_path)})
+        except Exception as e:
+            self._send_json({"ok": False, "error": str(e)}, status=500)
 
     def _read_json_body(self) -> Dict[str, Any]:
         content_length = int(self.headers.get("Content-Length", 0))

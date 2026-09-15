@@ -345,6 +345,33 @@
       box-shadow: 0 10px 40px rgba(0,0,0,0.5);
     }
     .modal-title { font-size: 16px; font-weight: 600; margin-bottom: 14px; }
+    .modal-card-lg {
+      max-width: 760px;
+      max-height: 85vh;
+      overflow-y: auto;
+    }
+    .doctor-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      background: #0d1117;
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      margin-bottom: 8px;
+    }
+    .doctor-row-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+    }
+    .doctor-row-sub {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 2px;
+      font-family: monospace;
+    }
   </style>
 </head>
 <body>
@@ -358,6 +385,12 @@
         </div>
       </div>
       <div class="header-badges">
+        <button class="btn btn-outline btn-sm" onclick="openOnboardingModal()" style="display: inline-flex; align-items: center; gap: 6px;">
+          <span>🚀</span> Guide & Doctor
+        </button>
+        <button class="btn btn-outline btn-sm" onclick="triggerInstallApp()" id="desktopAppHeaderBtn" style="display: inline-flex; align-items: center; gap: 6px;">
+          <span>🖥️</span> Install App
+        </button>
         <div id="wsBadge" class="status-badge badge-inactive">
           <span>📁 Workspace: Checking...</span>
         </div>
@@ -467,6 +500,16 @@
         </div>
         <div class="toggle-row">
           <div>
+            <div class="toggle-label">"Approve for Me" Auto-Review</div>
+            <div class="toggle-sublabel">Intuitively evaluates semantic coherence with your prompt & screens vulnerabilities</div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="toggleAutoReview" onchange="saveToggle('auto_review', this.checked)">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="toggle-row">
+          <div>
             <div class="toggle-label">Auto-Approve Read-Only Tools</div>
             <div class="toggle-sublabel">Instantly allow ls, cat, git status, view_file, grep (shielding secrets)</div>
           </div>
@@ -527,6 +570,17 @@
         <span class="chip" onclick="setSim('run_command', 'rm -rf /')">rm -rf /</span>
         <span class="chip" onclick="setSim('run_command', 'cat ~/.ssh/id_rsa')">cat ~/.ssh/id_rsa</span>
       </div>
+      <div class="form-group" style="margin-bottom: 10px;">
+        <label style="font-size: 11px;">Active User Request / Goal Context (Auto-Review Evaluates Semantic Coherence)</label>
+        <input type="text" id="simContext" class="form-control" placeholder="e.g. Build a backend and test it (or 'Fix typo in README')">
+      </div>
+      <div class="quick-preset-chips" style="margin-bottom: 12px;">
+        <span style="font-size: 11px; color: var(--text-muted); align-self: center;">Quick Contexts:</span>
+        <span class="chip" onclick="setContext('Add unit tests and run verification suite')">Goal: Run Tests</span>
+        <span class="chip" onclick="setContext('Install FastAPI dependencies and setup project')">Goal: Install Dependencies</span>
+        <span class="chip" onclick="setContext('Fix navbar CSS alignment and typography')">Goal: Edit CSS</span>
+        <span class="chip" onclick="setContext('')">✕ Clear Context</span>
+      </div>
       <div class="simulator-box">
         <select id="simTool" class="form-control" style="width: 160px;">
           <option value="run_command">run_command</option>
@@ -570,6 +624,73 @@
       </div>
     </div>
   </main>
+  <div id="onboardingModal" class="modal-overlay">
+    <div class="modal-card modal-card-lg">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid var(--card-border); padding-bottom: 12px;">
+        <div style="font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 8px;">
+          <span>🚀</span> Antigravity Integration & Setup Guide
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="closeModal('onboardingModal')">✕ Close</button>
+      </div>
+
+      <!-- Section 1: Antigravity Mode Architecture -->
+      <div style="background: rgba(88, 166, 255, 0.08); border: 1px solid rgba(88, 166, 255, 0.3); border-radius: 10px; padding: 16px; margin-bottom: 20px;">
+        <div style="display: flex; align-items: center; gap: 8px; font-weight: 700; color: var(--primary); font-size: 14px; margin-bottom: 6px;">
+          <span>⚡</span> Should Antigravity be in Turbo Mode?
+        </div>
+        <div style="font-size: 13px; color: #c9d1d9; line-height: 1.5;">
+          <p><strong>Yes, absolutely! Turbo Mode (Always Proceed) is the recommended setup when using AntiAgent.</strong></p>
+          <p style="margin-top: 6px; font-size: 12px; color: var(--text-muted);">
+            Normally in Antigravity, Turbo Mode bypasses interactive confirmation dialogs to let the AI build fast. However, AntiAgent registers as a native <code>PreToolUse</code> lifecycle hook directly in Antigravity's core runtime. Every tool call is analyzed before execution.
+          </p>
+          <p style="margin-top: 6px; font-size: 12px; color: var(--text-muted);">
+            • <strong>Safe tools (reads, tests, routine edits):</strong> Auto-approved with zero latency.<br>
+            • <strong>Potentially dangerous tools:</strong> AntiAgent issues <code>force_ask</code>, which <em>overrides Turbo Mode</em> and forces Antigravity to pause and ask for your approval.<br>
+            • <strong>Catastrophic threats (root wipes, credential leaks, curl|bash):</strong> Hard-denied immediately.
+          </p>
+          <div style="margin-top: 12px; display: flex; gap: 10px; flex-wrap: wrap;">
+            <span style="font-size: 11px; background: #161b22; border: 1px solid var(--card-border); padding: 4px 10px; border-radius: 6px;">
+              ⚙️ Antigravity: <strong>Always Proceed / Turbo</strong>
+            </span>
+            <span style="font-size: 11px; background: #161b22; border: 1px solid var(--card-border); padding: 4px 10px; border-radius: 6px;">
+              🛡️ AntiAgent Profile: <strong>Balanced</strong> (Recommended)
+            </span>
+            <span style="font-size: 11px; background: #161b22; border: 1px solid var(--card-border); padding: 4px 10px; border-radius: 6px;">
+              🔒 Protection: <strong>force_ask override</strong>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 2: Health Check / Doctor -->
+      <div style="margin-bottom: 20px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+          <span style="font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted);">🩺 Integration Health Check</span>
+          <button class="btn btn-outline btn-sm" onclick="runDoctorCheck()" style="font-size: 11px; padding: 2px 8px;">Refresh Check</button>
+        </div>
+        <div id="doctorList">
+          <div style="text-align: center; color: var(--text-muted); padding: 12px; font-size: 12px;">Loading health check...</div>
+        </div>
+      </div>
+
+      <!-- Section 3: Native Desktop App -->
+      <div style="background: #0d1117; border: 1px solid var(--card-border); border-radius: 10px; padding: 16px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+          <div>
+            <div style="font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 6px;">
+              <span>🖥️</span> Native macOS Desktop App (AntiAgent.app)
+            </div>
+            <p style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">
+              Native Swift Cocoa/WebKit bundle with dark mode title bar and macOS Dock integration. No browser tab or localhost URL required.
+            </p>
+          </div>
+          <button id="installAppDoctorBtn" class="btn btn-blue btn-sm" onclick="triggerInstallApp()">
+            ⬇️ Install to ~/Applications
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
   <div id="switchWsModal" class="modal-overlay">
     <div class="modal-card">
       <div class="modal-title">Switch Active Workspace</div>
@@ -658,6 +779,7 @@
         document.getElementById('inputApiKey').value = data.api_key || '';
         document.getElementById('inputEndpoint').value = data.endpoint_url || '';
         onProviderChanged();
+        document.getElementById('toggleAutoReview').checked = !!data.auto_review;
         document.getElementById('toggleApproveReads').checked = !!data.auto_approve_reads;
         document.getElementById('toggleApproveDev').checked = !!data.auto_approve_dev_commands;
         document.getElementById('toggleAuditEnabled').checked = !!data.audit_enabled;
@@ -794,6 +916,10 @@
         alert(data.error || 'Failed to create project');
       }
     }
+    function setContext(text) {
+      document.getElementById('simContext').value = text;
+      runSimulation();
+    }
     function setSim(tool, arg) {
       document.getElementById('simTool').value = tool;
       document.getElementById('simInput').value = arg;
@@ -802,6 +928,7 @@
     async function runSimulation() {
       const tool = document.getElementById('simTool').value;
       const val = document.getElementById('simInput').value;
+      const user_prompt = document.getElementById('simContext') ? document.getElementById('simContext').value.trim() : '';
       let args = {};
       if (tool === 'run_command') {
         args = { CommandLine: val };
@@ -813,7 +940,7 @@
       const res = await fetch('/api/simulate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tool, args })
+        body: JSON.stringify({ tool, args, user_prompt })
       });
       const data = await res.json();
       const box = document.getElementById('simResult');

@@ -27,6 +27,9 @@ class AntiAgentConfig:
     # Auto-approve routine dev build/test commands within workspace (e.g. npm test, pytest)
     auto_approve_dev_commands: bool = True
 
+    # "Approve for Me" context-aware auto-review engine (evaluates intent coherence & vulnerabilities)
+    auto_review: bool = True
+
     # LLM Supervisor provider: "native" (Antigravity Zero-API Mode), "gemini", "openai", "ollama", or "offline"
     provider: str = "native"
 

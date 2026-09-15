@@ -294,6 +294,75 @@ def configure_cli(args: argparse.Namespace) -> None:
         print("No changes specified. Use --set-profile, --set-provider, or --set-model.")
 
 
+def run_doctor(workspace_path: str = ".") -> None:
+    """Comprehensive diagnostic and onboarding check for Antigravity & AntiAgent."""
+    from antiagent.engine.doctor import get_doctor_report
+    report = get_doctor_report(workspace_path)
+
+    print("\n🩺 Running AntiAgent Environment & Antigravity Doctor...")
+    print("=" * 65)
+
+    # 1. Python runtime
+    py = report["python"]
+    print(f"🐍 Python Runtime: {py['version']} ({py['executable']}) [OK]")
+
+    # 2. Antigravity Global Hook
+    gh = report["global_hook"]
+    if gh["status"] == "active":
+        print(f"🌐 Global Hook: ACTIVE ({gh['path']}) [OK]")
+    elif gh["status"] == "disabled":
+        print(f"🌐 Global Hook: Present but disabled. (Run: antiagent install --global)")
+    elif gh["status"] == "corrupt":
+        print(f"🌐 Global Hook: Corrupt hooks.json file. (Run: antiagent install --global)")
+    else:
+        print("🌐 Global Hook: Not installed yet. (Run: antiagent install --global)")
+
+    # 3. Workspace Hook
+    wh = report["workspace_hook"]
+    if wh["status"] == "active":
+        ws_name = Path(report["workspace_path"]).name
+        print(f"📁 Workspace Hook: ACTIVE in {ws_name} [OK]")
+    elif wh["status"] == "disabled":
+        print("📁 Workspace Hook: Inactive. (Run: antiagent install)")
+    elif wh["status"] == "corrupt":
+        print(f"📁 Workspace Hook: Error parsing {wh['path']}")
+    else:
+        print("📁 Workspace Hook: Not installed for this workspace. (Run: antiagent install)")
+
+    # 4. Antigravity Sessions / Transcripts
+    sess = report["antigravity_sessions"]
+    if sess["count"] > 0:
+        print(f"🧠 Antigravity Sessions: Found {sess['count']} conversation history folder(s) [OK]")
+    else:
+        print(f"🧠 Antigravity Sessions: Directory {sess['path']} not yet created.")
+
+    # 5. Antigravity Mode Recommendations
+    print("\n⚡ Antigravity Mode Compatibility:")
+    print("   • Turbo Mode (Always Proceed): FULLY SUPPORTED & RECOMMENDED")
+    print("     You can safely keep Antigravity on Turbo Mode! AntiAgent reviews")
+    print("     every tool call before execution, auto-approving safe work and")
+    print("     halting execution via force_ask whenever confirmation is needed.")
+    print("   • Request Review Mode: FULLY SUPPORTED")
+    print("     Standard mode with Antigravity prompts enriched by AntiAgent reasoning.")
+
+    # 6. Native Desktop App
+    desk = report["desktop_app"]
+    if desk["installed"]:
+        print(f"\n🖥️  Native Desktop App: INSTALLED at {desk['path']} [OK]")
+    else:
+        print("\n🖥️  Native Desktop App: Not installed. Run: antiagent install-app")
+
+    # 7. Dashboard Daemon
+    daemon = report["daemon"]
+    if daemon["running"]:
+        print(f"🛡️  AntiAgent Daemon: RUNNING on {daemon['url']} [OK]")
+    else:
+        print("🛡️  AntiAgent Daemon: Idle. Run: antiagent app or antiagent dashboard")
+
+    print("=" * 65)
+    print("✨ Doctor diagnostics completed.\n")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         prog="antiagent",
@@ -337,6 +406,10 @@ def main() -> None:
     status_parser = subparsers.add_parser("status", help="Show current installation and config status")
     status_parser.add_argument("--workspace", default=".", help="Workspace path")
 
+    # doctor
+    doctor_parser = subparsers.add_parser("doctor", help="Run diagnostic health check for Antigravity & AntiAgent")
+    doctor_parser.add_argument("--workspace", default=".", help="Workspace path")
+
     # test
     test_parser = subparsers.add_parser("test", help="Run safety simulation test suite")
     test_parser.add_argument("--workspace", default=".", help="Workspace path")
@@ -349,7 +422,7 @@ def main() -> None:
     # config
     config_parser = subparsers.add_parser("config", help="View or modify AntiAgent configuration")
     config_parser.add_argument("--set-profile", choices=[PROFILE_BALANCED, PROFILE_PARANOID, PROFILE_AUTONOMOUS])
-    config_parser.add_argument("--set-provider", help="Provider: gemini, openai, ollama, offline")
+    config_parser.add_argument("--set-provider", help="Provider: native, gemini, openai, ollama, offline")
     config_parser.add_argument("--set-model", help="Model name (e.g. gemini-2.5-flash, gpt-4o-mini)")
     config_parser.add_argument("--global", dest="global_config", action="store_true", help="Apply to global config")
 
@@ -360,6 +433,18 @@ def main() -> None:
     dashboard_parser.add_argument("--no-open", action="store_true", help="Do not automatically open browser")
     dashboard_parser.add_argument("--workspace", default=".", help="Workspace path")
 
+    # app
+    app_parser = subparsers.add_parser("app", help="Launch the native macOS desktop application")
+
+    # install-app
+    install_app_parser = subparsers.add_parser("install-app", help="Install native AntiAgent.app to ~/Applications")
+    install_app_parser.add_argument(
+        "--global",
+        dest="is_global",
+        action="store_true",
+        help="Install to /Applications instead of ~/Applications",
+    )
+
     args = parser.parse_args()
 
     if args.command == "install":
@@ -368,6 +453,8 @@ def main() -> None:
         uninstall_hook(is_global=args.is_global, workspace_path=args.workspace_path)
     elif args.command == "status":
         check_status(workspace_path=args.workspace)
+    elif args.command == "doctor":
+        run_doctor(workspace_path=args.workspace)
     elif args.command == "test":
         run_tests(workspace_path=args.workspace)
     elif args.command == "audit":
@@ -382,6 +469,12 @@ def main() -> None:
             open_browser=not args.no_open,
             workspace_path=args.workspace,
         )
+    elif args.command == "app":
+        from antiagent.desktop.builder import launch_app
+        launch_app()
+    elif args.command == "install-app":
+        from antiagent.desktop.builder import install_app
+        install_app(to_global=args.is_global)
     else:
         parser.print_help()
 

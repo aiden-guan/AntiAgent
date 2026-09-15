@@ -3,7 +3,12 @@
 import json
 import unittest
 
-from antiagent.constants import DECISION_ALLOW, DECISION_ASK, DECISION_DENY
+from antiagent.constants import (
+    DECISION_ALLOW,
+    DECISION_ASK,
+    DECISION_DENY,
+    DECISION_FORCE_ASK,
+)
 from antiagent.hook import handle_pre_tool_use
 
 
@@ -48,7 +53,7 @@ class TestHookContract(unittest.TestCase):
             "workspacePaths": ["/Users/fakeuser/myproject"],
         }
         resp = handle_pre_tool_use(payload)
-        self.assertEqual(resp["decision"], DECISION_ASK)
+        self.assertEqual(resp["decision"], DECISION_FORCE_ASK)
         self.assertIn("reason", resp)
 
 

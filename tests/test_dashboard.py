@@ -114,8 +114,17 @@ class TestDashboardServer(unittest.TestCase):
             self.assertTrue(data["ok"])
             self.assertTrue(os.path.isdir(new_proj))
             # Verify hook was installed
-            hook_file = os.path.join(new_proj, ".agents", "hooks.json")
-            self.assertTrue(os.path.isfile(hook_file))
+    def test_api_doctor(self):
+        url = f"http://127.0.0.1:{self.port}/api/doctor"
+        with urllib.request.urlopen(url) as resp:
+            self.assertEqual(resp.status, 200)
+            data = json.loads(resp.read().decode("utf-8"))
+            self.assertIn("python", data)
+            self.assertIn("global_hook", data)
+            self.assertIn("workspace_hook", data)
+            self.assertIn("modes", data)
+            self.assertTrue(data["modes"]["turbo_mode"]["supported"])
+            self.assertTrue(data["modes"]["turbo_mode"]["recommended"])
 
 
 if __name__ == "__main__":

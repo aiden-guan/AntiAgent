@@ -55,7 +55,7 @@ class CommandGuard:
 
         # 5. Check for privilege escalation
         if re.search(r"\b(sudo|doas)\b", cleaned):
-            return DECISION_DENY, "Root privilege escalation (sudo/doas) is disabled for safety."
+            return DECISION_ASK, f"⚠️ Root privilege command requires review or confirmation: '{cleaned[:40]}'."
 
         # 6. Check for background killer / process nukes
         if re.search(r"\b(killall|pkill)\s+(-9\s+)?(node|python|zsh|bash)", cleaned):
@@ -67,7 +67,7 @@ class CommandGuard:
 
         # 8. Check if command is a safe test/build command
         if self._is_safe_test_command(cleaned):
-            return DECISION_ALLOW, "Routine dev test suite run verified."
+            return DECISION_ALLOW, "Auto-approved: routine dev test suite run verified."
 
         # Otherwise, requires LLM review or profile-based fallback
         return None

@@ -8,12 +8,15 @@ from antiagent.constants import (
     DECISION_ALLOW,
     DECISION_ASK,
     DECISION_DENY,
+    DECISION_FORCE_ASK,
     PROFILE_PARANOID,
     SAFE_READ_TOOLS,
 )
+from antiagent.engine.context_extractor import TaskContext
 from antiagent.engine.heuristics.command_guard import CommandGuard
 from antiagent.engine.heuristics.fs_guard import FSGuard
 from antiagent.engine.heuristics.git_guard import GitGuard
+from antiagent.engine.heuristics.vulnerability_guard import VulnerabilityGuard
 from antiagent.engine.supervisor.cache import DecisionCache
 from antiagent.engine.supervisor.reviewer import LLMSupervisor
 
@@ -29,8 +32,13 @@ class EvaluationResult:
 
     def to_antigravity_dict(self) -> Dict[str, Any]:
         """Format as expected by Antigravity PreToolUse hook."""
+        decision = self.decision
+        # If the evaluator decided ASK, map to force_ask so Turbo Mode (always-proceed)
+        # cannot bypass the safety confirmation prompt.
+        if decision == DECISION_ASK:
+            decision = DECISION_FORCE_ASK
         payload: Dict[str, Any] = {
-            "decision": self.decision,
+            "decision": decision,
             "reason": self.reason,
         }
         if self.overwrite:
@@ -53,10 +61,16 @@ class AntiAgentEvaluator:
             custom_deny_patterns=config.custom_deny_patterns,
         )
         self.git_guard = GitGuard()
+        self.vuln_guard = VulnerabilityGuard()
         self.cache = DecisionCache()
         self.supervisor = LLMSupervisor(config)
 
-    def evaluate(self, tool_name: str, tool_args: dict) -> EvaluationResult:
+    def evaluate(
+        self,
+        tool_name: str,
+        tool_args: dict,
+        context: Optional[TaskContext] = None,
+    ) -> EvaluationResult:
         """Evaluate a tool call against security policies."""
         # 1. Quick cache check
         cached = self.cache.get(tool_name, tool_args)
@@ -103,26 +117,40 @@ class AntiAgentEvaluator:
         if tool_name == "run_command":
             cmd_line = tool_args.get("CommandLine", "")
 
-            # A. Check Git operations first if it's a git command
+            # A. Check Vulnerability & Exploit Guard (Auto-Review dimension 2)
+            if self.config.auto_review:
+                vuln_verdict = self.vuln_guard.evaluate(tool_name, tool_args, profile=self.config.profile)
+                if vuln_verdict:
+                    decision, reason = vuln_verdict
+                    return EvaluationResult(decision=decision, reason=reason)
+
+            # B. Check Git operations if it's a git command
             git_verdict = self.git_guard.evaluate(cmd_line)
             if git_verdict:
                 decision, reason = git_verdict
                 self.cache.put(tool_name, tool_args, decision, reason)
                 return EvaluationResult(decision=decision, reason=reason)
 
-            # B. Check general command guard heuristics
+            # C. Check general command guard heuristics
             cmd_verdict = self.cmd_guard.evaluate(cmd_line)
             if cmd_verdict:
                 decision, reason = cmd_verdict
-                # If command is hard-denied, don't allow caching bypass
-                if decision != DECISION_DENY:
+                if decision == DECISION_DENY:
+                    return EvaluationResult(decision=decision, reason=reason)
+                if decision == DECISION_ALLOW:
                     self.cache.put(tool_name, tool_args, decision, reason)
-                return EvaluationResult(decision=decision, reason=reason)
+                    return EvaluationResult(decision=decision, reason=reason)
+                # If decision is DECISION_ASK:
+                # If auto_review is enabled and context is present, defer to Tier 2 supervisor
+                # so intent coherence or contextual anomalies (e.g. unprompted killall) can be evaluated
+                if not (self.config.auto_review and context):
+                    self.cache.put(tool_name, tool_args, decision, reason)
+                    return EvaluationResult(decision=decision, reason=reason)
 
         # 5. If we reach here, the action is mutating or non-trivial.
-        # Tier 2: AI Supervisor Review
+        # Tier 2: Context-Aware Auto-Review / AI Supervisor Review
         ai_decision, ai_reason = self.supervisor.review(
-            tool_name, tool_args, self.workspace_paths
+            tool_name, tool_args, self.workspace_paths, context=context
         )
         self.cache.put(tool_name, tool_args, ai_decision, ai_reason)
 

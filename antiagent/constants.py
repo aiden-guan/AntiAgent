@@ -113,21 +113,21 @@ RISKY_GIT_OPERATIONS = [
 
 # Patterns that are immediately blocked without prompting (Tier 1 Hard Block)
 HARD_DENY_PATTERNS = [
-    # System wiping / destructive deletion
-    r"rm\s+(-[a-zA-Z]*r[a-zA-Z]*f|--recursive\s+--force)\s+(/\s*$|/\*|/etc|/usr|/bin|/sbin|/var|/System|/Library|~/?$)",
-    # Disk formatting
+    # System wiping / destructive deletion (with or without sudo)
+    r"(?:sudo\s+)?rm\s+(-[a-zA-Z]*r[a-zA-Z]*f|--recursive\s+--force)\s+(/\s*$|/\*|/etc|/usr|/bin|/sbin|/var|/System|/Library|~/?$)",
+    # Disk formatting / raw device overwrites (with or without sudo)
     r"\bmkfs\b",
     r"\bdd\s+if=.*of=(/dev/sd[a-z]|/dev/nvme[0-9]|/dev/disk[0-9])",
     # Fork bombs
     r":\(\)\s*\{\s*:\s*\|\s*:\s*&\s*\}\s*;\s*:",
-    # Privilege escalation
-    r"\bsudo\b",
-    r"\bsu\s+-",
-    r"\bdoas\b",
     # Piping untrusted network scripts directly to shell
     r"(curl|wget|fetch|http)\s+.*\|\s*(sh|bash|zsh|python[0-9]?|ruby|perl)",
     # SSH and cloud credential exfiltration
     r"(~?/\.ssh/id_[a-zA-Z0-9_]+|\.ssh/id_[a-zA-Z0-9_]+|\.aws/credentials|\.kube/config)",
+    # Shadow / password file dump
+    r"(?:sudo\s+)?cat\s+.*(/etc/shadow|/etc/master\.passwd)",
+    # Tampering with sudoers configuration
+    r"(>>|>|visudo|tee)\s+.*(/etc/sudoers)",
 ]
 
 # Sensitive file and directory patterns
