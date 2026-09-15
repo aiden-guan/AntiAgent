@@ -66,7 +66,7 @@ AntiAgent **reviews each proposed command and tool call in real time**:
 Clone or install AntiAgent:
 
 ```bash
-git clone https://github.com/aidenguan/AntiAgent.git
+git clone https://github.com/aiden-guan/AntiAgent.git
 cd AntiAgent
 pip install -e .
 ```
