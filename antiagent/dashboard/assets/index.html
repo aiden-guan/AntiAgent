@@ -21,22 +21,19 @@
       --danger-bg: rgba(248, 81, 73, 0.15);
       --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
-
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       background-color: var(--bg);
       color: var(--text);
       font-family: var(--font);
       line-height: 1.5;
-      padding-bottom: 60px;
+      padding-bottom: 80px;
     }
-
     .container {
-      max-width: 1060px;
+      max-width: 1100px;
       margin: 0 auto;
       padding: 0 20px;
     }
-
     header {
       border-bottom: 1px solid var(--card-border);
       background: rgba(13, 17, 23, 0.95);
@@ -44,21 +41,21 @@
       position: sticky;
       top: 0;
       z-index: 100;
-      padding: 16px 0;
+      padding: 14px 0;
     }
     .header-content {
       display: flex;
       justify-content: space-between;
       align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
     }
     .logo-group {
       display: flex;
       align-items: center;
       gap: 12px;
     }
-    .logo-icon {
-      font-size: 28px;
-    }
+    .logo-icon { font-size: 28px; }
     .logo-title {
       font-size: 20px;
       font-weight: 700;
@@ -72,46 +69,72 @@
       color: var(--text-muted);
       border: 1px solid var(--card-border);
     }
+    .header-badges {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
     .status-badge {
       display: inline-flex;
       align-items: center;
       gap: 6px;
       padding: 4px 12px;
       border-radius: 20px;
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 600;
     }
     .badge-active { background: var(--success-bg); color: var(--success); border: 1px solid rgba(63, 185, 80, 0.3); }
     .badge-inactive { background: var(--warning-bg); color: var(--warning); border: 1px solid rgba(210, 153, 34, 0.3); }
-
-    /* Grid Layout */
+    .workspace-bar {
+      background: #161b22;
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 14px 18px;
+      margin-top: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .ws-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+    }
+    .ws-path {
+      font-family: monospace;
+      background: #0d1117;
+      padding: 4px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--card-border);
+      color: var(--primary);
+    }
     .dashboard-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 20px;
-      margin-top: 24px;
+      margin-top: 20px;
     }
-    @media (max-width: 860px) {
+    @media (max-width: 900px) {
       .dashboard-grid { grid-template-columns: 1fr; }
     }
-
     .card {
       background: var(--card-bg);
       border: 1px solid var(--card-border);
       border-radius: 12px;
-      padding: 24px;
+      padding: 22px;
       box-shadow: 0 4px 20px rgba(0,0,0,0.25);
     }
     .card-title {
-      font-size: 16px;
+      font-size: 15px;
       font-weight: 600;
       margin-bottom: 16px;
       display: flex;
       align-items: center;
       justify-content: space-between;
     }
-
-    /* Buttons */
     .btn {
       display: inline-flex;
       align-items: center;
@@ -119,7 +142,7 @@
       gap: 6px;
       font-size: 13px;
       font-weight: 600;
-      padding: 8px 16px;
+      padding: 8px 14px;
       border-radius: 6px;
       border: 1px solid transparent;
       cursor: pointer;
@@ -130,37 +153,21 @@
     .btn-danger { background: #da3633; color: #fff; }
     .btn-danger:hover { background: #b62324; }
     .btn-outline { background: #21262d; border-color: var(--card-border); color: var(--text); }
-    .btn-outline:hover { background: #30363d; }
+    .btn-outline:hover { background: #30363d; border-color: var(--text-muted); }
+    .btn-blue { background: #1f6feb; color: #fff; }
+    .btn-blue:hover { background: #388bfd; }
     .btn-sm { padding: 4px 10px; font-size: 12px; }
-
-    /* Setup Banner */
-    .setup-banner {
-      background: linear-gradient(135deg, rgba(88, 166, 255, 0.1) 0%, rgba(63, 185, 80, 0.08) 100%);
-      border: 1px solid rgba(88, 166, 255, 0.3);
-      border-radius: 12px;
-      padding: 20px;
-      margin-top: 24px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 16px;
-    }
-    .setup-text h3 { font-size: 17px; margin-bottom: 4px; }
-    .setup-text p { font-size: 13px; color: var(--text-muted); }
-
-    /* Forms & Controls */
     .segmented-control {
       display: flex;
       background: #0d1117;
       border: 1px solid var(--card-border);
       border-radius: 8px;
       padding: 3px;
-      margin-bottom: 16px;
+      margin-bottom: 14px;
     }
     .segmented-btn {
       flex: 1;
-      padding: 8px 12px;
+      padding: 8px 10px;
       text-align: center;
       font-size: 13px;
       font-weight: 500;
@@ -177,13 +184,10 @@
       font-weight: 600;
       box-shadow: 0 2px 4px rgba(0,0,0,0.3);
     }
-
-    .form-group {
-      margin-bottom: 14px;
-    }
+    .form-group { margin-bottom: 14px; }
     .form-group label {
       display: block;
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 600;
       color: var(--text-muted);
       margin-bottom: 6px;
@@ -200,27 +204,79 @@
       font-size: 13px;
       font-family: inherit;
     }
-    .form-control:focus {
-      outline: none;
-      border-color: var(--primary);
-    }
-
-    /* Simulator Sandbox */
-    .simulator-box {
+    .form-control:focus { outline: none; border-color: var(--primary); }
+    textarea.form-control { font-family: monospace; font-size: 12px; resize: vertical; }
+    .toggle-row {
       display: flex;
-      gap: 10px;
-      margin-bottom: 12px;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(48, 54, 61, 0.4);
     }
-    .quick-preset-chips {
-      display: flex;
-      gap: 6px;
-      flex-wrap: wrap;
+    .toggle-row:last-child { border-bottom: none; }
+    .toggle-label { font-size: 13px; font-weight: 500; }
+    .toggle-sublabel { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+    .toggle-switch {
+      position: relative;
+      display: inline-block;
+      width: 44px;
+      height: 24px;
+      flex-shrink: 0;
+    }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: #30363d;
+      transition: .2s;
+      border-radius: 24px;
+    }
+    .toggle-slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: .2s;
+      border-radius: 50%;
+    }
+    input:checked + .toggle-slider { background-color: #238636; }
+    input:checked + .toggle-slider:before { transform: translateX(20px); }
+    .hook-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
       margin-bottom: 16px;
     }
+    .hook-box {
+      background: #0d1117;
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 14px;
+    }
+    .hook-box h4 {
+      font-size: 13px;
+      font-weight: 600;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+    .hook-box p {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+      min-height: 32px;
+    }
+    .simulator-box { display: flex; gap: 8px; margin-bottom: 12px; }
+    .quick-preset-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
     .chip {
       background: #21262d;
       border: 1px solid var(--card-border);
-      padding: 3px 10px;
+      padding: 3px 8px;
       border-radius: 12px;
       font-size: 11px;
       font-family: monospace;
@@ -228,16 +284,12 @@
       cursor: pointer;
       transition: 0.15s;
     }
-    .chip:hover {
-      background: #30363d;
-      color: var(--text);
-      border-color: var(--primary);
-    }
+    .chip:hover { background: #30363d; color: var(--text); border-color: var(--primary); }
     .sim-result {
       background: #0d1117;
       border: 1px solid var(--card-border);
       border-radius: 8px;
-      padding: 16px;
+      padding: 14px;
       display: none;
       animation: fadeIn 0.2s ease;
     }
@@ -246,27 +298,18 @@
       to { opacity: 1; transform: translateY(0); }
     }
     .verdict-tag {
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 700;
-      padding: 3px 10px;
+      padding: 3px 8px;
       border-radius: 4px;
       display: inline-block;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
     }
     .verdict-allow { background: var(--success-bg); color: var(--success); border: 1px solid rgba(63,185,80,0.4); }
     .verdict-ask { background: var(--warning-bg); color: var(--warning); border: 1px solid rgba(210,153,34,0.4); }
     .verdict-deny { background: var(--danger-bg); color: var(--danger); border: 1px solid rgba(248,81,73,0.4); }
-
-    /* Audit Table */
-    .audit-section {
-      margin-top: 24px;
-    }
-    .audit-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 13px;
-      margin-top: 12px;
-    }
+    .audit-section { margin-top: 24px; }
+    .audit-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 12px; }
     .audit-table th {
       text-align: left;
       padding: 8px 12px;
@@ -276,18 +319,35 @@
       border-bottom: 1px solid var(--card-border);
     }
     .audit-table td {
-      padding: 10px 12px;
+      padding: 8px 12px;
       border-bottom: 1px solid var(--card-border);
       font-family: monospace;
       font-size: 12px;
     }
-    .audit-table tr:hover td {
-      background: rgba(255,255,255,0.02);
+    .audit-table tr:hover td { background: rgba(255,255,255,0.02); }
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(4px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
     }
+    .modal-card {
+      background: #161b22;
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 24px;
+      width: 100%;
+      max-width: 500px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+    }
+    .modal-title { font-size: 16px; font-weight: 600; margin-bottom: 14px; }
   </style>
 </head>
 <body>
-
   <header>
     <div class="container header-content">
       <div class="logo-group">
@@ -297,92 +357,191 @@
           <span class="version-tag">v0.1.0</span>
         </div>
       </div>
-      <div id="statusPill" class="status-badge badge-inactive">
-        <span class="dot">●</span> Checking Status...
+      <div class="header-badges">
+        <div id="wsBadge" class="status-badge badge-inactive">
+          <span>📁 Workspace: Checking...</span>
+        </div>
+        <div id="globalBadge" class="status-badge badge-inactive">
+          <span>🌐 Global: Checking...</span>
+        </div>
       </div>
     </div>
   </header>
-
   <main class="container">
-    <!-- Setup Banner -->
-    <div class="setup-banner">
-      <div class="setup-text">
-        <h3>⚡ "Approved for Me" Antigravity Protection</h3>
-        <p>Zero API Key required. Safe reads and builds run instantly; risky actions ask for your approval.</p>
+    <div class="workspace-bar">
+      <div class="ws-info">
+        <span>📍 Current Project:</span>
+        <span id="wsPathDisplay" class="ws-path">Loading...</span>
       </div>
-      <div id="quickActions" style="display: flex; gap: 8px;">
-        <button id="btnInstallWs" class="btn btn-primary" onclick="installHook('workspace')">Enable for Workspace</button>
-        <button id="btnInstallGlobal" class="btn btn-outline" onclick="installHook('global')">Enable Globally</button>
+      <div style="display: flex; gap: 8px;">
+        <button class="btn btn-outline btn-sm" onclick="openModal('switchWsModal')">Switch Project</button>
+        <button class="btn btn-blue btn-sm" onclick="openModal('newProjectModal')">⚡ Create New Project</button>
       </div>
     </div>
-
     <div class="dashboard-grid">
-      <!-- Card 1: Configuration & Profile -->
       <div class="card">
         <div class="card-title">
-          <span>⚙️ Safety Profile & Mode</span>
-          <span id="saveIndicator" style="font-size: 11px; color: var(--success); display: none;">Saved!</span>
+          <span>🔌 Lifecycle Hooks & Activation</span>
+          <span style="font-size: 11px; color: var(--text-muted);">PreToolUse Gatekeeper</span>
         </div>
-
-        <div class="segmented-control">
-          <button id="profBalanced" class="segmented-btn active" onclick="setProfile('balanced')">Balanced</button>
-          <button id="profParanoid" class="segmented-btn" onclick="setProfile('paranoid')">Paranoid</button>
-          <button id="profAutonomous" class="segmented-btn" onclick="setProfile('autonomous')">Autonomous</button>
+        <div class="hook-grid">
+          <div class="hook-box">
+            <h4>
+              <span>Workspace Hook</span>
+              <span id="wsHookPill" class="status-badge badge-inactive" style="font-size: 10px; padding: 2px 6px;">Inactive</span>
+            </h4>
+            <p>Guards only current repository via <code>.agents/hooks.json</code>.</p>
+            <div id="wsHookActions">
+              <button class="btn btn-primary btn-sm" style="width: 100%;" onclick="installHook('workspace')">Enable for Workspace</button>
+            </div>
+          </div>
+          <div class="hook-box">
+            <h4>
+              <span>Global Hook</span>
+              <span id="globalHookPill" class="status-badge badge-inactive" style="font-size: 10px; padding: 2px 6px;">Inactive</span>
+            </h4>
+            <p>Protects ALL Antigravity projects automatically via <code>~/.gemini/config/hooks.json</code>.</p>
+            <div id="globalHookActions">
+              <button class="btn btn-outline btn-sm" style="width: 100%;" onclick="installHook('global')">Enable Globally</button>
+            </div>
+          </div>
         </div>
-
-        <p id="profileDesc" style="font-size: 12px; color: var(--text-muted); margin-bottom: 16px;">
-          <strong>Balanced (Recommended):</strong> Auto-approves safe reads, tests, and edits inside the project. Prompts before destructive commands (rm, git reset --hard, force push).
-        </p>
-
+        <div class="form-group" style="margin-top: 18px;">
+          <label>Safety Profile Stance</label>
+          <div class="segmented-control">
+            <button id="profBalanced" class="segmented-btn active" onclick="setProfile('balanced')">Balanced</button>
+            <button id="profParanoid" class="segmented-btn" onclick="setProfile('paranoid')">Paranoid</button>
+            <button id="profAutonomous" class="segmented-btn" onclick="setProfile('autonomous')">Autonomous</button>
+          </div>
+          <p id="profileDesc" style="font-size: 12px; color: var(--text-muted); line-height: 1.4;">
+            <strong>Balanced:</strong> Auto-approves safe reads, tests, and edits inside the project. Prompts before destructive commands.
+          </p>
+        </div>
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--card-border);">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <label style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">Save Target:</label>
+            <select id="configScopeSelect" class="form-control" style="width: auto; padding: 4px 8px; font-size: 12px;">
+              <option value="workspace">Workspace (.antiagent.json)</option>
+              <option value="global">Global (~/.antiagent/config.json)</option>
+            </select>
+          </div>
+          <span id="saveIndicator" style="font-size: 12px; color: var(--success); display: none; font-weight: 600;">Saved!</span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">
+          <span>🧠 Supervisor Engine & Provider</span>
+          <span style="font-size: 11px; color: var(--text-muted);">Tier 2 AI Reviewer</span>
+        </div>
         <div class="form-group">
-          <label>Supervisor Engine</label>
-          <select id="selectProvider" class="form-control" onchange="updateProvider()">
+          <label>Provider</label>
+          <select id="selectProvider" class="form-control" onchange="onProviderChanged()">
             <option value="native">Antigravity Native (Zero API Key Needed)</option>
-            <option value="gemini">Google Gemini Flash (via GEMINI_API_KEY)</option>
-            <option value="openai">OpenAI GPT-4o-mini (via OPENAI_API_KEY)</option>
-            <option value="ollama">Local Ollama (localhost:11434)</option>
+            <option value="gemini">Google Gemini Flash (via API Key)</option>
+            <option value="openai">OpenAI GPT-4o / Compatible (via API Key)</option>
+            <option value="ollama">Local Ollama LLM (e.g. qwen2.5-coder)</option>
+            <option value="offline">Offline Mode (Tier 1 Heuristics Only)</option>
           </select>
         </div>
-
-        <div class="form-group" style="margin-top: 18px;">
-          <label>Active Workspace</label>
-          <input type="text" id="wsPathDisplay" class="form-control" readonly style="color: var(--text-muted);" value="Detecting...">
+        <div class="form-group" id="modelGroup">
+          <label>Model Name</label>
+          <input type="text" id="inputModel" class="form-control" placeholder="e.g. gemini-2.5-flash, gpt-4o-mini">
         </div>
-
-        <div style="margin-top: 20px; display: flex; gap: 8px;">
-          <button class="btn btn-outline btn-sm" onclick="uninstallHook()">Disable Protection</button>
+        <div class="form-group" id="apiKeyGroup">
+          <label>API Key (Optional override)</label>
+          <div style="display: flex; gap: 6px;">
+            <input type="password" id="inputApiKey" class="form-control" placeholder="Leave empty to use environment variable">
+            <button class="btn btn-outline btn-sm" type="button" onclick="togglePassword()">👁️</button>
+          </div>
         </div>
+        <div class="form-group" id="endpointGroup" style="display: none;">
+          <label>Custom Endpoint URL (Ollama / Local)</label>
+          <input type="text" id="inputEndpoint" class="form-control" placeholder="http://localhost:11434">
+        </div>
+        <button class="btn btn-primary" style="width: 100%; margin-top: 10px;" onclick="saveEngineConfig()">Save Engine Settings</button>
       </div>
-
-      <!-- Card 2: Interactive Safety Playground -->
       <div class="card">
         <div class="card-title">
-          <span>🧪 Live Safety Playground</span>
-          <span style="font-size: 11px; color: var(--text-muted);">Simulate agent commands</span>
+          <span>🛡️ Feature Toggles & Guards</span>
+          <span style="font-size: 11px; color: var(--text-muted);">Instant Execution Rules</span>
         </div>
-
-        <div class="quick-preset-chips">
-          <span class="chip" onclick="setTest('ls -la')">ls -la</span>
-          <span class="chip" onclick="setTest('git status')">git status</span>
-          <span class="chip" onclick="setTest('npm test')">npm test</span>
-          <span class="chip" onclick="setTest('git push --force')">git push --force</span>
-          <span class="chip" onclick="setTest('rm -rf /')">rm -rf /</span>
-          <span class="chip" onclick="setTest('cat ~/.ssh/id_rsa')">cat ~/.ssh/id_rsa</span>
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-label">Auto-Approve Read-Only Tools</div>
+            <div class="toggle-sublabel">Instantly allow ls, cat, git status, view_file, grep (shielding secrets)</div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="toggleApproveReads" onchange="saveToggle('auto_approve_reads', this.checked)">
+            <span class="toggle-slider"></span>
+          </label>
         </div>
-
-        <div class="simulator-box">
-          <input type="text" id="simInput" class="form-control" placeholder="Enter a shell command (e.g. rm -rf node_modules)..." value="ls -la">
-          <button class="btn btn-primary" onclick="runSimulation()">Test</button>
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-label">Auto-Approve Routine Dev Commands</div>
+            <div class="toggle-sublabel">Allow pytest, npm test, cargo test, and builds confined to workspace</div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="toggleApproveDev" onchange="saveToggle('auto_approve_dev_commands', this.checked)">
+            <span class="toggle-slider"></span>
+          </label>
         </div>
-
-        <div id="simResult" class="sim-result">
-          <div id="verdictBadge" class="verdict-tag verdict-allow">ALLOW</div>
-          <div id="verdictReason" style="font-size: 13px; color: var(--text); margin-top: 4px;"></div>
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-label">Persistent Audit Trail</div>
+            <div class="toggle-sublabel">Log all tool intercepts, verdicts, and rationales to disk</div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="toggleAuditEnabled" onchange="saveToggle('audit_enabled', this.checked)">
+            <span class="toggle-slider"></span>
+          </label>
         </div>
       </div>
+      <div class="card">
+        <div class="card-title">
+          <span>📜 Custom Policy Regex Rules</span>
+          <span style="font-size: 11px; color: var(--text-muted);">Whitelist & Blacklist</span>
+        </div>
+        <div class="form-group">
+          <label>Custom Allow Patterns (Whitelist — 1 regex per line)</label>
+          <textarea id="customAllowInput" class="form-control" rows="3" placeholder="^make lint&#10;^bundle exec rake"></textarea>
+        </div>
+        <div class="form-group">
+          <label>Custom Deny Patterns (Blacklist — 1 regex per line)</label>
+          <textarea id="customDenyInput" class="form-control" rows="3" placeholder="drop\s+database&#10;halt_system"></textarea>
+        </div>
+        <button class="btn btn-outline" style="width: 100%;" onclick="saveCustomPatterns()">Save Custom Regex Rules</button>
+      </div>
     </div>
-
-    <!-- Audit Trail Card -->
+    <div class="card" style="margin-top: 20px;">
+      <div class="card-title">
+        <span>🧪 Live Safety Playground</span>
+        <span style="font-size: 11px; color: var(--text-muted);">Test how AntiAgent evaluates commands in this project</span>
+      </div>
+      <div class="quick-preset-chips">
+        <span class="chip" onclick="setSim('run_command', 'ls -la')">ls -la</span>
+        <span class="chip" onclick="setSim('run_command', 'git status')">git status</span>
+        <span class="chip" onclick="setSim('run_command', 'npm test')">npm test</span>
+        <span class="chip" onclick="setSim('view_file', '.env')">view_file .env</span>
+        <span class="chip" onclick="setSim('run_command', 'git push --force origin main')">git push --force</span>
+        <span class="chip" onclick="setSim('write_to_file', '/etc/hosts')">write /etc/hosts</span>
+        <span class="chip" onclick="setSim('run_command', 'rm -rf /')">rm -rf /</span>
+        <span class="chip" onclick="setSim('run_command', 'cat ~/.ssh/id_rsa')">cat ~/.ssh/id_rsa</span>
+      </div>
+      <div class="simulator-box">
+        <select id="simTool" class="form-control" style="width: 160px;">
+          <option value="run_command">run_command</option>
+          <option value="view_file">view_file</option>
+          <option value="write_to_file">write_to_file</option>
+          <option value="replace_file_content">replace_file_content</option>
+        </select>
+        <input type="text" id="simInput" class="form-control" placeholder="Enter command or target file path..." value="ls -la">
+        <button class="btn btn-primary" onclick="runSimulation()">Evaluate</button>
+      </div>
+      <div id="simResult" class="sim-result">
+        <div id="verdictBadge" class="verdict-tag verdict-allow">ALLOW</div>
+        <div id="verdictReason" style="font-size: 13px; color: var(--text); margin-top: 4px;"></div>
+      </div>
+    </div>
     <div class="card audit-section">
       <div class="card-title">
         <span>📜 Real-Time Audit Stream</span>
@@ -395,92 +554,195 @@
         <table class="audit-table">
           <thead>
             <tr>
-              <th style="width: 140px;">Timestamp</th>
-              <th style="width: 80px;">Verdict</th>
-              <th style="width: 120px;">Tool</th>
+              <th style="width: 130px;">Timestamp</th>
+              <th style="width: 70px;">Verdict</th>
+              <th style="width: 110px;">Tool</th>
               <th>Command / Target</th>
               <th>Reason</th>
             </tr>
           </thead>
           <tbody id="auditBody">
             <tr>
-              <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 24px;">Loading audit events...</td>
+              <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 20px;">Loading audit events...</td>
             </tr>
           </tbody>
         </table>
       </div>
     </div>
   </main>
-
+  <div id="switchWsModal" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-title">Switch Active Workspace</div>
+      <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">
+        Point the AntiAgent dashboard to an existing project folder on your machine:
+      </p>
+      <input type="text" id="switchWsPathInput" class="form-control" placeholder="/Users/username/Projects/my-project">
+      <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px;">
+        <button class="btn btn-outline btn-sm" onclick="closeModal('switchWsModal')">Cancel</button>
+        <button class="btn btn-primary btn-sm" onclick="submitSwitchWorkspace()">Switch Workspace</button>
+      </div>
+    </div>
+  </div>
+  <div id="newProjectModal" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-title">⚡ Create & Protect New Project</div>
+      <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">
+        Creates a new project directory, initializes Git, and registers AntiAgent protection automatically:
+      </p>
+      <div class="form-group">
+        <label>New Project Path or Name</label>
+        <input type="text" id="newProjectPathInput" class="form-control" placeholder="/Users/aidenguan/Documents/Projects/my-app">
+      </div>
+      <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px;">
+        <button class="btn btn-outline btn-sm" onclick="closeModal('newProjectModal')">Cancel</button>
+        <button class="btn btn-blue btn-sm" onclick="submitCreateProject()">Scaffold & Protect</button>
+      </div>
+    </div>
+  </div>
   <script>
+    let currentConfig = {};
+    function openModal(id) { document.getElementById(id).style.display = 'flex'; }
+    function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+    function togglePassword() {
+      const el = document.getElementById('inputApiKey');
+      el.type = el.type === 'password' ? 'text' : 'password';
+    }
     async function fetchStatus() {
       try {
         const res = await fetch('/api/status');
         const data = await res.json();
-
-        // Update Pill
-        const pill = document.getElementById('statusPill');
-        const isActive = data.workspace_hook_active || data.global_hook_active;
-        if (isActive) {
-          pill.className = 'status-badge badge-active';
-          pill.innerHTML = '🟢 Protection Active (' + (data.workspace_hook_active ? 'Workspace' : 'Global') + ')';
+        currentConfig = data;
+        const wsBadge = document.getElementById('wsBadge');
+        if (data.workspace_hook_active) {
+          wsBadge.className = 'status-badge badge-active';
+          wsBadge.textContent = '📁 Workspace Hook: Active';
         } else {
-          pill.className = 'status-badge badge-inactive';
-          pill.innerHTML = '⚪ Protection Inactive';
+          wsBadge.className = 'status-badge badge-inactive';
+          wsBadge.textContent = '📁 Workspace Hook: Inactive';
         }
-
-        // Update Workspace Path
-        document.getElementById('wsPathDisplay').value = data.workspace_path || 'None';
-
-        // Update Profile
+        const globalBadge = document.getElementById('globalBadge');
+        if (data.global_hook_active) {
+          globalBadge.className = 'status-badge badge-active';
+          globalBadge.textContent = '🌐 Global Hook: Active';
+        } else {
+          globalBadge.className = 'status-badge badge-inactive';
+          globalBadge.textContent = '🌐 Global Hook: Inactive';
+        }
+        document.getElementById('wsPathDisplay').textContent = data.workspace_path || 'None';
+        document.getElementById('switchWsPathInput').value = data.workspace_path || '';
+        const wsHookPill = document.getElementById('wsHookPill');
+        const wsHookActions = document.getElementById('wsHookActions');
+        if (data.workspace_hook_active) {
+          wsHookPill.className = 'status-badge badge-active';
+          wsHookPill.textContent = 'Active';
+          wsHookActions.innerHTML = `<button class="btn btn-danger btn-sm" style="width:100%;" onclick="uninstallHook('workspace')">Disable Workspace</button>`;
+        } else {
+          wsHookPill.className = 'status-badge badge-inactive';
+          wsHookPill.textContent = 'Inactive';
+          wsHookActions.innerHTML = `<button class="btn btn-primary btn-sm" style="width:100%;" onclick="installHook('workspace')">Enable for Workspace</button>`;
+        }
+        const globalHookPill = document.getElementById('globalHookPill');
+        const globalHookActions = document.getElementById('globalHookActions');
+        if (data.global_hook_active) {
+          globalHookPill.className = 'status-badge badge-active';
+          globalHookPill.textContent = 'Active';
+          globalHookActions.innerHTML = `<button class="btn btn-danger btn-sm" style="width:100%;" onclick="uninstallHook('global')">Disable Global</button>`;
+        } else {
+          globalHookPill.className = 'status-badge badge-inactive';
+          globalHookPill.textContent = 'Inactive';
+          globalHookActions.innerHTML = `<button class="btn btn-outline btn-sm" style="width:100%;" onclick="installHook('global')">Enable Globally</button>`;
+        }
         setProfileUI(data.profile || 'balanced');
-
-        // Update Provider
         document.getElementById('selectProvider').value = data.provider || 'native';
+        document.getElementById('inputModel').value = data.model || '';
+        document.getElementById('inputApiKey').value = data.api_key || '';
+        document.getElementById('inputEndpoint').value = data.endpoint_url || '';
+        onProviderChanged();
+        document.getElementById('toggleApproveReads').checked = !!data.auto_approve_reads;
+        document.getElementById('toggleApproveDev').checked = !!data.auto_approve_dev_commands;
+        document.getElementById('toggleAuditEnabled').checked = !!data.audit_enabled;
+        document.getElementById('customAllowInput').value = (data.custom_allow_patterns || []).join('\n');
+        document.getElementById('customDenyInput').value = (data.custom_deny_patterns || []).join('\n');
       } catch (err) {
         console.error('Failed to fetch status:', err);
       }
     }
-
     function setProfileUI(profile) {
       document.getElementById('profBalanced').className = profile === 'balanced' ? 'segmented-btn active' : 'segmented-btn';
       document.getElementById('profParanoid').className = profile === 'paranoid' ? 'segmented-btn active' : 'segmented-btn';
       document.getElementById('profAutonomous').className = profile === 'autonomous' ? 'segmented-btn active' : 'segmented-btn';
-
       const descMap = {
-        balanced: '<strong>Balanced (Recommended):</strong> Auto-approves safe reads, tests, and edits inside the project. Prompts before destructive commands (rm, git reset --hard, force push).',
+        balanced: '<strong>Balanced:</strong> Auto-approves safe reads, tests, and edits inside the project. Prompts before destructive commands.',
         paranoid: '<strong>Paranoid:</strong> Explicit user confirmation required for any modifying tool or file change. Only pure reads are auto-approved.',
         autonomous: '<strong>Autonomous:</strong> Auto-approves all non-catastrophic actions confined to the project workspace. Hard-blocks system destructions.'
       };
       document.getElementById('profileDesc').innerHTML = descMap[profile] || '';
     }
-
     async function setProfile(profile) {
       setProfileUI(profile);
+      const scope = document.getElementById('configScopeSelect').value;
       await fetch('/api/config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ profile })
+        body: JSON.stringify({ profile, scope })
       });
       flashSave();
     }
-
-    async function updateProvider() {
+    function onProviderChanged() {
+      const prov = document.getElementById('selectProvider').value;
+      const endpointGroup = document.getElementById('endpointGroup');
+      const apiKeyGroup = document.getElementById('apiKeyGroup');
+      if (prov === 'ollama') {
+        endpointGroup.style.display = 'block';
+        apiKeyGroup.style.display = 'none';
+      } else if (prov === 'native' || prov === 'offline') {
+        endpointGroup.style.display = 'none';
+        apiKeyGroup.style.display = 'none';
+      } else {
+        endpointGroup.style.display = 'none';
+        apiKeyGroup.style.display = 'block';
+      }
+    }
+    async function saveEngineConfig() {
+      const scope = document.getElementById('configScopeSelect').value;
       const provider = document.getElementById('selectProvider').value;
+      const model = document.getElementById('inputModel').value.trim();
+      const api_key = document.getElementById('inputApiKey').value.trim();
+      const endpoint_url = document.getElementById('inputEndpoint').value.trim();
       await fetch('/api/config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ provider })
+        body: JSON.stringify({ scope, provider, model, api_key, endpoint_url })
       });
       flashSave();
     }
-
+    async function saveToggle(key, value) {
+      const scope = document.getElementById('configScopeSelect').value;
+      const payload = { scope };
+      payload[key] = value;
+      await fetch('/api/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      flashSave();
+    }
+    async function saveCustomPatterns() {
+      const scope = document.getElementById('configScopeSelect').value;
+      const custom_allow_patterns = document.getElementById('customAllowInput').value;
+      const custom_deny_patterns = document.getElementById('customDenyInput').value;
+      await fetch('/api/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scope, custom_allow_patterns, custom_deny_patterns })
+      });
+      flashSave();
+    }
     function flashSave() {
       const ind = document.getElementById('saveIndicator');
       ind.style.display = 'inline';
       setTimeout(() => { ind.style.display = 'none'; }, 2000);
     }
-
     async function installHook(scope) {
       await fetch('/api/install', {
         method: 'POST',
@@ -489,62 +751,99 @@
       });
       await fetchStatus();
     }
-
-    async function uninstallHook() {
+    async function uninstallHook(scope) {
       await fetch('/api/uninstall', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ scope: 'workspace' })
+        body: JSON.stringify({ scope })
       });
       await fetchStatus();
     }
-
-    function setTest(cmd) {
-      document.getElementById('simInput').value = cmd;
+    async function submitSwitchWorkspace() {
+      const path = document.getElementById('switchWsPathInput').value.trim();
+      if (!path) return;
+      const res = await fetch('/api/workspace', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path })
+      });
+      const data = await res.json();
+      if (data.ok) {
+        closeModal('switchWsModal');
+        await fetchStatus();
+        await loadAudit();
+      } else {
+        alert(data.error || 'Failed to switch workspace');
+      }
+    }
+    async function submitCreateProject() {
+      const path = document.getElementById('newProjectPathInput').value.trim();
+      if (!path) return;
+      const res = await fetch('/api/create_project', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path })
+      });
+      const data = await res.json();
+      if (data.ok) {
+        closeModal('newProjectModal');
+        await fetchStatus();
+        await loadAudit();
+        alert('🎉 Successfully scaffolded and protected new project at: ' + data.workspace_path);
+      } else {
+        alert(data.error || 'Failed to create project');
+      }
+    }
+    function setSim(tool, arg) {
+      document.getElementById('simTool').value = tool;
+      document.getElementById('simInput').value = arg;
       runSimulation();
     }
-
     async function runSimulation() {
-      const cmd = document.getElementById('simInput').value;
+      const tool = document.getElementById('simTool').value;
+      const val = document.getElementById('simInput').value;
+      let args = {};
+      if (tool === 'run_command') {
+        args = { CommandLine: val };
+      } else if (tool === 'view_file') {
+        args = { AbsolutePath: val };
+      } else if (tool === 'write_to_file' || tool === 'replace_file_content') {
+        args = { TargetFile: val, CodeContent: '# test edit' };
+      }
       const res = await fetch('/api/simulate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tool: 'run_command', args: { CommandLine: cmd } })
+        body: JSON.stringify({ tool, args })
       });
       const data = await res.json();
-
       const box = document.getElementById('simResult');
       const badge = document.getElementById('verdictBadge');
       const reason = document.getElementById('verdictReason');
-
       box.style.display = 'block';
       badge.textContent = data.decision.toUpperCase();
       badge.className = 'verdict-tag verdict-' + data.decision.toLowerCase();
       reason.textContent = data.reason;
     }
-
     async function loadAudit() {
       try {
-        const res = await fetch('/api/audit?limit=20');
+        const res = await fetch('/api/audit?limit=25');
         const events = await res.json();
         const tbody = document.getElementById('auditBody');
-
         if (!events || events.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 24px;">No audit events recorded yet.</td></tr>';
+          tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 20px;">No audit events recorded yet.</td></tr>';
           return;
         }
-
         tbody.innerHTML = events.reverse().map(e => {
           const ts = (e.timestamp || '').slice(11, 19);
           const dec = (e.decision || 'ASK').toUpperCase();
           const badgeClass = dec === 'ALLOW' ? 'verdict-allow' : (dec === 'DENY' ? 'verdict-deny' : 'verdict-ask');
-          const argText = e.args && (e.args.CommandLine || e.args.TargetFile || JSON.stringify(e.args));
+          const argText = e.args && (e.args.CommandLine || e.args.TargetFile || e.args.AbsolutePath || JSON.stringify(e.args));
           return `
             <tr>
               <td>${ts}</td>
               <td><span class="verdict-tag ${badgeClass}" style="margin:0; padding:2px 6px;">${dec}</span></td>
               <td>${e.tool || ''}</td>
-              <td style="color: var(--primary);">${(argText || '').slice(0, 45)}</td>
+              <td style="color: var(--primary);">${(argText || '').slice(0, 40)}</td>
               <td style="color: var(--text-muted); font-size: 11px;">${e.reason || ''}</td>
             </tr>
           `;
@@ -553,13 +852,10 @@
         console.error('Failed to load audit:', err);
       }
     }
-
     async function clearAudit() {
       await fetch('/api/clear_audit', { method: 'POST' });
       await loadAudit();
     }
-
-    // Init
     fetchStatus();
     loadAudit();
     setInterval(loadAudit, 3000);

@@ -62,16 +62,62 @@ class TestDashboardServer(unittest.TestCase):
             data = json.loads(resp.read().decode("utf-8"))
             self.assertEqual(data["decision"], "deny")
 
-    def test_api_config_update(self):
+    def test_api_config_extended_fields(self):
         url = f"http://127.0.0.1:{self.port}/api/config"
-        payload = json.dumps({"profile": "paranoid"}).encode("utf-8")
+        payload = json.dumps({
+            "profile": "balanced",
+            "provider": "gemini",
+            "model": "gemini-2.5-flash",
+            "api_key": "test-key-123",
+            "endpoint_url": "http://localhost:11434",
+            "auto_approve_reads": True,
+            "auto_approve_dev_commands": True,
+            "audit_enabled": True,
+            "custom_allow_patterns": ["^npm run lint"],
+            "custom_deny_patterns": ["^rm -rf /tmp"],
+        }).encode("utf-8")
         req = urllib.request.Request(url, data=payload, headers={"Content-Type": "application/json"})
         with urllib.request.urlopen(req) as resp:
             self.assertEqual(resp.status, 200)
             data = json.loads(resp.read().decode("utf-8"))
             self.assertTrue(data["ok"])
-            self.assertEqual(data["config"]["profile"], "paranoid")
+            cfg = data["config"]
+            self.assertEqual(cfg["profile"], "balanced")
+            self.assertEqual(cfg["provider"], "gemini")
+            self.assertEqual(cfg["model"], "gemini-2.5-flash")
+            self.assertEqual(cfg["api_key"], "test-key-123")
+            self.assertEqual(cfg["endpoint_url"], "http://localhost:11434")
+            self.assertTrue(cfg["auto_approve_dev_commands"])
+            self.assertEqual(cfg["custom_allow_patterns"], ["^npm run lint"])
+            self.assertEqual(cfg["custom_deny_patterns"], ["^rm -rf /tmp"])
+
+    def test_api_workspace_switch(self):
+        from pathlib import Path
+        url = f"http://127.0.0.1:{self.port}/api/workspace"
+        new_dir = tempfile.mkdtemp()
+        payload = json.dumps({"path": new_dir}).encode("utf-8")
+        req = urllib.request.Request(url, data=payload, headers={"Content-Type": "application/json"})
+        with urllib.request.urlopen(req) as resp:
+            self.assertEqual(resp.status, 200)
+            data = json.loads(resp.read().decode("utf-8"))
+            self.assertTrue(data["ok"])
+            self.assertEqual(data["workspace_path"], str(Path(new_dir).resolve()))
+
+    def test_api_create_project(self):
+        url = f"http://127.0.0.1:{self.port}/api/create_project"
+        new_proj = os.path.join(tempfile.mkdtemp(), "test-app")
+        payload = json.dumps({"path": new_proj}).encode("utf-8")
+        req = urllib.request.Request(url, data=payload, headers={"Content-Type": "application/json"})
+        with urllib.request.urlopen(req) as resp:
+            self.assertEqual(resp.status, 200)
+            data = json.loads(resp.read().decode("utf-8"))
+            self.assertTrue(data["ok"])
+            self.assertTrue(os.path.isdir(new_proj))
+            # Verify hook was installed
+            hook_file = os.path.join(new_proj, ".agents", "hooks.json")
+            self.assertTrue(os.path.isfile(hook_file))
 
 
 if __name__ == "__main__":
     unittest.main()
+

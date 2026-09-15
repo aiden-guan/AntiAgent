@@ -56,14 +56,41 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
 
         if path == "/api/install":
             scope = body.get("scope", "workspace")
+            ws = body.get("workspace_path", self.workspace_path)
             is_global = scope == "global"
-            install_hook(is_global=is_global, workspace_path=self.workspace_path)
+            install_hook(is_global=is_global, workspace_path=ws)
             self._send_json({"ok": True, "scope": scope})
         elif path == "/api/uninstall":
             scope = body.get("scope", "workspace")
+            ws = body.get("workspace_path", self.workspace_path)
             is_global = scope == "global"
-            uninstall_hook(is_global=is_global, workspace_path=self.workspace_path)
+            uninstall_hook(is_global=is_global, workspace_path=ws)
             self._send_json({"ok": True, "scope": scope})
+        elif path == "/api/workspace":
+            new_ws = body.get("path")
+            if new_ws:
+                p = Path(os.path.expanduser(new_ws)).resolve()
+                p.mkdir(parents=True, exist_ok=True)
+                DashboardRequestHandler.workspace_path = str(p)
+                self._send_json({"ok": True, "workspace_path": str(p)})
+            else:
+                self._send_json({"ok": False, "error": "Path required"}, status=400)
+        elif path == "/api/create_project":
+            project_path = body.get("path")
+            if not project_path:
+                self._send_json({"ok": False, "error": "Project path is required"}, status=400)
+                return
+            p = Path(os.path.expanduser(project_path)).resolve()
+            p.mkdir(parents=True, exist_ok=True)
+            import subprocess
+            if not (p / ".git").is_dir():
+                try:
+                    subprocess.run(["git", "init"], cwd=str(p), capture_output=True)
+                except Exception:
+                    pass
+            install_hook(is_global=False, workspace_path=str(p))
+            DashboardRequestHandler.workspace_path = str(p)
+            self._send_json({"ok": True, "workspace_path": str(p)})
         elif path == "/api/config":
             self._handle_api_config(body)
         elif path == "/api/simulate":
@@ -120,7 +147,14 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
             "profile": cfg.profile,
             "provider": cfg.provider,
             "model": cfg.model,
+            "api_key": cfg.api_key or "",
+            "has_api_key": bool(cfg.api_key or os.getenv("GEMINI_API_KEY") or os.getenv("OPENAI_API_KEY")),
+            "endpoint_url": cfg.endpoint_url or "",
             "auto_approve_reads": cfg.auto_approve_reads,
+            "auto_approve_dev_commands": cfg.auto_approve_dev_commands,
+            "audit_enabled": cfg.audit_enabled,
+            "custom_allow_patterns": cfg.custom_allow_patterns,
+            "custom_deny_patterns": cfg.custom_deny_patterns,
             "audit_log_path": cfg.audit_log_path,
         }
         self._send_json(resp)
@@ -132,7 +166,9 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
         self._send_json(entries)
 
     def _handle_api_config(self, body: Dict[str, Any]) -> None:
+        scope = body.get("scope", "workspace")
         cfg = load_config(self.workspace_path)
+
         if "profile" in body:
             profile = body["profile"]
             if profile in (PROFILE_BALANCED, PROFILE_PARANOID, PROFILE_AUTONOMOUS):
@@ -141,9 +177,35 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
             cfg.provider = body["provider"]
         if "model" in body:
             cfg.model = body["model"]
+        if "api_key" in body:
+            cfg.api_key = body["api_key"]
+        if "endpoint_url" in body:
+            cfg.endpoint_url = body["endpoint_url"]
+        if "auto_approve_reads" in body:
+            cfg.auto_approve_reads = bool(body["auto_approve_reads"])
+        if "auto_approve_dev_commands" in body:
+            cfg.auto_approve_dev_commands = bool(body["auto_approve_dev_commands"])
+        if "audit_enabled" in body:
+            cfg.audit_enabled = bool(body["audit_enabled"])
+        if "custom_allow_patterns" in body:
+            patterns = body["custom_allow_patterns"]
+            if isinstance(patterns, str):
+                cfg.custom_allow_patterns = [p.strip() for p in patterns.splitlines() if p.strip()]
+            elif isinstance(patterns, list):
+                cfg.custom_allow_patterns = [str(p).strip() for p in patterns if str(p).strip()]
+        if "custom_deny_patterns" in body:
+            patterns = body["custom_deny_patterns"]
+            if isinstance(patterns, str):
+                cfg.custom_deny_patterns = [p.strip() for p in patterns.splitlines() if p.strip()]
+            elif isinstance(patterns, list):
+                cfg.custom_deny_patterns = [str(p).strip() for p in patterns if str(p).strip()]
 
-        save_workspace_config(cfg, self.workspace_path)
-        self._send_json({"ok": True, "config": cfg.to_dict()})
+        if scope == "global":
+            save_global_config(cfg)
+        else:
+            save_workspace_config(cfg, self.workspace_path)
+
+        self._send_json({"ok": True, "scope": scope, "config": cfg.to_dict()})
 
     def _handle_api_simulate(self, body: Dict[str, Any]) -> None:
         tool = body.get("tool", "run_command")
