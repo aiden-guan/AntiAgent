@@ -114,155 +114,23 @@ def build_macos_app(output_dir: Path = None) -> Path:
     return app_bundle
 
 
-def generate_dmg_background(output_path: Path) -> None:
-    """Generate high-end dark-mode background image for the DMG installer."""
-    try:
-        from PIL import Image, ImageDraw, ImageFont
-    except ImportError:
-        return
+def setup_dmg_background(mount_point: Path) -> None:
+    """Copy pre-rendered Retina minimalist SaaS background assets to DMG .background directory."""
+    bg_dir = mount_point / ".background"
+    bg_dir.mkdir(parents=True, exist_ok=True)
 
-    scale = 2
-    w, h = 660 * scale, 420 * scale  # 1320 x 840 for supersampled anti-aliasing
+    desktop_dir = Path(__file__).parent.resolve()
+    bg_tiff = desktop_dir / "dmg_background.tiff"
+    bg_png = desktop_dir / "dmg_background.png"
+    bg_2x = desktop_dir / "dmg_background@2x.png"
 
-    im = Image.new("RGB", (w, h), "#0d1117")
-    draw = ImageDraw.Draw(im)
-
-    def load_font(size_pt: int, mono: bool = False):
-        try:
-            font_path = "/System/Library/Fonts/SFNSMono.ttf" if mono else "/System/Library/Fonts/SFNS.ttf"
-            return ImageFont.truetype(font_path, size_pt * scale)
-        except Exception:
-            try:
-                fallback = "/System/Library/Fonts/Helvetica.ttc"
-                return ImageFont.truetype(fallback, size_pt * scale, index=1 if mono else 0)
-            except Exception:
-                return ImageFont.load_default()
-
-    font_eyebrow = load_font(10)
-    font_title = load_font(22)
-    font_sub = load_font(12)
-    font_arrow_text = load_font(11)
-    font_card_head = load_font(12)
-    font_card_body = load_font(11)
-    font_mono = load_font(10, mono=True)
-
-    # 1. Header with Eyebrow Pill
-    eyebrow_text = "ANTIGRAVITY SAFETY GATEKEEPER"
-    eb_bbox = draw.textbbox((0, 0), eyebrow_text, font=font_eyebrow)
-    eb_w = eb_bbox[2] - eb_bbox[0]
-    eb_x = w // 2 - eb_w // 2
-    eb_y = 20 * scale
-    draw.rounded_rectangle(
-        [(eb_x - 12 * scale, eb_y - 4 * scale), (eb_x + eb_w + 12 * scale, eb_y + 16 * scale)],
-        radius=8 * scale,
-        fill="#161b22",
-        outline="#30363d",
-        width=1 * scale,
-    )
-    draw.text((w // 2, eb_y + 6 * scale), eyebrow_text, font=font_eyebrow, fill="#58a6ff", anchor="mm")
-
-    draw.text((w // 2, 52 * scale), "AntiAgent for macOS", font=font_title, fill="#f0f6fc", anchor="mm")
-    draw.text((w // 2, 74 * scale), "Drag AntiAgent into Applications to complete installation", font=font_sub, fill="#8b949e", anchor="mm")
-
-    # 2. Sleek Directional Indicator (Between icon positions)
-    arrow_y = 145 * scale
-    cx = w // 2
-
-    # Central pill with label
-    pill_w = 210 * scale
-    pill_h = 32 * scale
-    draw.rounded_rectangle(
-        [(cx - pill_w // 2, arrow_y - pill_h // 2), (cx + pill_w // 2, arrow_y + pill_h // 2)],
-        radius=16 * scale,
-        fill="#161b22",
-        outline="#30363d",
-        width=1 * scale,
-    )
-
-    # Label text inside pill
-    draw.text((cx - 14 * scale, arrow_y), "Drag into Applications", font=font_arrow_text, fill="#58a6ff", anchor="mm")
-
-    # Crisp Vector Chevron Arrowhead
-    ax = cx + 72 * scale
-    ay = arrow_y
-    draw.line([(ax - 18 * scale, ay), (ax, ay)], fill="#58a6ff", width=2 * scale)
-    draw.line([(ax - 6 * scale, ay - 6 * scale), (ax, ay)], fill="#58a6ff", width=2 * scale)
-    draw.line([(ax - 6 * scale, ay + 6 * scale), (ax, ay)], fill="#58a6ff", width=2 * scale)
-
-    # 3. Gatekeeper Notice Card (Double-Bezel Architecture)
-    card_x1 = 36 * scale
-    card_x2 = w - 36 * scale
-    card_y1 = 236 * scale
-    card_y2 = 402 * scale
-
-    # Outer shell
-    draw.rounded_rectangle(
-        [(card_x1, card_y1), (card_x2, card_y2)],
-        radius=14 * scale,
-        fill="#161b22",
-        outline="#30363d",
-        width=1 * scale,
-    )
-
-    # Inner core
-    pad = 6 * scale
-    draw.rounded_rectangle(
-        [(card_x1 + pad, card_y1 + pad), (card_x2 - pad, card_y2 - pad)],
-        radius=10 * scale,
-        fill="#0d1117",
-        outline="#21262d",
-        width=1 * scale,
-    )
-
-    # Card text
-    tx = card_x1 + 22 * scale
-    ty = card_y1 + 18 * scale
-
-    draw.text((tx, ty), "FIRST-TIME LAUNCH NOTICE", font=font_eyebrow, fill="#d29922")
-    draw.text(
-        (tx, ty + 18 * scale),
-        'If macOS warns about "Malware", "Damaged", or "Unidentified Developer":',
-        font=font_card_head,
-        fill="#f0f6fc",
-    )
-    draw.text(
-        (tx, ty + 38 * scale),
-        "This is Apple's standard Gatekeeper warning for free open-source software downloaded from the web.",
-        font=font_card_body,
-        fill="#8b949e",
-    )
-    draw.text(
-        (tx, ty + 60 * scale),
-        "1. In Applications, Right-Click (or Control-Click) AntiAgent  ->  choose Open  ->  click Open",
-        font=font_card_body,
-        fill="#c9d1d9",
-    )
-    draw.text(
-        (tx, ty + 78 * scale),
-        "2. Or open System Settings  >  Privacy & Security  >  scroll down and click 'Open Anyway'",
-        font=font_card_body,
-        fill="#c9d1d9",
-    )
-
-    # Terminal code snippet pill
-    code_text = "Terminal bypass: xattr -cr /Applications/AntiAgent.app"
-    cb_bbox = draw.textbbox((0, 0), code_text, font=font_mono)
-    cb_w = cb_bbox[2] - cb_bbox[0]
-    code_y = ty + 98 * scale
-
-    draw.rounded_rectangle(
-        [(tx - 2 * scale, code_y - 2 * scale), (tx + cb_w + 14 * scale, code_y + 16 * scale)],
-        radius=4 * scale,
-        fill="#161b22",
-        outline="#30363d",
-        width=1 * scale,
-    )
-    draw.text((tx + 6 * scale, code_y + 7 * scale), code_text, font=font_mono, fill="#58a6ff", anchor="lm")
-
-    # Downsample supersampled 2x image to 1x with LANCZOS for razor-sharp antialiasing
-    im_1x = im.resize((660, 420), Image.Resampling.LANCZOS)
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    im_1x.save(str(output_path), "PNG", dpi=(72, 72))
+    if bg_tiff.is_file():
+        shutil.copy(bg_tiff, bg_dir / "background.tiff")
+    if bg_png.is_file():
+        shutil.copy(bg_png, bg_dir / "background.png")
+    elif bg_2x.is_file():
+        shutil.copy(bg_2x, bg_dir / "background.png")
+    return bg_dir
 
 
 def build_dmg(output_dir: Path = None) -> Path:
@@ -303,11 +171,8 @@ def build_dmg(output_dir: Path = None) -> Path:
     if not apps_link.exists():
         os.symlink("/Applications", apps_link)
 
-    # 4. Generate & copy background image
-    bg_dir = mount_point / ".background"
-    bg_dir.mkdir(parents=True, exist_ok=True)
-    bg_img = bg_dir / "background.png"
-    generate_dmg_background(bg_img)
+    # 4. Copy background assets
+    bg_dir = setup_dmg_background(mount_point)
 
     # 5. Run AppleScript to layout Finder window and icons
     applescript = """
@@ -317,15 +182,18 @@ def build_dmg(output_dir: Path = None) -> Path:
             set current view of container window to icon view
             set toolbar visible of container window to false
             set statusbar visible of container window to false
-            set the bounds of container window to {400, 120, 1060, 540}
+            set the bounds of container window to {300, 150, 980, 610}
             set viewOptions to the icon view options of container window
             set arrangement of viewOptions to not arranged
-            set icon size of viewOptions to 88
+            set icon size of viewOptions to 80
+            try
+                set background picture of viewOptions to file ".background:background.tiff"
+            end try
             try
                 set background picture of viewOptions to file ".background:background.png"
             end try
-            set position of item "AntiAgent.app" of container window to {160, 145}
-            set position of item "Applications" of container window to {500, 145}
+            set position of item "AntiAgent.app" of container window to {160, 150}
+            set position of item "Applications" of container window to {520, 150}
             close
             open
             update without registering applications
