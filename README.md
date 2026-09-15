@@ -82,9 +82,22 @@ The fastest and easiest way to use AntiAgent:
 4. Click **"🚀 Guide & Doctor"** in the top bar and click **"Enable"** next to **Global Hook** (or Workspace Hook). 
    - *That's it! Antigravity is now protected across all your projects without touching a terminal.*
 
+> 💡 **Tip for macOS Gatekeeper**: Because AntiAgent is open-source and free, macOS may show a prompt about an unidentified developer on first download. Simply **Right-Click (Control-click)** `AntiAgent.app` and choose **Open**, or run:
+> ```bash
+> xattr -cr /Applications/AntiAgent.app
+> ```
+
 ---
 
-### 💻 2. Or Install via CLI (For Terminal Power Users)
+### ⚡ 2. Or Install via 1-Line Terminal Command (Auto-clears Gatekeeper)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/aiden-guan/AntiAgent/main/install.sh | bash
+```
+
+---
+
+### 💻 3. Or Install via CLI (For Terminal Power Users)
 
 If you prefer using the command line or modifying the codebase directly:
 

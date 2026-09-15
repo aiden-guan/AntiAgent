@@ -102,6 +102,14 @@ def build_macos_app(output_dir: Path = None) -> Path:
         ignore=shutil.ignore_patterns("__pycache__", "*.pyc", "desktop", ".DS_Store"),
     )
 
+    # 5. Ad-hoc codesign the completed bundle so macOS recognizes valid resources
+    sign_cmd = ["codesign", "--force", "--deep", "--sign", "-", str(app_bundle)]
+    sign_res = subprocess.run(sign_cmd, capture_output=True, text=True)
+    if sign_res.returncode != 0:
+        print(f"⚠️ Codesign warning: {sign_res.stderr}")
+    else:
+        print(f"🔏 Successfully ad-hoc codesigned {app_bundle.name}")
+
     print(f"✅ Successfully built standalone native app: {app_bundle}")
     return app_bundle
 
