@@ -45,7 +45,9 @@ class LLMSupervisor:
         provider = (self.config.provider or "offline").lower()
 
         try:
-            if provider == "gemini":
+            if provider == "native":
+                return self._review_native(tool_name, tool_args, paths)
+            elif provider == "gemini":
                 return self._review_gemini(tool_name, tool_args, paths)
             elif provider == "openai":
                 return self._review_openai(tool_name, tool_args, paths)
@@ -56,6 +58,66 @@ class LLMSupervisor:
         except Exception as e:
             logger.warning(f"Supervisor review error ({provider}): {e}")
             return self._fallback_review(tool_name, tool_args, f"error: {str(e)[:40]}")
+
+    def _review_native(
+        self, tool_name: str, tool_args: dict, paths: List[str]
+    ) -> Tuple[str, str]:
+        """Antigravity Native Mode (Zero API Key required).
+        Performs contextual inspection without requiring an external Gemini or OpenAI API key.
+        """
+        profile = self.config.profile
+
+        # 1. Paranoid mode always flags mutating actions
+        if profile == PROFILE_PARANOID:
+            return (
+                DECISION_ASK,
+                f"[Antigravity Native] {tool_name} requires confirmation in paranoid mode.",
+            )
+
+        # 2. Workspace file creation and updates
+        if tool_name in ("write_to_file", "replace_file_content"):
+            target = tool_args.get("TargetFile") or ""
+            base_name = target.split("/")[-1] if target else "file"
+            return (
+                DECISION_ALLOW,
+                f"[Antigravity Native] Auto-approved safe workspace edit to '{base_name}'.",
+            )
+
+        # 3. Shell commands
+        if tool_name == "run_command":
+            cmd = tool_args.get("CommandLine", "").strip()
+
+            # Safe dev workflows like mkdir, git add, git commit
+            safe_patterns = [
+                r"^mkdir\s+(-p\s+)?",
+                r"^git\s+(add|commit|checkout\s+-b|switch\s+-c)\b",
+                r"^touch\s+",
+                r"^cp\s+.*",
+                r"^mv\s+.*",
+            ]
+            for pat in safe_patterns:
+                if re.match(pat, cmd):
+                    return (
+                        DECISION_ALLOW,
+                        f"[Antigravity Native] Auto-approved routine dev workflow: '{cmd[:35]}...'",
+                    )
+
+            if profile == PROFILE_AUTONOMOUS:
+                return (
+                    DECISION_ALLOW,
+                    f"[Antigravity Native] Auto-approved in autonomous mode.",
+                )
+
+            # In balanced mode, ask before executing unclassified shell commands
+            return (
+                DECISION_ASK,
+                f"[Antigravity Native] Proposed command '{cmd[:40]}' modifies system/workspace state. Confirmation requested.",
+            )
+
+        return (
+            DECISION_ASK,
+            f"[Antigravity Native] {tool_name} requires user confirmation.",
+        )
 
     def _review_gemini(
         self, tool_name: str, tool_args: dict, paths: List[str]

@@ -71,10 +71,21 @@ cd AntiAgent
 pip install -e .
 ```
 
-### 2. Activate in Antigravity
+### 2. Activate via Interactive Dashboard (Easiest!)
 
-Install the hook into your current workspace:
+Launch the local visual dashboard to manage everything in 1 click:
 
+```bash
+antiagent dashboard
+```
+
+The dashboard allows you to:
+- 🟢 **Enable / Disable Protection** with 1 click (workspace or global).
+- ⚡ **Use Antigravity Native Mode** (Works immediately out-of-the-box with **ZERO API keys** required!).
+- 🧪 **Test arbitrary commands** in the live security playground.
+- 📜 **Stream real-time audit logs** as the agent works.
+
+Or install directly via CLI:
 ```bash
 # Per-workspace activation (creates .agents/hooks.json)
 antiagent install

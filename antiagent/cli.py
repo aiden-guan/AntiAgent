@@ -353,6 +353,13 @@ def main() -> None:
     config_parser.add_argument("--set-model", help="Model name (e.g. gemini-2.5-flash, gpt-4o-mini)")
     config_parser.add_argument("--global", dest="global_config", action="store_true", help="Apply to global config")
 
+    # dashboard
+    dashboard_parser = subparsers.add_parser("dashboard", help="Launch interactive visual web dashboard")
+    dashboard_parser.add_argument("--port", type=int, default=4242, help="Port to listen on (default: 4242)")
+    dashboard_parser.add_argument("--host", default="127.0.0.1", help="Host address (default: 127.0.0.1)")
+    dashboard_parser.add_argument("--no-open", action="store_true", help="Do not automatically open browser")
+    dashboard_parser.add_argument("--workspace", default=".", help="Workspace path")
+
     args = parser.parse_args()
 
     if args.command == "install":
@@ -367,6 +374,14 @@ def main() -> None:
         view_audit(limit=args.limit, workspace_path=args.workspace)
     elif args.command == "config":
         configure_cli(args)
+    elif args.command == "dashboard":
+        from antiagent.dashboard.server import run_dashboard
+        run_dashboard(
+            host=args.host,
+            port=args.port,
+            open_browser=not args.no_open,
+            workspace_path=args.workspace,
+        )
     else:
         parser.print_help()
 

@@ -27,8 +27,8 @@ class AntiAgentConfig:
     # Auto-approve routine dev build/test commands within workspace (e.g. npm test, pytest)
     auto_approve_dev_commands: bool = True
 
-    # LLM Supervisor provider: "gemini", "openai", "ollama", or "offline"
-    provider: str = "offline"
+    # LLM Supervisor provider: "native" (Antigravity Zero-API Mode), "gemini", "openai", "ollama", or "offline"
+    provider: str = "native"
 
     # Model name to use for the AI reviewer
     model: str = ""
