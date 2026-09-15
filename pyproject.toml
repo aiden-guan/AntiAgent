@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "antiagent"
+version = "0.1.0"
+description = "Intelligent AI supervisor and 'Approved for Me' safety gatekeeper for Google Antigravity"
+readme = "README.md"
+authors = [
+  { name = "AntiAgent Authors" }
+]
+license = { text = "MIT" }
+requires-python = ">=3.9"
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Security",
+  "Topic :: Software Development",
+]
+keywords = ["antigravity", "ai-agent", "safety", "supervisor", "hooks", "llm-guard"]
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=7.0.0",
+]
+
+[project.scripts]
+antiagent = "antiagent.cli:main"
+antiagent-hook = "antiagent.hook:main"
+
+[tool.setuptools.packages.find]
+include = ["antiagent*", "plugin*"]

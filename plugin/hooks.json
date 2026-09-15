@@ -1,0 +1,17 @@
+{
+  "antiagent-guard": {
+    "enabled": true,
+    "PreToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -m antiagent.hook",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}
