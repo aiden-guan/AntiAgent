@@ -115,60 +115,154 @@ def build_macos_app(output_dir: Path = None) -> Path:
 
 
 def generate_dmg_background(output_path: Path) -> None:
-    """Generate custom dark-mode background image for the DMG installer."""
+    """Generate high-end dark-mode background image for the DMG installer."""
     try:
         from PIL import Image, ImageDraw, ImageFont
     except ImportError:
         return
 
-    width, height = 660, 420
-    im = Image.new("RGB", (width, height), "#0d1117")
+    scale = 2
+    w, h = 660 * scale, 420 * scale  # 1320 x 840 for supersampled anti-aliasing
+
+    im = Image.new("RGB", (w, h), "#0d1117")
     draw = ImageDraw.Draw(im)
 
-    def load_font(size: int, bold: bool = False):
+    def load_font(size_pt: int, mono: bool = False):
         try:
-            return ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", size, index=1 if bold else 0)
+            font_path = "/System/Library/Fonts/SFNSMono.ttf" if mono else "/System/Library/Fonts/SFNS.ttf"
+            return ImageFont.truetype(font_path, size_pt * scale)
         except Exception:
-            return ImageFont.load_default()
+            try:
+                fallback = "/System/Library/Fonts/Helvetica.ttc"
+                return ImageFont.truetype(fallback, size_pt * scale, index=1 if mono else 0)
+            except Exception:
+                return ImageFont.load_default()
 
-    font_title = load_font(19, bold=True)
-    font_sub = load_font(12, bold=False)
-    font_arrow = load_font(13, bold=True)
-    font_card_title = load_font(13, bold=True)
-    font_card_bold = load_font(11, bold=True)
-    font_card_body = load_font(11, bold=False)
+    font_eyebrow = load_font(10)
+    font_title = load_font(22)
+    font_sub = load_font(12)
+    font_arrow_text = load_font(11)
+    font_card_head = load_font(12)
+    font_card_body = load_font(11)
+    font_mono = load_font(10, mono=True)
 
-    # Header
-    draw.text((width // 2, 28), "🛡️  AntiAgent for macOS", font=font_title, fill="#f0f6fc", anchor="mm")
-    draw.text((width // 2, 50), "Intelligent Safety Gatekeeper for Google Antigravity", font=font_sub, fill="#8b949e", anchor="mm")
-    draw.line([(40, 68), (width - 40, 68)], fill="#21262d", width=1)
+    # 1. Header with Eyebrow Pill
+    eyebrow_text = "ANTIGRAVITY SAFETY GATEKEEPER"
+    eb_bbox = draw.textbbox((0, 0), eyebrow_text, font=font_eyebrow)
+    eb_w = eb_bbox[2] - eb_bbox[0]
+    eb_x = w // 2 - eb_w // 2
+    eb_y = 20 * scale
+    draw.rounded_rectangle(
+        [(eb_x - 12 * scale, eb_y - 4 * scale), (eb_x + eb_w + 12 * scale, eb_y + 16 * scale)],
+        radius=8 * scale,
+        fill="#161b22",
+        outline="#30363d",
+        width=1 * scale,
+    )
+    draw.text((w // 2, eb_y + 6 * scale), eyebrow_text, font=font_eyebrow, fill="#58a6ff", anchor="mm")
 
-    # Subtle circular landing target zones
-    draw.ellipse([(160 - 55, 145 - 55), (160 + 55, 145 + 55)], fill="#161b22", outline="#30363d", width=1)
-    draw.ellipse([(500 - 55, 145 - 55), (500 + 55, 145 + 55)], fill="#161b22", outline="#30363d", width=1)
+    draw.text((w // 2, 52 * scale), "AntiAgent for macOS", font=font_title, fill="#f0f6fc", anchor="mm")
+    draw.text((w // 2, 74 * scale), "Drag AntiAgent into Applications to complete installation", font=font_sub, fill="#8b949e", anchor="mm")
 
-    # Arrow from left to right
-    shaft_y = 142
-    draw.line([(240, shaft_y), (405, shaft_y)], fill="#58a6ff", width=3)
-    draw.polygon([(405, shaft_y - 8), (420, shaft_y), (405, shaft_y + 8)], fill="#58a6ff")
-    draw.text((325, shaft_y - 18), "Drag into Applications", font=font_arrow, fill="#58a6ff", anchor="mm")
+    # 2. Sleek Directional Indicator (Between icon positions)
+    arrow_y = 145 * scale
+    cx = w // 2
 
-    # Bottom Notice Card for Gatekeeper
-    card_x1, card_y1 = 30, 245
-    card_x2, card_y2 = width - 30, 398
-    draw.rounded_rectangle([(card_x1, card_y1), (card_x2, card_y2)], radius=10, fill="#161b22", outline="#30363d", width=1)
+    # Central pill with label
+    pill_w = 210 * scale
+    pill_h = 32 * scale
+    draw.rounded_rectangle(
+        [(cx - pill_w // 2, arrow_y - pill_h // 2), (cx + pill_w // 2, arrow_y + pill_h // 2)],
+        radius=16 * scale,
+        fill="#161b22",
+        outline="#30363d",
+        width=1 * scale,
+    )
 
-    # Card Content
-    draw.text((card_x1 + 18, card_y1 + 18), "⚠️  macOS Gatekeeper / Apple Security Notice", font=font_card_title, fill="#d29922")
-    draw.text((card_x1 + 18, card_y1 + 38), "Apple may display an 'unidentified developer' or 'damaged' warning on first launch for open-source apps.", font=font_card_body, fill="#8b949e")
+    # Label text inside pill
+    draw.text((cx - 14 * scale, arrow_y), "Drag into Applications", font=font_arrow_text, fill="#58a6ff", anchor="mm")
 
-    draw.text((card_x1 + 18, card_y1 + 62), "How to approve & open AntiAgent:", font=font_card_bold, fill="#f0f6fc")
-    draw.text((card_x1 + 22, card_y1 + 82), "1. In Applications, Right-Click (or Control-Click) AntiAgent  ➜  click Open  ➜  click Open", font=font_card_body, fill="#c9d1d9")
-    draw.text((card_x1 + 22, card_y1 + 102), "2. Or open System Settings  ➜  Privacy & Security  ➜  scroll down and click 'Open Anyway'", font=font_card_body, fill="#c9d1d9")
-    draw.text((card_x1 + 22, card_y1 + 122), "3. Terminal 1-liner: xattr -cr /Applications/AntiAgent.app", font=font_card_body, fill="#58a6ff")
+    # Crisp Vector Chevron Arrowhead
+    ax = cx + 72 * scale
+    ay = arrow_y
+    draw.line([(ax - 18 * scale, ay), (ax, ay)], fill="#58a6ff", width=2 * scale)
+    draw.line([(ax - 6 * scale, ay - 6 * scale), (ax, ay)], fill="#58a6ff", width=2 * scale)
+    draw.line([(ax - 6 * scale, ay + 6 * scale), (ax, ay)], fill="#58a6ff", width=2 * scale)
 
+    # 3. Gatekeeper Notice Card (Double-Bezel Architecture)
+    card_x1 = 36 * scale
+    card_x2 = w - 36 * scale
+    card_y1 = 236 * scale
+    card_y2 = 402 * scale
+
+    # Outer shell
+    draw.rounded_rectangle(
+        [(card_x1, card_y1), (card_x2, card_y2)],
+        radius=14 * scale,
+        fill="#161b22",
+        outline="#30363d",
+        width=1 * scale,
+    )
+
+    # Inner core
+    pad = 6 * scale
+    draw.rounded_rectangle(
+        [(card_x1 + pad, card_y1 + pad), (card_x2 - pad, card_y2 - pad)],
+        radius=10 * scale,
+        fill="#0d1117",
+        outline="#21262d",
+        width=1 * scale,
+    )
+
+    # Card text
+    tx = card_x1 + 22 * scale
+    ty = card_y1 + 18 * scale
+
+    draw.text((tx, ty), "FIRST-TIME LAUNCH NOTICE", font=font_eyebrow, fill="#d29922")
+    draw.text(
+        (tx, ty + 18 * scale),
+        'If macOS warns about "Malware", "Damaged", or "Unidentified Developer":',
+        font=font_card_head,
+        fill="#f0f6fc",
+    )
+    draw.text(
+        (tx, ty + 38 * scale),
+        "This is Apple's standard Gatekeeper warning for free open-source software downloaded from the web.",
+        font=font_card_body,
+        fill="#8b949e",
+    )
+    draw.text(
+        (tx, ty + 60 * scale),
+        "1. In Applications, Right-Click (or Control-Click) AntiAgent  ->  choose Open  ->  click Open",
+        font=font_card_body,
+        fill="#c9d1d9",
+    )
+    draw.text(
+        (tx, ty + 78 * scale),
+        "2. Or open System Settings  >  Privacy & Security  >  scroll down and click 'Open Anyway'",
+        font=font_card_body,
+        fill="#c9d1d9",
+    )
+
+    # Terminal code snippet pill
+    code_text = "Terminal bypass: xattr -cr /Applications/AntiAgent.app"
+    cb_bbox = draw.textbbox((0, 0), code_text, font=font_mono)
+    cb_w = cb_bbox[2] - cb_bbox[0]
+    code_y = ty + 98 * scale
+
+    draw.rounded_rectangle(
+        [(tx - 2 * scale, code_y - 2 * scale), (tx + cb_w + 14 * scale, code_y + 16 * scale)],
+        radius=4 * scale,
+        fill="#161b22",
+        outline="#30363d",
+        width=1 * scale,
+    )
+    draw.text((tx + 6 * scale, code_y + 7 * scale), code_text, font=font_mono, fill="#58a6ff", anchor="lm")
+
+    # Downsample supersampled 2x image to 1x with LANCZOS for razor-sharp antialiasing
+    im_1x = im.resize((660, 420), Image.Resampling.LANCZOS)
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    im.save(str(output_path), "PNG")
+    im_1x.save(str(output_path), "PNG", dpi=(72, 72))
 
 
 def build_dmg(output_dir: Path = None) -> Path:
