@@ -281,6 +281,47 @@ def build_zip(output_dir: Path = None) -> Path:
     return zip_path
 
 
+def build_pkg(output_dir: Path = None) -> Path:
+    """Package AntiAgent.app into an auto-opening macOS installer package (.pkg)."""
+    import tempfile
+    app_bundle = build_macos_app(output_dir)
+    if output_dir is None:
+        output_dir = Path(os.getcwd()) / "dist"
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    pkg_path = output_dir / "AntiAgent.pkg"
+    if pkg_path.exists():
+        pkg_path.unlink()
+
+    scripts_dir = Path(tempfile.mkdtemp())
+    postinstall = scripts_dir / "postinstall"
+    postinstall.write_text("""#!/bin/bash
+# Auto-open AntiAgent as the current desktop console user immediately after install
+CONSOLE_USER=$(stat -f "%Su" /dev/console)
+if [ -n "$CONSOLE_USER" ] && [ "$CONSOLE_USER" != "root" ]; then
+    sudo -u "$CONSOLE_USER" open "/Applications/AntiAgent.app"
+else
+    open "/Applications/AntiAgent.app"
+fi
+exit 0
+""")
+    postinstall.chmod(0o755)
+
+    from antiagent import __version__
+    cmd = [
+        "pkgbuild",
+        "--component", str(app_bundle),
+        "--install-location", "/Applications",
+        "--scripts", str(scripts_dir),
+        "--identifier", "com.antiagent.desktop.pkg",
+        "--version", __version__,
+        str(pkg_path)
+    ]
+    subprocess.run(cmd, check=True)
+    print(f"📦 Created auto-launching installer package: {pkg_path}")
+    return pkg_path
+
+
 def install_app(to_global: bool = False) -> Path:
     """Install AntiAgent.app to ~/Applications or /Applications."""
     app_bundle = build_macos_app()

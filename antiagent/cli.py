@@ -486,10 +486,11 @@ def main() -> None:
         from antiagent.desktop.builder import install_app
         install_app(to_global=args.is_global)
     elif args.command == "build-dmg":
-        from antiagent.desktop.builder import build_dmg, build_zip
+        from antiagent.desktop.builder import build_dmg, build_pkg, build_zip
         dmg = build_dmg(Path(args.out))
+        pkg = build_pkg(Path(args.out))
         zip_file = build_zip(Path(args.out))
-        print(f"\n📦 Release packages ready:\n  • DMG: {dmg}\n  • ZIP: {zip_file}")
+        print(f"\n📦 Release packages ready:\n  • DMG: {dmg}\n  • PKG: {pkg}\n  • ZIP: {zip_file}")
     else:
         parser.print_help()
 
