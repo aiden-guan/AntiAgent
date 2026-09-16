@@ -2,6 +2,7 @@
 
 import json
 import os
+import subprocess
 import sys
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -24,10 +25,17 @@ from antiagent.constants import (
 from antiagent.engine.evaluator import AntiAgentEvaluator
 
 
+def get_default_workspace_path() -> str:
+    cwd = os.getcwd()
+    if cwd and cwd != "/":
+        return str(Path(cwd).resolve())
+    return str(Path.home())
+
+
 class DashboardRequestHandler(BaseHTTPRequestHandler):
     """Handles HTTP requests for the AntiAgent dashboard."""
 
-    workspace_path: str = "."
+    workspace_path: str = get_default_workspace_path()
 
     def log_message(self, format: str, *args: Any) -> None:
         # Keep terminal output clean unless debugging
@@ -47,6 +55,9 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
             self._handle_api_audit(limit)
         elif path == "/api/doctor":
             self._handle_api_doctor()
+        elif path == "/api/onboarding":
+            cfg = load_config(self.workspace_path)
+            self._send_json({"onboarding_completed": cfg.onboarding_completed})
         else:
             self.send_response(404)
             self.end_headers()
@@ -105,6 +116,14 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
             if logger.log_path.is_file():
                 logger.log_path.write_text("", encoding="utf-8")
             self._send_json({"ok": True})
+        elif path == "/api/onboarding":
+            completed = body.get("completed", True)
+            cfg = load_config(self.workspace_path)
+            cfg.onboarding_completed = bool(completed)
+            save_global_config(cfg)
+            self._send_json({"ok": True, "onboarding_completed": cfg.onboarding_completed})
+        elif path == "/api/choose_folder":
+            self._handle_api_choose_folder()
         else:
             self.send_response(404)
             self.end_headers()
@@ -161,6 +180,7 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
             "custom_allow_patterns": cfg.custom_allow_patterns,
             "custom_deny_patterns": cfg.custom_deny_patterns,
             "audit_log_path": cfg.audit_log_path,
+            "onboarding_completed": cfg.onboarding_completed,
         }
         self._send_json(resp)
 
@@ -174,6 +194,8 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
         scope = body.get("scope", "workspace")
         cfg = load_config(self.workspace_path)
 
+        if "onboarding_completed" in body:
+            cfg.onboarding_completed = bool(body["onboarding_completed"])
         if "profile" in body:
             profile = body["profile"]
             if profile in (PROFILE_BALANCED, PROFILE_PARANOID, PROFILE_AUTONOMOUS):
@@ -207,12 +229,22 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
             elif isinstance(patterns, list):
                 cfg.custom_deny_patterns = [str(p).strip() for p in patterns if str(p).strip()]
 
+        actual_scope = scope
         if scope == "global":
             save_global_config(cfg)
         else:
-            save_workspace_config(cfg, self.workspace_path)
+            try:
+                ws_p = Path(self.workspace_path).resolve()
+                if str(ws_p) in ("/", str(Path.home())) or not os.access(str(ws_p), os.W_OK):
+                    save_global_config(cfg)
+                    actual_scope = "global"
+                else:
+                    save_workspace_config(cfg, self.workspace_path)
+            except Exception:
+                save_global_config(cfg)
+                actual_scope = "global"
 
-        self._send_json({"ok": True, "scope": scope, "config": cfg.to_dict()})
+        self._send_json({"ok": True, "scope": actual_scope, "config": cfg.to_dict()})
 
     def _handle_api_simulate(self, body: Dict[str, Any]) -> None:
         tool = body.get("tool", "run_command")
@@ -241,6 +273,30 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
             from antiagent.desktop.builder import install_app
             app_path = install_app(to_global=to_global)
             self._send_json({"ok": True, "app_path": str(app_path)})
+        except Exception as e:
+            self._send_json({"ok": False, "error": str(e)}, status=500)
+
+    def _handle_api_choose_folder(self) -> None:
+        """Open native macOS Finder folder chooser dialog via osascript."""
+        if sys.platform != "darwin":
+            self._send_json({"ok": False, "error": "Native folder dialog is only supported on macOS."}, status=400)
+            return
+        try:
+            script = 'POSIX path of (choose folder with prompt "Select Project Folder for AntiAgent:")'
+            res = subprocess.run(["osascript", "-e", script], capture_output=True, text=True)
+            if res.returncode != 0:
+                if "User canceled" in res.stderr or "-128" in res.stderr:
+                    self._send_json({"ok": False, "cancelled": True})
+                    return
+                self._send_json({"ok": False, "error": res.stderr.strip()}, status=500)
+                return
+            chosen_path = res.stdout.strip().rstrip("/")
+            if chosen_path:
+                p = Path(os.path.expanduser(chosen_path)).resolve()
+                DashboardRequestHandler.workspace_path = str(p)
+                self._send_json({"ok": True, "workspace_path": str(p)})
+            else:
+                self._send_json({"ok": False, "cancelled": True})
         except Exception as e:
             self._send_json({"ok": False, "error": str(e)}, status=500)
 

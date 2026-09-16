@@ -104,40 +104,50 @@ class TranscriptContextExtractor:
             with open(transcript_file, "rb") as f:
                 f.seek(0, 2)
                 file_size = f.tell()
+
+                def parse_chunk(start_offset: int, length: int) -> None:
+                    f.seek(start_offset)
+                    chunk_str = f.read(length).decode("utf-8", errors="ignore")
+                    lines = chunk_str.splitlines()
+                    for line in reversed(lines):
+                        if not line.strip():
+                            continue
+                        try:
+                            data = json.loads(line)
+                        except Exception:
+                            continue
+
+                        msg_type = data.get("type")
+                        content = data.get("content") or ""
+
+                        if msg_type == "USER_INPUT" and content:
+                            cleaned = clean_user_prompt(content)
+                            if cleaned and cleaned not in user_prompts:
+                                user_prompts.append(cleaned)
+                                if len(user_prompts) >= 3:
+                                    break
+
+                        elif msg_type == "PLANNER_RESPONSE":
+                            tool_calls = data.get("tool_calls") or []
+                            for tc in tool_calls:
+                                t_name = tc.get("name")
+                                if t_name and len(recent_tools) < 6 and t_name not in recent_tools:
+                                    recent_tools.append(t_name)
+                                t_args = tc.get("args") or {}
+                                f_path = t_args.get("TargetFile") or t_args.get("AbsolutePath")
+                                if f_path and len(recent_files) < 4:
+                                    base = f_path.rstrip("/").split("/")[-1]
+                                    if base and base not in recent_files:
+                                        recent_files.append(base)
+
+                # 1. Fast read from tail
                 read_size = min(max_bytes, file_size)
-                f.seek(file_size - read_size)
-                raw_chunk = f.read().decode("utf-8", errors="ignore")
+                parse_chunk(file_size - read_size, read_size)
 
-            lines = raw_chunk.splitlines()
-            for line in reversed(lines):
-                if not line.strip():
-                    continue
-                try:
-                    data = json.loads(line)
-                except Exception:
-                    continue
-
-                msg_type = data.get("type")
-                content = data.get("content") or ""
-
-                if msg_type == "USER_INPUT" and content:
-                    cleaned = clean_user_prompt(content)
-                    if cleaned:
-                        user_prompts.append(cleaned)
-                        # We only need up to the last 3 user prompts
-                        if len(user_prompts) >= 3:
-                            break
-
-                elif msg_type == "PLANNER_RESPONSE":
-                    tool_calls = data.get("tool_calls") or []
-                    for tc in tool_calls:
-                        t_name = tc.get("name")
-                        if t_name and len(recent_tools) < 6:
-                            recent_tools.append(t_name)
-                        t_args = tc.get("args") or {}
-                        f_path = t_args.get("TargetFile") or t_args.get("AbsolutePath")
-                        if f_path and len(recent_files) < 4:
-                            recent_files.append(f_path.split("/")[-1])
+                # 2. If no user prompts found in tail, expand backwards up to 5MB or full file
+                if not user_prompts and file_size > read_size:
+                    expanded_size = min(file_size, 5 * 1024 * 1024)
+                    parse_chunk(file_size - expanded_size, expanded_size)
 
             if user_prompts:
                 ctx.user_prompt = user_prompts[0]

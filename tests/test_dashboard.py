@@ -8,6 +8,7 @@ import time
 import unittest
 import urllib.request
 from http.server import ThreadingHTTPServer
+from pathlib import Path
 
 from antiagent.dashboard.server import DashboardRequestHandler
 
@@ -125,6 +126,51 @@ class TestDashboardServer(unittest.TestCase):
             self.assertIn("modes", data)
             self.assertTrue(data["modes"]["turbo_mode"]["supported"])
             self.assertTrue(data["modes"]["turbo_mode"]["recommended"])
+
+    def test_api_onboarding(self):
+        url = f"http://127.0.0.1:{self.port}/api/onboarding"
+        with urllib.request.urlopen(url) as resp:
+            self.assertEqual(resp.status, 200)
+            data = json.loads(resp.read().decode("utf-8"))
+            self.assertIn("onboarding_completed", data)
+
+        # Post update
+        payload = json.dumps({"completed": True}).encode("utf-8")
+        req = urllib.request.Request(url, data=payload, headers={"Content-Type": "application/json"})
+        with urllib.request.urlopen(req) as resp:
+            self.assertEqual(resp.status, 200)
+            data = json.loads(resp.read().decode("utf-8"))
+            self.assertTrue(data["ok"])
+            self.assertTrue(data["onboarding_completed"])
+
+    def test_api_choose_folder_cancelled(self):
+        from unittest.mock import patch, MagicMock
+        url = f"http://127.0.0.1:{self.port}/api/choose_folder"
+        mock_res = MagicMock()
+        mock_res.returncode = 1
+        mock_res.stderr = "User canceled. (-128)"
+        with patch("subprocess.run", return_value=mock_res):
+            req = urllib.request.Request(url, data=b"{}", headers={"Content-Type": "application/json"})
+            with urllib.request.urlopen(req) as resp:
+                self.assertEqual(resp.status, 200)
+                data = json.loads(resp.read().decode("utf-8"))
+                self.assertFalse(data["ok"])
+                self.assertTrue(data["cancelled"])
+
+    def test_api_choose_folder_success(self):
+        from unittest.mock import patch, MagicMock
+        url = f"http://127.0.0.1:{self.port}/api/choose_folder"
+        target_dir = tempfile.mkdtemp()
+        mock_res = MagicMock()
+        mock_res.returncode = 0
+        mock_res.stdout = f"{target_dir}\n"
+        with patch("subprocess.run", return_value=mock_res):
+            req = urllib.request.Request(url, data=b"{}", headers={"Content-Type": "application/json"})
+            with urllib.request.urlopen(req) as resp:
+                self.assertEqual(resp.status, 200)
+                data = json.loads(resp.read().decode("utf-8"))
+                self.assertTrue(data["ok"])
+                self.assertEqual(data["workspace_path"], str(Path(target_dir).resolve()))
 
 
 if __name__ == "__main__":

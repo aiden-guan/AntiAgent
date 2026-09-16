@@ -374,6 +374,53 @@
       margin-top: 2px;
       font-family: monospace;
     }
+    .project-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      background: #0d1117;
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 7px 14px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      user-select: none;
+    }
+    .project-pill:hover {
+      border-color: var(--primary);
+      background: #1c2128;
+      box-shadow: 0 2px 10px rgba(88, 166, 255, 0.12);
+    }
+    .project-pill-global {
+      border-color: rgba(88, 166, 255, 0.4);
+      background: rgba(88, 166, 255, 0.08);
+    }
+    .project-pill-global:hover {
+      border-color: var(--primary);
+      background: rgba(88, 166, 255, 0.15);
+    }
+    .turbo-callout {
+      background: linear-gradient(135deg, rgba(210, 153, 34, 0.14) 0%, rgba(235, 179, 58, 0.04) 100%);
+      border: 1px solid rgba(210, 153, 34, 0.35);
+      border-radius: 12px;
+      padding: 18px;
+      margin-bottom: 20px;
+    }
+    .selector-option-card {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      background: #0d1117;
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      margin-bottom: 10px;
+      transition: all 0.15s ease;
+    }
+    .selector-option-card:hover {
+      border-color: var(--primary);
+      background: #161b22;
+    }
   </style>
 </head>
 <body>
@@ -387,8 +434,8 @@
         </div>
       </div>
       <div class="header-badges">
-        <button class="btn btn-outline btn-sm" onclick="openModal('onboardingModal')" style="display: inline-flex; align-items: center; gap: 6px;">
-          <span>🚀</span> Guide &amp; Doctor
+        <button class="btn btn-outline btn-sm" onclick="openOnboardingModal()" style="display: inline-flex; align-items: center; gap: 6px;">
+          <span>⚡</span> Turbo Setup &amp; Guide
         </button>
         <button id="wsBadge" class="status-badge badge-inactive" onclick="toggleHook('workspace')" title="Click to enable or disable Workspace Hook" style="cursor: pointer; border: 1px solid var(--card-border); font-family: inherit; font-size: 11px; transition: all 0.15s ease;">
           <span>📁 Workspace: Checking...</span>
@@ -402,12 +449,26 @@
   <main class="container">
     <div class="workspace-bar">
       <div class="ws-info">
-        <span>📍 Current Project:</span>
-        <span id="wsPathDisplay" class="ws-path">Loading...</span>
+        <span style="font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Current Project:</span>
+        <div id="projectSelectorPill" class="project-pill" onclick="openProjectSelectorModal()" title="Click to select folder or switch scope">
+          <span id="projectPillIcon" style="font-size: 18px;">🌐</span>
+          <div>
+            <div id="projectPillMain" style="font-weight: 600; font-size: 13px; color: var(--text); display: flex; align-items: center; gap: 6px;">
+              <span>Global</span>
+              <span class="status-badge badge-active" style="font-size: 10px; padding: 1px 6px;">All Projects</span>
+            </div>
+            <div id="projectPillSub" style="font-size: 11px; color: var(--text-muted); font-family: monospace;">Loading active workspace...</div>
+          </div>
+          <span style="font-size: 12px; color: var(--text-muted); margin-left: 4px;">▾</span>
+        </div>
       </div>
-      <div style="display: flex; gap: 8px;">
-        <button class="btn btn-outline btn-sm" onclick="openModal('switchWsModal')">Switch Project</button>
-        <button class="btn btn-blue btn-sm" onclick="openModal('newProjectModal')">⚡ Create New Project</button>
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <button class="btn btn-outline btn-sm" onclick="chooseNativeFolder()" title="Select a specific project folder via macOS Finder">
+          <span>📁</span> Select Folder...
+        </button>
+        <button class="btn btn-blue btn-sm" onclick="openModal('newProjectModal')">
+          <span>⚡</span> New Project
+        </button>
       </div>
     </div>
     <div class="dashboard-grid">
@@ -625,67 +686,135 @@
   </main>
   <div id="onboardingModal" class="modal-overlay">
     <div class="modal-card modal-card-lg">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid var(--card-border); padding-bottom: 12px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; border-bottom: 1px solid var(--card-border); padding-bottom: 14px;">
         <div style="font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 8px;">
-          <span>🚀</span> Antigravity Integration & Setup Guide
+          <span>🛡️</span>
+          <span>Welcome to AntiAgent — Setup &amp; Turbo Mode Guide</span>
         </div>
         <button class="btn btn-outline btn-sm" onclick="closeModal('onboardingModal')">✕ Close</button>
       </div>
 
-      <!-- Section 1: Antigravity Mode Architecture -->
-      <div style="background: rgba(88, 166, 255, 0.08); border: 1px solid rgba(88, 166, 255, 0.3); border-radius: 10px; padding: 16px; margin-bottom: 20px;">
-        <div style="display: flex; align-items: center; gap: 8px; font-weight: 700; color: var(--primary); font-size: 14px; margin-bottom: 6px;">
-          <span>⚡</span> Should Antigravity be in Turbo Mode?
+      <!-- Step 1: Crucial Antigravity Turbo Mode Callout -->
+      <div class="turbo-callout">
+        <div style="display: flex; align-items: center; gap: 8px; font-weight: 700; color: #f0883e; font-size: 15px; margin-bottom: 8px;">
+          <span style="font-size: 18px;">⚡</span>
+          <span>CRITICAL SETUP: Set Antigravity to Turbo Mode (Always Proceed)</span>
         </div>
-        <div style="font-size: 13px; color: #c9d1d9; line-height: 1.5;">
-          <p><strong>Yes, absolutely! Turbo Mode (Always Proceed) is the recommended setup when using AntiAgent.</strong></p>
-          <p style="margin-top: 6px; font-size: 12px; color: var(--text-muted);">
-            Normally in Antigravity, Turbo Mode bypasses interactive confirmation dialogs to let the AI build fast. However, AntiAgent registers as a native <code>PreToolUse</code> lifecycle hook directly in Antigravity's core runtime. Every tool call is analyzed before execution.
+        <div style="font-size: 13px; color: #e6edf3; line-height: 1.6;">
+          <p><strong>AntiAgent is designed to operate with Antigravity in Turbo Mode ("Always Proceed").</strong></p>
+          <p style="margin-top: 6px; font-size: 12px; color: #c9d1d9;">
+            Normally, running AI coding assistants without guardrails requires either tedious manual prompts for every simple command, or risking unmonitored execution in Turbo Mode. AntiAgent solves this by embedding directly into Antigravity's <code>PreToolUse</code> lifecycle hook.
           </p>
-          <p style="margin-top: 6px; font-size: 12px; color: var(--text-muted);">
-            • <strong>Safe tools (reads, tests, routine edits):</strong> Auto-approved with zero latency.<br>
-            • <strong>Potentially dangerous tools:</strong> AntiAgent issues <code>force_ask</code>, which <em>overrides Turbo Mode</em> and forces Antigravity to pause and ask for your approval.<br>
-            • <strong>Catastrophic threats (root wipes, credential leaks, curl|bash):</strong> Hard-denied immediately.
-          </p>
-          <div style="margin-top: 12px; display: flex; gap: 10px; flex-wrap: wrap;">
-            <span style="font-size: 11px; background: #161b22; border: 1px solid var(--card-border); padding: 4px 10px; border-radius: 6px;">
-              ⚙️ Antigravity: <strong>Always Proceed / Turbo</strong>
-            </span>
-            <span style="font-size: 11px; background: #161b22; border: 1px solid var(--card-border); padding: 4px 10px; border-radius: 6px;">
-              🛡️ AntiAgent Profile: <strong>Balanced</strong> (Recommended)
-            </span>
-            <span style="font-size: 11px; background: #161b22; border: 1px solid var(--card-border); padding: 4px 10px; border-radius: 6px;">
-              🔒 Protection: <strong>force_ask override</strong>
-            </span>
+          <div style="margin-top: 10px; background: rgba(0,0,0,0.3); border-radius: 8px; padding: 12px; border: 1px solid rgba(210, 153, 34, 0.25);">
+            <div style="font-weight: 600; color: #f0f6fc; margin-bottom: 6px; font-size: 12px;">🛡️ How AntiAgent protects you in Turbo Mode:</div>
+            <ul style="list-style: none; padding-left: 0; font-size: 12px; line-height: 1.6; color: #c9d1d9;">
+              <li>⚡ <strong>Harmless Actions (ls, cat, git status, tests):</strong> Auto-approved instantly so Antigravity works at full Turbo speed without interruptions.</li>
+              <li>🛑 <strong>Dangerous Actions (git push --force, rm -rf, secrets access):</strong> AntiAgent issues a native <code>force_ask</code> verdict that <strong>overrides Turbo Mode</strong>, pausing execution and prompting you for manual confirmation!</li>
+              <li>🚫 <strong>Catastrophic Threats (root wipes, curl | bash):</strong> Hard-denied on the spot with clear explanation.</li>
+            </ul>
+          </div>
+          <div style="margin-top: 12px; background: #161b22; border: 1px solid var(--card-border); border-radius: 8px; padding: 12px;">
+            <div style="font-weight: 600; color: var(--primary); font-size: 12px; margin-bottom: 4px;">👉 How to set Turbo Mode in Antigravity:</div>
+            <div style="font-size: 12px; color: var(--text-muted); line-height: 1.5;">
+              • <strong>In Antigravity IDE:</strong> Click the execution mode toggle in the chat prompt bar (look for the ⚡ lightning bolt icon) and select <strong>Turbo / Always Proceed</strong>.<br>
+              • <strong>In Antigravity CLI:</strong> Launch tasks with <code>agy --turbo</code> or set <code>always_proceed: true</code>.
+            </div>
           </div>
         </div>
       </div>
 
-      <!-- Section 2: Health Check / Doctor -->
+      <!-- Step 2: Global vs Workspace Protection -->
+      <div style="background: #0d1117; border: 1px solid var(--card-border); border-radius: 10px; padding: 16px; margin-bottom: 18px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+          <div>
+            <div style="font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+              <span>🌐</span> <strong>Global Protection (Recommended)</strong>
+              <span id="onboardingGlobalPill" class="status-badge badge-inactive" style="font-size: 11px; padding: 2px 8px;">Inactive</span>
+            </div>
+            <p style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">
+              Automatically guards all projects and Antigravity sessions on this Mac via <code>~/.gemini/config/hooks.json</code>.
+            </p>
+          </div>
+          <div id="onboardingGlobalAction">
+            <button class="btn btn-primary btn-sm" onclick="enableGlobalFromOnboarding()">Enable Global Protection</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 3: Diagnostic Health Check -->
       <div style="margin-bottom: 20px;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-          <span style="font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted);">🩺 Integration Health Check</span>
+          <span style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted);">🩺 Diagnostic Health Check</span>
           <button class="btn btn-outline btn-sm" onclick="runDoctorCheck()" style="font-size: 11px; padding: 2px 8px;">Refresh Check</button>
         </div>
         <div id="doctorList">
-          <div style="text-align: center; color: var(--text-muted); padding: 12px; font-size: 12px;">Loading health check...</div>
+          <div style="text-align: center; color: var(--text-muted); padding: 12px; font-size: 12px;">Checking system health...</div>
         </div>
       </div>
 
-      <!-- Section 3: Native Desktop App -->
-      <div style="background: #0d1117; border: 1px solid var(--card-border); border-radius: 10px; padding: 16px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
-          <div>
-            <div style="font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 6px;">
-              <span>🖥️</span> Native macOS Desktop App (AntiAgent.app)
-            </div>
-            <p style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">
-              Native Swift Cocoa/WebKit bundle with dark mode title bar and macOS Dock integration. No browser tab or localhost URL required.
-            </p>
+      <!-- Bottom Action -->
+      <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--card-border); padding-top: 16px;">
+        <span style="font-size: 12px; color: var(--text-muted);">You can reopen this guide anytime from the header button.</span>
+        <button class="btn btn-primary" onclick="completeOnboarding()" style="padding: 8px 18px; font-size: 13px; font-weight: 600;">
+          🚀 Got It, I've Set Turbo Mode &amp; Finish Setup
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div id="projectSelectorModal" class="modal-overlay">
+    <div class="modal-card" style="max-width: 560px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid var(--card-border); padding-bottom: 10px;">
+        <div class="modal-title" style="margin-bottom: 0;">📍 Select Project or Protection Scope</div>
+        <button class="btn btn-outline btn-sm" onclick="closeModal('projectSelectorModal')">✕</button>
+      </div>
+
+      <!-- Option 1: Native Folder Picker -->
+      <div class="selector-option-card">
+        <div>
+          <div style="font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 6px;">
+            <span>📁</span> Choose Folder on Mac
           </div>
-          <div style="font-size: 12px; color: var(--accent-green); background: rgba(46, 160, 67, 0.12); border: 1px solid rgba(46, 160, 67, 0.3); border-radius: 6px; padding: 4px 10px; display: inline-flex; align-items: center; gap: 6px; font-weight: 500;">
-            <span>✅</span> Native App Ready
+          <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
+            Open native macOS Finder to select any project folder.
           </div>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="chooseNativeFolder()">Browse Folder...</button>
+      </div>
+
+      <!-- Option 2: Global Mode -->
+      <div class="selector-option-card">
+        <div>
+          <div style="font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 6px;">
+            <span>🌐</span> Global Protection Scope
+            <span id="projModalGlobalPill" class="status-badge badge-inactive" style="font-size: 10px; padding: 1px 6px;">Inactive</span>
+          </div>
+          <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
+            Guards all projects and Antigravity sessions across your computer.
+          </div>
+        </div>
+        <button id="projModalGlobalBtn" class="btn btn-outline btn-sm" onclick="toggleGlobalFromModal()">Enable Global</button>
+      </div>
+
+      <!-- Option 3: Create New Project -->
+      <div class="selector-option-card">
+        <div>
+          <div style="font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 6px;">
+            <span>⚡</span> Create New Project
+          </div>
+          <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
+            Scaffold a new git repository with AntiAgent protection.
+          </div>
+        </div>
+        <button class="btn btn-blue btn-sm" onclick="closeModal('projectSelectorModal'); openModal('newProjectModal');">New Project...</button>
+      </div>
+
+      <!-- Option 4: Manual Path Input -->
+      <div style="margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--card-border);">
+        <label style="font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase;">Or Enter Path Manually:</label>
+        <div style="display: flex; gap: 6px; margin-top: 6px;">
+          <input type="text" id="manualProjectPathInput" class="form-control" placeholder="/path/to/project">
+          <button class="btn btn-outline btn-sm" onclick="submitManualProjectSwitch()">Switch</button>
         </div>
       </div>
     </div>
@@ -735,21 +864,67 @@
         const wsBadge = document.getElementById('wsBadge');
         if (data.workspace_hook_active) {
           wsBadge.className = 'status-badge badge-active';
-          wsBadge.textContent = '📁 Workspace Hook: Active';
+          wsBadge.textContent = '📁 Workspace: Active';
         } else {
           wsBadge.className = 'status-badge badge-inactive';
-          wsBadge.textContent = '📁 Workspace Hook: Inactive';
+          wsBadge.textContent = '📁 Workspace: Inactive';
         }
         const globalBadge = document.getElementById('globalBadge');
         if (data.global_hook_active) {
           globalBadge.className = 'status-badge badge-active';
-          globalBadge.textContent = '🌐 Global Hook: Active';
+          globalBadge.textContent = '🌐 Global: Active';
         } else {
           globalBadge.className = 'status-badge badge-inactive';
-          globalBadge.textContent = '🌐 Global Hook: Inactive';
+          globalBadge.textContent = '🌐 Global: Inactive';
         }
-        document.getElementById('wsPathDisplay').textContent = data.workspace_path || 'None';
-        document.getElementById('switchWsPathInput').value = data.workspace_path || '';
+
+        // Update Project Selector Pill in Workspace Bar
+        const projectPill = document.getElementById('projectSelectorPill');
+        const projectPillIcon = document.getElementById('projectPillIcon');
+        const projectPillMain = document.getElementById('projectPillMain');
+        const projectPillSub = document.getElementById('projectPillSub');
+
+        const folderName = (data.workspace_path || '').split('/').filter(Boolean).pop() || data.workspace_path || 'None';
+
+        if (data.global_hook_active) {
+          projectPill.className = 'project-pill project-pill-global';
+          projectPillIcon.textContent = '🌐';
+          projectPillMain.innerHTML = `<span>Global</span> <span class="status-badge badge-active" style="font-size: 10px; padding: 1px 6px;">All Projects Protected</span>`;
+          projectPillSub.textContent = `Active folder: ${folderName} (${data.workspace_path || ''}) — Click to select folder`;
+        } else {
+          projectPill.className = 'project-pill';
+          projectPillIcon.textContent = '📁';
+          const wsActive = data.workspace_hook_active;
+          projectPillMain.innerHTML = `<span>${folderName}</span> <span class="status-badge ${wsActive ? 'badge-active' : 'badge-inactive'}" style="font-size: 10px; padding: 1px 6px;">${wsActive ? 'Workspace Hook Active' : 'No Hook Active'}</span>`;
+          projectPillSub.textContent = `${data.workspace_path || ''} — Click to select folder`;
+        }
+
+        if (document.getElementById('manualProjectPathInput')) {
+          document.getElementById('manualProjectPathInput').value = data.workspace_path || '';
+        }
+        if (document.getElementById('switchWsPathInput')) {
+          document.getElementById('switchWsPathInput').value = data.workspace_path || '';
+        }
+
+        const projModalGlobalPill = document.getElementById('projModalGlobalPill');
+        const projModalGlobalBtn = document.getElementById('projModalGlobalBtn');
+        if (projModalGlobalPill && projModalGlobalBtn) {
+          if (data.global_hook_active) {
+            projModalGlobalPill.className = 'status-badge badge-active';
+            projModalGlobalPill.textContent = 'Active';
+            projModalGlobalBtn.className = 'btn btn-danger btn-sm';
+            projModalGlobalBtn.textContent = 'Disable Global';
+          } else {
+            projModalGlobalPill.className = 'status-badge badge-inactive';
+            projModalGlobalPill.textContent = 'Inactive';
+            projModalGlobalBtn.className = 'btn btn-primary btn-sm';
+            projModalGlobalBtn.textContent = 'Enable Global';
+          }
+        }
+
+        updateOnboardingGlobalUI();
+        checkInitialOnboarding(data);
+
         const wsHookPill = document.getElementById('wsHookPill');
         const wsHookActions = document.getElementById('wsHookActions');
         if (data.workspace_hook_active) {
@@ -771,6 +946,12 @@
           globalHookPill.className = 'status-badge badge-inactive';
           globalHookPill.textContent = 'Inactive';
           globalHookActions.innerHTML = `<button class="btn btn-outline btn-sm" style="width:100%;" onclick="installHook('global')">Enable Globally</button>`;
+        }
+        if (data.global_hook_active && !data.workspace_hook_active) {
+          const scopeSelect = document.getElementById('configScopeSelect');
+          if (scopeSelect) {
+            scopeSelect.value = 'global';
+          }
         }
         setProfileUI(data.profile || 'balanced');
         document.getElementById('selectProvider').value = data.provider || 'native';
@@ -800,14 +981,26 @@
       document.getElementById('profileDesc').innerHTML = descMap[profile] || '';
     }
     async function setProfile(profile) {
-      setProfileUI(profile);
       const scope = document.getElementById('configScopeSelect').value;
-      await fetch('/api/config', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ profile, scope })
-      });
-      flashSave();
+      try {
+        const res = await fetch('/api/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ profile, scope })
+        });
+        if (res.ok) {
+          const resData = await res.json();
+          const activeProf = (resData.config && resData.config.profile) ? resData.config.profile : profile;
+          setProfileUI(activeProf);
+          flashSave();
+        } else {
+          console.error('Failed to save profile:', res.statusText);
+          await loadStatus();
+        }
+      } catch (err) {
+        console.error('Error saving profile:', err);
+        await loadStatus();
+      }
     }
     function onProviderChanged() {
       const prov = document.getElementById('selectProvider').value;
@@ -895,8 +1088,207 @@
         }
       }
     }
+    let initialOnboardingChecked = false;
+    function checkInitialOnboarding(data) {
+      if (initialOnboardingChecked) return;
+      initialOnboardingChecked = true;
+      const localDone = localStorage.getItem('antiagent_onboarding_completed') === 'true';
+      const backendDone = !!data.onboarding_completed;
+      if (!localDone && !backendDone) {
+        openOnboardingModal();
+      }
+    }
+
     function openOnboardingModal() {
       openModal('onboardingModal');
+      updateOnboardingGlobalUI();
+      runDoctorCheck();
+    }
+
+    async function completeOnboarding() {
+      localStorage.setItem('antiagent_onboarding_completed', 'true');
+      try {
+        await fetch('/api/onboarding', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ completed: true })
+        });
+      } catch (err) {
+        console.warn('Could not save onboarding status to backend:', err);
+      }
+      closeModal('onboardingModal');
+    }
+
+    function updateOnboardingGlobalUI() {
+      const pill = document.getElementById('onboardingGlobalPill');
+      const action = document.getElementById('onboardingGlobalAction');
+      if (!pill || !action) return;
+      if (currentConfig && currentConfig.global_hook_active) {
+        pill.className = 'status-badge badge-active';
+        pill.textContent = 'Active';
+        action.innerHTML = `<button class="btn btn-outline btn-sm" onclick="uninstallHook('global')">Disable Global Hook</button>`;
+      } else {
+        pill.className = 'status-badge badge-inactive';
+        pill.textContent = 'Inactive';
+        action.innerHTML = `<button class="btn btn-primary btn-sm" onclick="enableGlobalFromOnboarding()">Enable Global Protection</button>`;
+      }
+    }
+
+    async function enableGlobalFromOnboarding() {
+      await installHook('global');
+      await fetchStatus();
+      updateOnboardingGlobalUI();
+      await runDoctorCheck();
+    }
+
+    async function chooseNativeFolder() {
+      try {
+        const res = await fetch('/api/choose_folder', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: '{}'
+        });
+        const data = await res.json();
+        if (data.ok && data.workspace_path) {
+          await fetchStatus();
+          await loadAudit();
+          closeModal('projectSelectorModal');
+          closeModal('switchWsModal');
+        } else if (data.cancelled) {
+          // User cancelled picker; do nothing
+        } else {
+          // Fallback to manual path input modal if native picker not available
+          closeModal('projectSelectorModal');
+          openModal('switchWsModal');
+        }
+      } catch (err) {
+        closeModal('projectSelectorModal');
+        openModal('switchWsModal');
+      }
+    }
+
+    function openProjectSelectorModal() {
+      if (document.getElementById('manualProjectPathInput')) {
+        document.getElementById('manualProjectPathInput').value = (currentConfig && currentConfig.workspace_path) || '';
+      }
+      openModal('projectSelectorModal');
+    }
+
+    async function toggleGlobalFromModal() {
+      if (currentConfig && currentConfig.global_hook_active) {
+        await uninstallHook('global');
+      } else {
+        await installHook('global');
+      }
+      await fetchStatus();
+    }
+
+    async function submitManualProjectSwitch() {
+      const path = document.getElementById('manualProjectPathInput').value.trim();
+      if (!path) return;
+      const res = await fetch('/api/workspace', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path })
+      });
+      const data = await res.json();
+      if (data.ok) {
+        closeModal('projectSelectorModal');
+        closeModal('switchWsModal');
+        await fetchStatus();
+        await loadAudit();
+      } else {
+        alert(data.error || 'Failed to switch workspace');
+      }
+    }
+
+    async function runDoctorCheck() {
+      const container = document.getElementById('doctorList');
+      if (!container) return;
+      container.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 12px; font-size: 12px;">Checking system health...</div>';
+      try {
+        const res = await fetch('/api/doctor');
+        const data = await res.json();
+        let html = '';
+
+        // 1. Python Runtime
+        const pyOk = data.python && data.python.ok;
+        html += `
+          <div class="doctor-row">
+            <div class="doctor-row-left">
+              <span>${pyOk ? '✅' : '⚠️'}</span>
+              <div>
+                <div style="font-weight: 600;">Python Runtime (${data.python ? data.python.version : 'Unknown'})</div>
+                <div class="doctor-row-sub">${data.python ? data.python.executable : 'python3'}</div>
+              </div>
+            </div>
+            <span class="status-badge ${pyOk ? 'badge-active' : 'badge-inactive'}">${pyOk ? 'Compatible' : 'Update Needed'}</span>
+          </div>
+        `;
+
+        // 2. Global Hook
+        const gActive = data.global_hook && data.global_hook.active;
+        html += `
+          <div class="doctor-row">
+            <div class="doctor-row-left">
+              <span>${gActive ? '✅' : '⚪'}</span>
+              <div>
+                <div style="font-weight: 600;">Global Lifecycle Hook (~/.gemini/config/hooks.json)</div>
+                <div class="doctor-row-sub">${gActive ? 'Active — guarding all Antigravity projects' : 'Inactive (Click Enable Global to protect all projects)'}</div>
+              </div>
+            </div>
+            <span class="status-badge ${gActive ? 'badge-active' : 'badge-inactive'}">${gActive ? 'Active' : 'Inactive'}</span>
+          </div>
+        `;
+
+        // 3. Workspace Hook
+        const wsActive = data.workspace_hook && data.workspace_hook.active;
+        html += `
+          <div class="doctor-row">
+            <div class="doctor-row-left">
+              <span>${wsActive ? '✅' : '⚪'}</span>
+              <div>
+                <div style="font-weight: 600;">Active Workspace Hook (.agents/hooks.json)</div>
+                <div class="doctor-row-sub">${data.workspace_path || 'None'}</div>
+              </div>
+            </div>
+            <span class="status-badge ${wsActive ? 'badge-active' : 'badge-inactive'}">${wsActive ? 'Active' : 'Inactive'}</span>
+          </div>
+        `;
+
+        // 4. Antigravity Brain Sessions
+        const sessionCount = data.antigravity_sessions ? data.antigravity_sessions.count : 0;
+        html += `
+          <div class="doctor-row">
+            <div class="doctor-row-left">
+              <span>🧠</span>
+              <div>
+                <div style="font-weight: 600;">Antigravity Brain Sessions</div>
+                <div class="doctor-row-sub">${sessionCount} active or historical agent session(s) detected</div>
+              </div>
+            </div>
+            <span class="status-badge badge-active">${sessionCount > 0 ? 'Connected' : 'Ready'}</span>
+          </div>
+        `;
+
+        // 5. Turbo Mode Compatibility
+        html += `
+          <div class="doctor-row" style="background: rgba(210, 153, 34, 0.08); border-color: rgba(210, 153, 34, 0.3);">
+            <div class="doctor-row-left">
+              <span>⚡</span>
+              <div>
+                <div style="font-weight: 600; color: #f0883e;">Antigravity Turbo Mode (Always Proceed)</div>
+                <div class="doctor-row-sub" style="color: #c9d1d9;">Recommended: AntiAgent pre-screens tools; force_ask automatically protects you in Turbo Mode</div>
+              </div>
+            </div>
+            <span class="status-badge badge-active" style="border-color: rgba(63, 185, 80, 0.4);">Supported</span>
+          </div>
+        `;
+
+        container.innerHTML = html;
+      } catch (err) {
+        container.innerHTML = `<div style="color: var(--danger); font-size: 12px; padding: 12px;">Failed to run health check: ${err.message}</div>`;
+      }
     }
     async function submitSwitchWorkspace() {
       const path = document.getElementById('switchWsPathInput').value.trim();

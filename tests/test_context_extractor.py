@@ -72,5 +72,38 @@ The current local time is: 2026-09-15T15:00:00-07:00.
         self.assertEqual(ctx.recent_tools, [])
 
 
+    def test_extract_context_large_transcript_expansion(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            conv_id = "test-conv-large"
+            log_dir = Path(temp_dir) / conv_id / ".system_generated" / "logs"
+            log_dir.mkdir(parents=True, exist_ok=True)
+            transcript_file = log_dir / "transcript.jsonl"
+
+            # 1. First line is user prompt
+            lines = [json.dumps({
+                "type": "USER_INPUT",
+                "content": "<USER_REQUEST>Build native folder picker dialog</USER_REQUEST>",
+            })]
+
+            # 2. Pad transcript with >80KB of PLANNER_RESPONSE events
+            pad = "x" * 1000
+            for i in range(85):
+                lines.append(json.dumps({
+                    "type": "PLANNER_RESPONSE",
+                    "step_index": i,
+                    "content": f"Working on step {i} with payload {pad}",
+                    "tool_calls": [{"name": "run_command", "args": {"CommandLine": "ls"}}],
+                }))
+
+            transcript_file.write_text("\n".join(lines), encoding="utf-8")
+            self.assertGreater(transcript_file.stat().st_size, 80000)
+
+            # 3. Test that extractor still finds the initial user prompt
+            extractor = TranscriptContextExtractor(base_brain_dir=temp_dir)
+            ctx = extractor.extract_context(conv_id)
+            self.assertEqual(ctx.user_prompt, "Build native folder picker dialog")
+            self.assertEqual(ctx.primary_goal, "Build native folder picker dialog")
+
+
 if __name__ == "__main__":
     unittest.main()

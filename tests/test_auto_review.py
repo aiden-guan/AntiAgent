@@ -137,5 +137,21 @@ class TestAutoReview(unittest.TestCase):
         self.assertEqual(res_shadow.decision, DECISION_DENY)
 
 
+    def test_script_eval_autonomous_auto_approved(self):
+        auto_cfg = AntiAgentConfig(profile="autonomous", auto_review=True, provider="native")
+        evaluator = AntiAgentEvaluator(auto_cfg, workspace_paths=["/Users/test/my-project"])
+        cmd = "python3 -c \"import subprocess; print(subprocess.run(['osascript', '-e', 'return POSIX path of (path to home folder)'], capture_output=True, text=True).stdout.strip())\""
+        res = evaluator.evaluate("run_command", {"CommandLine": cmd})
+        self.assertEqual(res.decision, DECISION_ALLOW)
+        self.assertIn("Auto-approved", res.reason)
+
+    def test_script_eval_balanced_with_intent(self):
+        ctx = TaskContext(user_prompt="Choose project folder via dialog", primary_goal="Select folder dialog")
+        cmd = "python3 -c \"import subprocess; print(subprocess.run(['osascript', '-e', 'choose folder'], capture_output=True, text=True).stdout.strip())\""
+        res = self.evaluator.evaluate("run_command", {"CommandLine": cmd}, context=ctx)
+        self.assertEqual(res.decision, DECISION_ALLOW)
+        self.assertIn("Auto-approved", res.reason)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -50,6 +50,9 @@ class AntiAgentConfig:
     audit_enabled: bool = True
     audit_log_path: Optional[str] = None
 
+    # Onboarding completion status
+    onboarding_completed: bool = False
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert config to dictionary."""
         return asdict(self)

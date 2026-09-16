@@ -227,6 +227,7 @@ class ContextAwareNativeReviewer:
         is_git_staging = bool(re.search(r"^git\s+(?:add|commit|checkout\s+-b|switch\s+-c|status|diff|branch)(?:\s|$)", inner_cmd))
         is_routine_fs = bool(re.search(r"^(?:mkdir|touch|cp|mv)\s+", inner_cmd))
         is_anomaly_risky = bool(re.search(r"(?:^|\s)(pkill|killall|kill\s+-9|crontab|reboot|shutdown)(?:\s|$)", inner_cmd))
+        is_script_eval = bool(re.search(r"^(?:python[0-9]?\s+-c|node\s+-e|osascript\s+-e)\s+", inner_cmd))
 
         # B. Check for contextual anomalies
         if is_anomaly_risky:
@@ -308,6 +309,20 @@ class ContextAwareNativeReviewer:
                 DECISION_ALLOW,
                 f"[Auto-Review] Auto-approved routine directory/file setup: '{cmd[:35]}'.",
             )
+
+        if is_script_eval:
+            has_destructive = bool(re.search(r"\b(rm|rmdir|shutil\.rmtree|os\.remove|os\.unlink|system\([\"']rm)\b", inner_cmd))
+            if not has_destructive:
+                if profile == PROFILE_AUTONOMOUS:
+                    return (
+                        DECISION_ALLOW,
+                        f"[Auto-Review] Auto-approved inline script evaluation in autonomous mode: '{cmd[:35]}'.",
+                    )
+                if not goal_text or any(k in goal_text for k in ["test", "verify", "check", "script", "folder", "path", "python", "node", "osascript", "dialog", "choose"]):
+                    return (
+                        DECISION_ALLOW,
+                        f"[Auto-Review] Auto-approved safe inline script test: '{cmd[:35]}'.",
+                    )
 
         # Autonomous mode allows benign commands confined to workspace
         if profile == PROFILE_AUTONOMOUS:

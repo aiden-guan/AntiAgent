@@ -68,6 +68,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNavigati
         if !isUp {
             let proc = Process()
             proc.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+            proc.currentDirectoryURL = FileManager.default.homeDirectoryForCurrentUser
 
             var env = ProcessInfo.processInfo.environment
             let extraPaths = "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
