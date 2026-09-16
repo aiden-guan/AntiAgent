@@ -158,10 +158,10 @@ def build_dmg(output_dir: Path = None) -> Path:
             "background": str(bg_img),
             "icon_size": 80.0,
             "icon_locations": {
-                "AntiAgent.app": (160, 161),
-                "Applications": (520, 161),
+                "AntiAgent.app": (160, 160),
+                "Applications": (520, 160),
             },
-            "window_rect": ((200, 120), (680, 480)),
+            "window_rect": ((200, 100), (680, 540)),
             "default_view": "icon-view",
             "show_toolbar": False,
             "show_status_bar": False,
