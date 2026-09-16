@@ -85,6 +85,8 @@
     }
     .badge-active { background: var(--success-bg); color: var(--success); border: 1px solid rgba(63, 185, 80, 0.3); }
     .badge-inactive { background: var(--warning-bg); color: var(--warning); border: 1px solid rgba(210, 153, 34, 0.3); }
+    button.status-badge:hover { opacity: 0.9; filter: brightness(1.1); transform: translateY(-1px); }
+    button.status-badge:active { transform: scale(0.97); }
     .workspace-bar {
       background: #161b22;
       border: 1px solid var(--card-border);
@@ -385,18 +387,15 @@
         </div>
       </div>
       <div class="header-badges">
-        <button class="btn btn-outline btn-sm" onclick="openOnboardingModal()" style="display: inline-flex; align-items: center; gap: 6px;">
-          <span>🚀</span> Guide & Doctor
+        <button class="btn btn-outline btn-sm" onclick="openModal('onboardingModal')" style="display: inline-flex; align-items: center; gap: 6px;">
+          <span>🚀</span> Guide &amp; Doctor
         </button>
-        <button class="btn btn-outline btn-sm" onclick="triggerInstallApp()" id="desktopAppHeaderBtn" style="display: inline-flex; align-items: center; gap: 6px;">
-          <span>🖥️</span> Install App
-        </button>
-        <div id="wsBadge" class="status-badge badge-inactive">
+        <button id="wsBadge" class="status-badge badge-inactive" onclick="toggleHook('workspace')" title="Click to enable or disable Workspace Hook" style="cursor: pointer; border: 1px solid var(--card-border); font-family: inherit; font-size: 11px; transition: all 0.15s ease;">
           <span>📁 Workspace: Checking...</span>
-        </div>
-        <div id="globalBadge" class="status-badge badge-inactive">
+        </button>
+        <button id="globalBadge" class="status-badge badge-inactive" onclick="toggleHook('global')" title="Click to enable or disable Global Hook" style="cursor: pointer; border: 1px solid var(--card-border); font-family: inherit; font-size: 11px; transition: all 0.15s ease;">
           <span>🌐 Global: Checking...</span>
-        </div>
+        </button>
       </div>
     </div>
   </header>
@@ -684,9 +683,9 @@
               Native Swift Cocoa/WebKit bundle with dark mode title bar and macOS Dock integration. No browser tab or localhost URL required.
             </p>
           </div>
-          <button id="installAppDoctorBtn" class="btn btn-blue btn-sm" onclick="triggerInstallApp()">
-            ⬇️ Install to ~/Applications
-          </button>
+          <div style="font-size: 12px; color: var(--accent-green); background: rgba(46, 160, 67, 0.12); border: 1px solid rgba(46, 160, 67, 0.3); border-radius: 6px; padding: 4px 10px; display: inline-flex; align-items: center; gap: 6px; font-weight: 500;">
+            <span>✅</span> Native App Ready
+          </div>
         </div>
       </div>
     </div>
@@ -880,6 +879,24 @@
         body: JSON.stringify({ scope })
       });
       await fetchStatus();
+    }
+    async function toggleHook(scope) {
+      if (scope === 'workspace') {
+        if (currentConfig && currentConfig.workspace_hook_active) {
+          await uninstallHook('workspace');
+        } else {
+          await installHook('workspace');
+        }
+      } else if (scope === 'global') {
+        if (currentConfig && currentConfig.global_hook_active) {
+          await uninstallHook('global');
+        } else {
+          await installHook('global');
+        }
+      }
+    }
+    function openOnboardingModal() {
+      openModal('onboardingModal');
     }
     async function submitSwitchWorkspace() {
       const path = document.getElementById('switchWsPathInput').value.trim();
