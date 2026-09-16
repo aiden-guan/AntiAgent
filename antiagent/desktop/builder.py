@@ -151,6 +151,20 @@ def build_dmg(output_dir: Path = None) -> Path:
     # Prefer dmgbuild for exact, native DS_Store Retina generation without flaky Finder GUI timing
     try:
         import dmgbuild
+        import ds_store
+
+        # Ensure Finder's underlying canvas background color is dark obsidian (#08090b) instead of default white
+        orig_partial_setitem = ds_store.DSStore.Partial.__setitem__
+
+        def _dark_icvp_setitem(self, key, value):
+            if key == "icvp" and isinstance(value, dict):
+                value["backgroundColorRed"] = 8.0 / 255.0
+                value["backgroundColorGreen"] = 9.0 / 255.0
+                value["backgroundColorBlue"] = 11.0 / 255.0
+            return orig_partial_setitem(self, key, value)
+
+        ds_store.DSStore.Partial.__setitem__ = _dark_icvp_setitem
+
         print("📀 Building pixel-perfect Retina DMG with dmgbuild...")
         settings = {
             "files": [str(app_bundle)],
