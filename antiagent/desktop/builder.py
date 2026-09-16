@@ -141,12 +141,44 @@ def build_dmg(output_dir: Path = None) -> Path:
 
     output_dir.mkdir(parents=True, exist_ok=True)
     final_dmg = output_dir / "AntiAgent.dmg"
-    rw_dmg = output_dir / "temp_rw.dmg"
 
-    if rw_dmg.exists():
-        rw_dmg.unlink()
     if final_dmg.exists():
         final_dmg.unlink()
+
+    desktop_dir = Path(__file__).parent.resolve()
+    bg_img = desktop_dir / "dmg_background.png"
+
+    # Prefer dmgbuild for exact, native DS_Store Retina generation without flaky Finder GUI timing
+    try:
+        import dmgbuild
+        print("📀 Building pixel-perfect Retina DMG with dmgbuild...")
+        settings = {
+            "files": [str(app_bundle)],
+            "symlinks": {"Applications": "/Applications"},
+            "background": str(bg_img),
+            "icon_size": 80.0,
+            "icon_locations": {
+                "AntiAgent.app": (160, 161),
+                "Applications": (520, 161),
+            },
+            "window_rect": ((200, 120), (680, 480)),
+            "default_view": "icon-view",
+            "show_toolbar": False,
+            "show_status_bar": False,
+            "show_pathbar": False,
+            "show_sidebar": False,
+            "scroll_position": (0.0, 0.0),
+            "format": "UDZO",
+        }
+        dmgbuild.build_dmg(str(final_dmg), "AntiAgent", settings=settings)
+        print(f"🎉 Created styled installer DMG: {final_dmg}")
+        return final_dmg
+    except ImportError:
+        print("⚠️ dmgbuild not installed, falling back to hdiutil and AppleScript...")
+
+    rw_dmg = output_dir / "temp_rw.dmg"
+    if rw_dmg.exists():
+        rw_dmg.unlink()
 
     # Detach any existing mount
     subprocess.run(["hdiutil", "detach", "/Volumes/AntiAgent"], capture_output=True)
@@ -182,18 +214,15 @@ def build_dmg(output_dir: Path = None) -> Path:
             set current view of container window to icon view
             set toolbar visible of container window to false
             set statusbar visible of container window to false
-            set the bounds of container window to {300, 150, 980, 610}
+            set the bounds of container window to {200, 120, 880, 600}
             set viewOptions to the icon view options of container window
             set arrangement of viewOptions to not arranged
             set icon size of viewOptions to 80
             try
                 set background picture of viewOptions to file ".background:background.tiff"
             end try
-            try
-                set background picture of viewOptions to file ".background:background.png"
-            end try
-            set position of item "AntiAgent.app" of container window to {160, 150}
-            set position of item "Applications" of container window to {520, 150}
+            set position of item "AntiAgent.app" of container window to {160, 161}
+            set position of item "Applications" of container window to {520, 161}
             close
             open
             update without registering applications

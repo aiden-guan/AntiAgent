@@ -30,6 +30,7 @@ dependencies = []
 [project.optional-dependencies]
 dev = [
   "pytest>=7.0.0",
+  "dmgbuild>=1.6.0",
 ]
 
 [project.scripts]
