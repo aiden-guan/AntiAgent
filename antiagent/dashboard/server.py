@@ -41,7 +41,60 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
         # Keep terminal output clean unless debugging
         pass
 
+    def _add_security_headers(self) -> None:
+        self.send_header("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self';")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("X-Frame-Options", "DENY")
+        self.send_header("Referrer-Policy", "no-referrer")
+
+    def _validate_host(self) -> bool:
+        host = self.headers.get("Host", "").split(":")[0].lower()
+        if host in ("127.0.0.1", "localhost"):
+            return True
+        self.send_response(403)
+        self.send_header("Content-Type", "text/plain")
+        self._add_security_headers()
+        self.end_headers()
+        self.wfile.write(b"Forbidden: Invalid Host header.")
+        return False
+
+    def _validate_csrf(self) -> bool:
+        fetch_site = self.headers.get("Sec-Fetch-Site", "").lower()
+        if fetch_site == "cross-site":
+            self._send_forbidden("Cross-site requests not allowed.")
+            return False
+
+        origin = self.headers.get("Origin", "")
+        if origin:
+            parsed_origin = urlparse(origin)
+            origin_host = (parsed_origin.hostname or "").lower()
+            if origin != "null" and origin_host not in ("127.0.0.1", "localhost"):
+                self._send_forbidden("Cross-origin request blocked.")
+                return False
+
+        referer = self.headers.get("Referer", "")
+        if referer:
+            parsed_ref = urlparse(referer)
+            ref_host = (parsed_ref.hostname or "").lower()
+            if ref_host not in ("127.0.0.1", "localhost"):
+                self._send_forbidden("Invalid request referer.")
+                return False
+
+        return True
+
+    def _send_forbidden(self, msg: str) -> None:
+        payload = json.dumps({"ok": False, "error": msg}).encode("utf-8")
+        self.send_response(403)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(payload)))
+        self._add_security_headers()
+        self.end_headers()
+        self.wfile.write(payload)
+
     def do_GET(self) -> None:
+        if not self._validate_host():
+            return
+
         parsed_url = urlparse(self.path)
         path = parsed_url.path
 
@@ -63,6 +116,11 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
             self.end_headers()
 
     def do_POST(self) -> None:
+        if not self._validate_host():
+            return
+        if not self._validate_csrf():
+            return
+
         parsed_url = urlparse(self.path)
         path = parsed_url.path
         body = self._read_json_body()
@@ -139,6 +197,7 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self.send_header("Content-Length", str(len(content)))
+        self._add_security_headers()
         self.end_headers()
         self.wfile.write(content)
 
@@ -163,6 +222,11 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
                 pass
 
         cfg = load_config(self.workspace_path)
+        raw_key = cfg.api_key or ""
+        masked_key = ""
+        if raw_key:
+            masked_key = f"{raw_key[:4]}••••{raw_key[-4:]}" if len(raw_key) > 8 else "••••••••"
+
         resp = {
             "workspace_path": str(Path(self.workspace_path).resolve()),
             "workspace_hook_active": ws_active,
@@ -170,7 +234,7 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
             "profile": cfg.profile,
             "provider": cfg.provider,
             "model": cfg.model,
-            "api_key": cfg.api_key or "",
+            "api_key": masked_key,
             "has_api_key": bool(cfg.api_key or os.getenv("GEMINI_API_KEY") or os.getenv("OPENAI_API_KEY")),
             "endpoint_url": cfg.endpoint_url or "",
             "auto_approve_reads": cfg.auto_approve_reads,
@@ -205,7 +269,11 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
         if "model" in body:
             cfg.model = body["model"]
         if "api_key" in body:
-            cfg.api_key = body["api_key"]
+            new_key = str(body["api_key"]).strip()
+            if new_key and "•" not in new_key:
+                cfg.api_key = new_key
+            elif new_key == "":
+                cfg.api_key = None
         if "endpoint_url" in body:
             cfg.endpoint_url = body["endpoint_url"]
         if "auto_approve_reads" in body:
@@ -342,6 +410,7 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(payload)))
+        self._add_security_headers()
         self.end_headers()
         self.wfile.write(payload)
 

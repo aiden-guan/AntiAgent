@@ -72,8 +72,10 @@ class AntiAgentEvaluator:
         context: Optional[TaskContext] = None,
     ) -> EvaluationResult:
         """Evaluate a tool call against security policies."""
+        ctx_summary = context.to_summary() if context else None
+
         # 1. Quick cache check
-        cached = self.cache.get(tool_name, tool_args)
+        cached = self.cache.get(tool_name, tool_args, context_summary=ctx_summary)
         if cached:
             dec, rsn = cached
             return EvaluationResult(decision=dec, reason=rsn)
@@ -124,27 +126,30 @@ class AntiAgentEvaluator:
                     decision, reason = vuln_verdict
                     return EvaluationResult(decision=decision, reason=reason)
 
-            # B. Check Git operations if it's a git command
-            git_verdict = self.git_guard.evaluate(cmd_line)
-            if git_verdict:
-                decision, reason = git_verdict
-                self.cache.put(tool_name, tool_args, decision, reason)
-                return EvaluationResult(decision=decision, reason=reason)
-
-            # C. Check general command guard heuristics
+            # B. Check general command guard heuristics (including custom deny & HARD_DENY_PATTERNS)
             cmd_verdict = self.cmd_guard.evaluate(cmd_line)
             if cmd_verdict:
                 decision, reason = cmd_verdict
                 if decision == DECISION_DENY:
                     return EvaluationResult(decision=decision, reason=reason)
                 if decision == DECISION_ALLOW:
-                    self.cache.put(tool_name, tool_args, decision, reason)
+                    self.cache.put(tool_name, tool_args, decision, reason, context_summary=ctx_summary)
                     return EvaluationResult(decision=decision, reason=reason)
-                # If decision is DECISION_ASK:
+
+            # C. Check Git operations if it's a git command (after verifying no hard deny matched)
+            git_verdict = self.git_guard.evaluate(cmd_line)
+            if git_verdict:
+                decision, reason = git_verdict
+                self.cache.put(tool_name, tool_args, decision, reason, context_summary=ctx_summary)
+                return EvaluationResult(decision=decision, reason=reason)
+
+            # If cmd_guard returned ASK:
+            if cmd_verdict and cmd_verdict[0] == DECISION_ASK:
+                decision, reason = cmd_verdict
                 # If auto_review is enabled and context is present, defer to Tier 2 supervisor
                 # so intent coherence or contextual anomalies (e.g. unprompted killall) can be evaluated
                 if not (self.config.auto_review and context):
-                    self.cache.put(tool_name, tool_args, decision, reason)
+                    self.cache.put(tool_name, tool_args, decision, reason, context_summary=ctx_summary)
                     return EvaluationResult(decision=decision, reason=reason)
 
         # 5. If we reach here, the action is mutating or non-trivial.
@@ -152,6 +157,6 @@ class AntiAgentEvaluator:
         ai_decision, ai_reason = self.supervisor.review(
             tool_name, tool_args, self.workspace_paths, context=context
         )
-        self.cache.put(tool_name, tool_args, ai_decision, ai_reason)
+        self.cache.put(tool_name, tool_args, ai_decision, ai_reason, context_summary=ctx_summary)
 
         return EvaluationResult(decision=ai_decision, reason=ai_reason)

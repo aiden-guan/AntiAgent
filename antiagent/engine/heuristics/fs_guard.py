@@ -46,40 +46,61 @@ class FSGuard:
             return False, ""
 
         norm_path = target_path.replace("\\", "/")
-        for pattern in SENSITIVE_TARGETS:
-            if re.search(pattern, norm_path, re.IGNORECASE):
-                return True, f"Target matches sensitive credential/secret pattern: {pattern}"
-
-        # Check for system directories
         resolved_path = Path(os.path.abspath(os.path.expanduser(target_path))).resolve()
-        resolved = str(resolved_path)
+        resolved = str(resolved_path).replace("\\", "/")
+
+        for pattern in SENSITIVE_TARGETS:
+            if re.search(pattern, norm_path, re.IGNORECASE) or re.search(pattern, resolved, re.IGNORECASE):
+                return True, f"Target matches sensitive credential/secret pattern: {pattern}"
 
         # Windows system roots
         win_sys_roots = [
-            "C:\\Windows",
-            "C:\\Program Files",
-            "C:\\Program Files (x86)",
-            "C:\\ProgramData",
+            "C:/Windows",
+            "C:/Program Files",
+            "C:/Program Files (x86)",
+            "C:/ProgramData",
         ]
         for env_var in ("SystemRoot", "windir", "ProgramFiles", "ProgramFiles(x86)", "ProgramData"):
             val = os.environ.get(env_var)
-            if val and val not in win_sys_roots:
-                win_sys_roots.append(val)
+            if val:
+                norm_val = val.replace("\\", "/")
+                if norm_val not in win_sys_roots:
+                    win_sys_roots.append(norm_val)
 
-        norm_resolved = os.path.normcase(resolved)
         for wroot in win_sys_roots:
-            norm_wroot = os.path.normcase(wroot)
+            norm_wroot = wroot.lower()
             if (
-                norm_resolved == norm_wroot
-                or norm_resolved.startswith(norm_wroot + os.sep)
-                or norm_resolved.startswith(norm_wroot + "/")
-                or norm_path.lower().startswith(norm_wroot.replace("\\", "/").lower())
+                resolved.lower() == norm_wroot
+                or resolved.lower().startswith(norm_wroot + "/")
+                or norm_path.lower() == norm_wroot
+                or norm_path.lower().startswith(norm_wroot + "/")
             ):
                 return True, f"Target is a protected Windows system path: {wroot}"
 
-        system_roots = ["/etc", "/usr", "/var", "/bin", "/sbin", "/System", "/Library"]
+        # Unix / macOS protected system roots (including macOS /private canonical aliases)
+        system_roots = [
+            "/etc",
+            "/private/etc",
+            "/usr",
+            "/var",
+            "/private/var",
+            "/bin",
+            "/sbin",
+            "/System",
+            "/Library",
+            "/root",
+            "/proc",
+            "/sys",
+            "/dev",
+            "/boot",
+        ]
         for sroot in system_roots:
-            if resolved == sroot or resolved.startswith(sroot + "/"):
+            if (
+                resolved == sroot
+                or resolved.startswith(sroot + "/")
+                or norm_path == sroot
+                or norm_path.startswith(sroot + "/")
+            ):
                 return True, f"Target is a protected system path: {sroot}"
 
         return False, ""

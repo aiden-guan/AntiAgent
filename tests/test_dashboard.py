@@ -172,6 +172,67 @@ class TestDashboardServer(unittest.TestCase):
                 self.assertTrue(data["ok"])
                 self.assertEqual(data["workspace_path"], str(Path(target_dir).resolve()))
 
+    def test_security_headers_present(self):
+        url = f"http://127.0.0.1:{self.port}/"
+        with urllib.request.urlopen(url) as resp:
+            headers = dict(resp.headers)
+            self.assertIn("Content-Security-Policy", headers)
+            self.assertEqual(headers.get("X-Content-Type-Options"), "nosniff")
+            self.assertEqual(headers.get("X-Frame-Options"), "DENY")
+            self.assertEqual(headers.get("Referrer-Policy"), "no-referrer")
+
+    def test_invalid_host_header_blocked(self):
+        import urllib.error
+        url = f"http://127.0.0.1:{self.port}/api/status"
+        req = urllib.request.Request(url, headers={"Host": "attacker.evil.com"})
+        with self.assertRaises(urllib.error.HTTPError) as ctx:
+            urllib.request.urlopen(req)
+        self.assertEqual(ctx.exception.code, 403)
+
+    def test_cross_site_post_blocked(self):
+        import urllib.error
+        url = f"http://127.0.0.1:{self.port}/api/config"
+        payload = json.dumps({"profile": "autonomous"}).encode("utf-8")
+        req = urllib.request.Request(
+            url,
+            data=payload,
+            headers={
+                "Content-Type": "application/json",
+                "Sec-Fetch-Site": "cross-site",
+            },
+        )
+        with self.assertRaises(urllib.error.HTTPError) as ctx:
+            urllib.request.urlopen(req)
+        self.assertEqual(ctx.exception.code, 403)
+
+    def test_cross_origin_post_blocked(self):
+        import urllib.error
+        url = f"http://127.0.0.1:{self.port}/api/config"
+        payload = json.dumps({"profile": "autonomous"}).encode("utf-8")
+        req = urllib.request.Request(
+            url,
+            data=payload,
+            headers={
+                "Content-Type": "application/json",
+                "Origin": "https://malicious-site.com",
+            },
+        )
+        with self.assertRaises(urllib.error.HTTPError) as ctx:
+            urllib.request.urlopen(req)
+        self.assertEqual(ctx.exception.code, 403)
+
+    def test_api_status_masks_api_key(self):
+        from unittest.mock import patch
+        from antiagent.config import AntiAgentConfig
+        test_cfg = AntiAgentConfig(api_key="AIzaSySecretLongKey123456789")
+        with patch("antiagent.dashboard.server.load_config", return_value=test_cfg):
+            url = f"http://127.0.0.1:{self.port}/api/status"
+            with urllib.request.urlopen(url) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                self.assertTrue(data["has_api_key"])
+                self.assertNotIn("AIzaSySecretLongKey123456789", data["api_key"])
+                self.assertIn("••••", data["api_key"])
+
 
 if __name__ == "__main__":
     unittest.main()

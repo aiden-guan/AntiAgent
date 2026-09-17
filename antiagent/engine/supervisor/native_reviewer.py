@@ -79,14 +79,18 @@ class ContextAwareNativeReviewer:
 
         # 2. File modification tools (write_to_file, replace_file_content)
         if tool_name in ("write_to_file", "replace_file_content"):
-            target = tool_args.get("TargetFile") or ""
-            base_name = target.split("/")[-1] if target else "file"
+            target = tool_args.get("TargetFile") or tool_args.get("path") or ""
+            norm_target = target.replace("\\", "/")
+            base_name = norm_target.split("/")[-1] if norm_target else "file"
 
             # Check if editing unprompted sensitive locations
-            if any(p in target for p in ("~/.bashrc", "~/.zshrc", "/etc/", ".git/hooks")):
+            if (
+                any(p in norm_target for p in (".bashrc", ".zshrc", ".bash_profile", ".profile", "/etc/", ".git/hooks", ".git/config", ".ssh/", ".aws/"))
+                or norm_target.endswith((".npmrc", ".pypirc", ".netrc", ".git-credentials", ".env"))
+            ):
                 return (
                     DECISION_DENY,
-                    f"🚨 [Auto-Review] Target '{target}' alters shell or system startup configuration.",
+                    f"🚨 [Auto-Review] Target '{target}' alters shell, git, credential, or system configuration.",
                 )
 
             return (

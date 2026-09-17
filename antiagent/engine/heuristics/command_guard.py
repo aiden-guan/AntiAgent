@@ -31,14 +31,17 @@ class CommandGuard:
 
         cleaned = cmd_line.strip()
 
-        # 1. Check custom deny patterns first
+        # Split pipeline to inspect individual sub-commands as well as the full line
+        sub_cmds = [s.strip() for s in re.split(r"[\r\n;&]+", cleaned) if s.strip()]
+
+        # 1. Check custom deny patterns first (full line and individual sub-commands)
         for pat in self.custom_deny_patterns:
-            if re.search(pat, cleaned):
+            if re.search(pat, cleaned, re.IGNORECASE | re.MULTILINE) or any(re.search(pat, s, re.IGNORECASE | re.MULTILINE) for s in sub_cmds):
                 return DECISION_DENY, f"Blocked by custom deny pattern: '{pat}'"
 
-        # 2. Check Hard-Deny list (catastrophic / malicious)
+        # 2. Check Hard-Deny list (catastrophic / malicious) on full line and each sub-command
         for pat in HARD_DENY_PATTERNS:
-            if re.search(pat, cleaned, re.IGNORECASE):
+            if re.search(pat, cleaned, re.IGNORECASE | re.MULTILINE) or any(re.search(pat, s, re.IGNORECASE | re.MULTILINE) for s in sub_cmds):
                 return DECISION_DENY, f"🚨 Hard-blocked dangerous command matching pattern: '{pat}'"
 
         # 3. Check custom allow patterns
@@ -46,12 +49,23 @@ class CommandGuard:
             if re.search(pat, cleaned):
                 return DECISION_ALLOW, f"Permitted by custom allow pattern: '{pat}'"
 
-        # 4. Check for destructive file removals (rm -rf, rm -r)
-        # Even if not targeting root, general rm -rf in workspace should trigger user confirmation in balanced mode
-        rm_match = re.search(r"\brm\s+-[a-zA-Z]*[rf][a-zA-Z]*\s+(.*)", cleaned)
+        # 4. Check for destructive file removals (rm -rf, rm -r, Remove-Item, del /s)
+        # Even if not targeting root, general recursive deletion in workspace should trigger user confirmation in balanced mode
+        rm_match = re.search(
+            r"\brm\s+(?:-[a-zA-Z0-9_-]+\s+)*(?:-[a-zA-Z]*[rR][a-zA-Z]*|--recursive)\s+(.*)",
+            cleaned,
+        )
         if rm_match:
             target = rm_match.group(1).strip()
             return DECISION_ASK, f"⚠️ Recursive deletion detected: 'rm' targeting '{target}'. Confirmation required."
+
+        win_rm_match = re.search(
+            r"\b(?:cmd(?:\.exe)?\s+/c\s+)?\b(?:Remove-Item|del|rmdir|rd)\s+.*(?:-Recurse|-Force|/s|/q)",
+            cleaned,
+            re.IGNORECASE,
+        )
+        if win_rm_match:
+            return DECISION_ASK, f"⚠️ Recursive/forced deletion detected: '{cleaned[:45]}'. Confirmation required."
 
         # 5. Check for privilege escalation
         if re.search(r"\b(sudo|doas)\b", cleaned):
@@ -78,8 +92,12 @@ class CommandGuard:
         if ">" in cmd or ">>" in cmd:
             return False
 
-        # Split commands separated by ;, &&, ||
-        sub_cmds = re.split(r"[;&|]+", cmd)
+        # If command contains command substitutions or process substitutions, it is not strictly read-only
+        if re.search(r"(\$\(|`|<\(|>\()", cmd):
+            return False
+
+        # Split commands separated by newlines, ;, &&, ||, |
+        sub_cmds = re.split(r"[\r\n;&|]+", cmd)
         if not sub_cmds:
             return False
 

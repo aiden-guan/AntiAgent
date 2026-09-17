@@ -95,13 +95,29 @@ def load_config(workspace_dir: Optional[str] = None) -> AntiAgentConfig:
         except Exception:
             pass
 
-    # 2. Workspace config
+    # 2. Workspace config (sanitized: untrusted repositories cannot override security-critical fields)
     if workspace_dir:
         ws_file = Path(workspace_dir) / ".antiagent.json"
         if ws_file.is_file():
             try:
                 with open(ws_file, "r", encoding="utf-8") as f:
-                    config_dict.update(json.load(f))
+                    ws_data = json.load(f)
+                    if isinstance(ws_data, dict):
+                        # Block dangerous keys that untrusted repositories could exploit to bypass security
+                        # or exfiltrate credentials and task prompts.
+                        forbidden_keys = {
+                            "custom_allow_patterns",
+                            "endpoint_url",
+                            "api_key",
+                            "audit_log_path",
+                        }
+                        for k, v in ws_data.items():
+                            if k in forbidden_keys:
+                                continue
+                            # Prevent workspace config from downgrading paranoid mode
+                            if k == "profile" and config_dict.get("profile") == PROFILE_PARANOID and v != PROFILE_PARANOID:
+                                continue
+                            config_dict[k] = v
             except Exception:
                 pass
 

@@ -111,16 +111,13 @@ SAFE_COMMAND_PREFIXES = {
     "gps",
 }
 
-# Safe git subcommands
+# Safe git subcommands (strictly read-only)
 SAFE_GIT_SUBCOMMANDS = {
     "status",
     "diff",
     "log",
     "show",
-    "branch",
-    "tag",
     "rev-parse",
-    "remote",
     "describe",
     "stash list",
     "config --get",
@@ -133,23 +130,24 @@ RISKY_GIT_OPERATIONS = [
     r"git\s+push\s+.*(-f|--force)",
     r"git\s+reset\s+--hard",
     r"git\s+clean\s+-[a-zA-Z]*f",
-    r"git\s+branch\s+-[a-zA-Z]*D",
+    r"git\s+branch\s+-[a-zA-Z]*[dD]",
     r"git\s+checkout\s+-[a-zA-Z]*f",
     r"git\s+restore\s+(\.|--staged\s+\.)",
-    r"git\s+stash\s+drop",
-    r"git\s+stash\s+clear",
+    r"git\s+stash\s+(drop|clear)",
+    r"git\s+tag\s+-d",
+    r"git\s+remote\s+(set-url|add|remove|rename|rm)",
 ]
 
 # Patterns that are immediately blocked without prompting (Tier 1 Hard Block)
 HARD_DENY_PATTERNS = [
-    # System wiping / destructive deletion (Unix)
-    r"(?:sudo\s+)?rm\s+(-[a-zA-Z]*r[a-zA-Z]*f|--recursive\s+--force)\s+(/\s*$|/\*|/etc|/usr|/bin|/sbin|/var|/System|/Library|~/?$)",
+    # System wiping / destructive deletion (Unix) - catches -rf, -fr, -r -f, -f -r, --recursive --force, etc.
+    r"(?:sudo\s+)?rm\s+(?:-[a-zA-Z0-9_-]+\s+)*(?:-[a-zA-Z]*[rR][a-zA-Z]*[fF][a-zA-Z]*|-[a-zA-Z]*[fF][a-zA-Z]*[rR][a-zA-Z]*|--recursive\s+--force|--force\s+--recursive|-[a-zA-Z]*[rR][a-zA-Z]*\s+-[a-zA-Z]*[fF][a-zA-Z]*|-[a-zA-Z]*[fF][a-zA-Z]*\s+-[a-zA-Z]*[rR][a-zA-Z]*)\s+(?:-[a-zA-Z0-9_-]+\s+)*(/\s*$|/\s+.*|/\*|/etc|/private/etc|/usr|/bin|/sbin|/var|/private/var|/System|/Library|/root|/proc|/sys|/dev|~/?$|~\*)",
     # System wiping / destructive deletion (Windows CMD & PowerShell)
     r"(?:cmd(?:\.exe)?\s+/c\s+)?\b(del|rmdir|rd)\s+.*(/s|/q).*(c:\\windows|c:\\users|\%systemroot\%|\$env:windir|\$env:systemroot)",
     r"\bRemove-Item\s+.*(-Recurse|-Force).*(c:\\windows|c:\\users|\$env:windir|\$env:systemroot|c:\\\s*$)",
     # Disk formatting / raw device overwrites
     r"\bmkfs\b",
-    r"\bdd\s+if=.*of=(/dev/sd[a-z]|/dev/nvme[0-9]|/dev/disk[0-9])",
+    r"\bdd\s+if=.*of=(/dev/sd[a-z]|/dev/nvme[0-9]|/dev/disk[0-9]|/dev/null\b)",
     r"\bformat\s+[a-zA-Z]:",
     r"\bFormat-Volume\b",
     # Fork bombs
@@ -159,22 +157,27 @@ HARD_DENY_PATTERNS = [
     r"(Invoke-WebRequest|iwr|curl|wget)\s+.*\|\s*(iex|Invoke-Expression|powershell|cmd)",
     r"\biex\s*\(\s*(New-Object\s+Net\.WebClient|Invoke-WebRequest|iwr|curl|irm|Invoke-RestMethod)",
     r"\bcertutil\s+(-urlcache|-split|-f)\s+.*\|\s*(cmd|powershell|sh)",
-    # SSH and cloud credential exfiltration
-    r"(~?/\.ssh/id_[a-zA-Z0-9_]+|\.ssh/id_[a-zA-Z0-9_]+|\.aws/credentials|\.kube/config)",
+    # Reverse shells
+    r"(\bbash\b.*>&\s*/dev/tcp/|\b(nc|ncat|netcat)\s+(-e\s+|/bin/|\d+\.\d+\.\d+\.\d+)|/bin/sh\s+-i\s+2>&1|\bmkfifo\b.*\|\s*(nc|ncat|netcat)|\bsocat\s+exec:)",
+    # SSH, cloud & developer credential exfiltration
+    r"(~?/\.ssh/id_[a-zA-Z0-9_]+|\.ssh/id_[a-zA-Z0-9_]+|\.aws/credentials|\.kube/config|\.npmrc|\.pypirc|\.netrc|\.git-credentials)",
+    # Direct credential exfiltration via curl/wget/upload
+    r"\b(curl|wget)\s+.*(?:-d\s+@|-F\s+.*@|--data-binary\s+@|--post-file[=\s]+).*(\.env|id_rsa|id_ed25519|\.ssh|\.aws|\.kube|\.npmrc|\.pypirc|\.netrc|/etc/shadow)",
     # Windows registry hive / credential dump
     r"\breg\s+save\s+hklm\\(sam|system|security)",
-    # Shadow / password file dump
-    r"(?:sudo\s+)?cat\s+.*(/etc/shadow|/etc/master\.passwd)",
+    # Shadow / password / sudoers file dump
+    r"(?:sudo\s+)?cat\s+.*(/etc/shadow|/etc/master\.passwd|/etc/sudoers|/private/etc/shadow|/private/etc/master\.passwd)",
     # Tampering with sudoers configuration
-    r"(>>|>|visudo|tee)\s+.*(/etc/sudoers)",
+    r"(>>|>|visudo|tee)\s+.*(/etc/sudoers|/private/etc/sudoers)",
 ]
 
 # Sensitive file and directory patterns
 SENSITIVE_TARGETS = [
     r"\.env(\.[a-zA-Z0-9_.-]+)?$",
-    r"\.ssh/",
-    r"\.aws/",
-    r"\.kube/",
+    r"\.ssh(/|\\|$)",
+    r"\.aws(/|\\|$)",
+    r"\.kube(/|\\|$)",
+    r"\.gnupg(/|\\|$)",
     r".*\.pem$",
     r".*\.key$",
     r".*\.pfx$",
@@ -182,6 +185,19 @@ SENSITIVE_TARGETS = [
     r"id_rsa",
     r"id_ed25519",
     r"id_ecdsa",
+    r"id_dsa",
+    r"known_hosts",
+    r"authorized_keys",
+    r"(^|/|\\)\.npmrc$",
+    r"(^|/|\\)\.pypirc$",
+    r"(^|/|\\)\.netrc$",
+    r"(^|/|\\)\.git-credentials$",
+    r"(^|/|\\)\.docker/config\.json$",
+    r"(^|/|\\)\.config/gh/hosts\.yml$",
+    r"(^|/|\\)\.git/config$",
+    r"(^|/|\\)\.git/hooks(/|\\|$)",
+    r"(^|/|\\)\.(bash_history|zsh_history|history)$",
     r"(^|/|\\)(sam|system|security)\.hive$",
     r"(^|/|\\)ntds\.dit$",
+    r"(/etc|/private/etc)/(passwd|shadow|master\.passwd|sudoers|hosts)$",
 ]

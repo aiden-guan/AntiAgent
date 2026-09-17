@@ -78,10 +78,11 @@ def main() -> None:
     try:
         raw_input = sys.stdin.read()
         if not raw_input.strip():
-            # If empty input, allow or do nothing
-            sys.stdout.write(
-                json.dumps({"decision": "allow", "reason": "No input received."}, ensure_ascii=True)
-            )
+            fallback = {
+                "decision": DECISION_ASK,
+                "reason": "AntiAgent received empty input. Confirmation required for safety.",
+            }
+            sys.stdout.write(json.dumps(fallback, ensure_ascii=True))
             return
 
         payload = json.loads(raw_input)

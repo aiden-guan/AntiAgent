@@ -83,7 +83,7 @@ class TranscriptContextExtractor:
     ) -> TaskContext:
         """Reads the tail of transcript.jsonl to build TaskContext (<1ms)."""
         ctx = TaskContext(conversation_id=conversation_id, step_idx=step_idx)
-        if not conversation_id:
+        if not conversation_id or not re.match(r"^[a-zA-Z0-9_-]+$", conversation_id):
             return ctx
 
         transcript_file = (
