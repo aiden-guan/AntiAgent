@@ -110,6 +110,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNavigati
         appMenuItem.submenu = appMenu
 
         appMenu.addItem(withTitle: "About AntiAgent", action: nil, keyEquivalent: "")
+        appMenu.addItem(withTitle: "Check for Updates...", action: #selector(checkForUpdates), keyEquivalent: "u")
         appMenu.addItem(NSMenuItem.separator())
         appMenu.addItem(withTitle: "Reload Dashboard", action: #selector(reloadDashboard), keyEquivalent: "r")
         appMenu.addItem(NSMenuItem.separator())
@@ -128,6 +129,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNavigati
         editMenu.addItem(withTitle: "Select All", action: Selector(("selectAll:")), keyEquivalent: "a")
 
         NSApp.mainMenu = mainMenu
+    }
+
+    @objc func checkForUpdates() {
+        webView.evaluateJavaScript("if (typeof openUpdateModal === 'function') { openUpdateModal(true); }", completionHandler: nil)
     }
 
     @objc func reloadDashboard() {

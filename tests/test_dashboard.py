@@ -6,6 +6,7 @@ import tempfile
 import threading
 import time
 import unittest
+import urllib.error
 import urllib.request
 from http.server import ThreadingHTTPServer
 from pathlib import Path
@@ -232,6 +233,89 @@ class TestDashboardServer(unittest.TestCase):
                 self.assertTrue(data["has_api_key"])
                 self.assertNotIn("AIzaSySecretLongKey123456789", data["api_key"])
                 self.assertIn("••••", data["api_key"])
+
+    def test_api_update_check(self):
+        from unittest.mock import patch
+        mock_info = {
+            "ok": True,
+            "update_available": True,
+            "current_version": "0.1.3",
+            "latest_version": "0.1.4",
+            "release_name": "AntiAgent v0.1.4",
+            "release_notes": "In-app updates",
+            "published_at": "2026-09-16T12:00:00Z",
+            "html_url": "https://github.com/aiden-guan/AntiAgent/releases",
+            "assets": [{"name": "AntiAgent.dmg", "download_url": "http://example.com/AntiAgent.dmg", "size": 1000}],
+            "recommended_asset": {"name": "AntiAgent.dmg", "download_url": "http://example.com/AntiAgent.dmg", "size": 1000},
+        }
+        with patch("antiagent.dashboard.server.check_for_updates", return_value=mock_info):
+            url = f"http://127.0.0.1:{self.port}/api/update/check"
+            with urllib.request.urlopen(url) as resp:
+                self.assertEqual(resp.status, 200)
+                data = json.loads(resp.read().decode("utf-8"))
+                self.assertTrue(data["ok"])
+                self.assertTrue(data["update_available"])
+                self.assertEqual(data["latest_version"], "0.1.4")
+
+    def test_api_update_status_and_cancel(self):
+        url_status = f"http://127.0.0.1:{self.port}/api/update/status"
+        with urllib.request.urlopen(url_status) as resp:
+            self.assertEqual(resp.status, 200)
+            data = json.loads(resp.read().decode("utf-8"))
+            self.assertIn("status", data)
+            self.assertIn("progress", data)
+
+        url_cancel = f"http://127.0.0.1:{self.port}/api/update/cancel"
+        req = urllib.request.Request(url_cancel, data=b"{}", headers={"Content-Type": "application/json"})
+        with urllib.request.urlopen(req) as resp:
+            self.assertEqual(resp.status, 200)
+            data = json.loads(resp.read().decode("utf-8"))
+            self.assertIn("ok", data)
+
+    def test_api_update_download_trigger(self):
+        from unittest.mock import patch
+        with patch("antiagent.dashboard.server.global_downloader.start_download", return_value=True):
+            url = f"http://127.0.0.1:{self.port}/api/update/download"
+            # 1. Valid GitHub release URL succeeds
+            payload = json.dumps({
+                "download_url": "https://github.com/aiden-guan/AntiAgent/releases/download/v0.1.4/AntiAgent.dmg",
+                "filename": "AntiAgent.dmg"
+            }).encode("utf-8")
+            req = urllib.request.Request(url, data=payload, headers={"Content-Type": "application/json"})
+            with urllib.request.urlopen(req) as resp:
+                self.assertEqual(resp.status, 200)
+                data = json.loads(resp.read().decode("utf-8"))
+                self.assertTrue(data["ok"])
+
+            # 2. Untrusted URL is rejected with HTTP 400
+            bad_payload = json.dumps({
+                "download_url": "https://malicious.com/virus.exe",
+                "filename": "virus.exe"
+            }).encode("utf-8")
+            bad_req = urllib.request.Request(url, data=bad_payload, headers={"Content-Type": "application/json"})
+            with self.assertRaises(urllib.error.HTTPError) as ctx:
+                urllib.request.urlopen(bad_req)
+            self.assertEqual(ctx.exception.code, 400)
+
+    def test_api_update_open_and_reveal(self):
+        from unittest.mock import patch
+        with patch("antiagent.dashboard.server.open_downloaded_file", return_value=True):
+            url = f"http://127.0.0.1:{self.port}/api/update/open"
+            payload = json.dumps({"path": "/tmp/fake.dmg"}).encode("utf-8")
+            req = urllib.request.Request(url, data=payload, headers={"Content-Type": "application/json"})
+            with urllib.request.urlopen(req) as resp:
+                self.assertEqual(resp.status, 200)
+                data = json.loads(resp.read().decode("utf-8"))
+                self.assertTrue(data["ok"])
+
+        with patch("antiagent.dashboard.server.reveal_in_file_manager", return_value=True):
+            url = f"http://127.0.0.1:{self.port}/api/update/reveal"
+            payload = json.dumps({"path": "/tmp/fake.dmg"}).encode("utf-8")
+            req = urllib.request.Request(url, data=payload, headers={"Content-Type": "application/json"})
+            with urllib.request.urlopen(req) as resp:
+                self.assertEqual(resp.status, 200)
+                data = json.loads(resp.read().decode("utf-8"))
+                self.assertTrue(data["ok"])
 
 
 if __name__ == "__main__":

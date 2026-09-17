@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any, Dict
 from urllib.parse import parse_qs, urlparse
 
+from antiagent import __version__
 from antiagent.audit.logger import AuditLogger
 from antiagent.cli import install_hook, uninstall_hook
 from antiagent.config import (
@@ -23,6 +24,14 @@ from antiagent.constants import (
     PROFILE_PARANOID,
 )
 from antiagent.engine.evaluator import AntiAgentEvaluator
+from antiagent.updater import (
+    check_for_updates,
+    global_downloader,
+    global_pip_upgrader,
+    is_safe_download_url,
+    open_downloaded_file,
+    reveal_in_file_manager,
+)
 
 
 def get_default_workspace_path() -> str:
@@ -111,6 +120,18 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
         elif path == "/api/onboarding":
             cfg = load_config(self.workspace_path)
             self._send_json({"onboarding_completed": cfg.onboarding_completed})
+        elif path == "/api/update/check":
+            query = parse_qs(parsed_url.query)
+            repo = query.get("repo", [None])[0]
+            if repo:
+                res = check_for_updates(repo=repo)
+            else:
+                res = check_for_updates()
+            self._send_json(res)
+        elif path == "/api/update/status":
+            self._send_json(global_downloader.get_status())
+        elif path == "/api/update/pip_status":
+            self._send_json(global_pip_upgrader.get_status())
         else:
             self.send_response(404)
             self.end_headers()
@@ -182,6 +203,44 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
             self._send_json({"ok": True, "onboarding_completed": cfg.onboarding_completed})
         elif path == "/api/choose_folder":
             self._handle_api_choose_folder()
+        elif path == "/api/update/download":
+            url = body.get("download_url")
+            filename = body.get("filename")
+            if not url:
+                check_res = check_for_updates()
+                rec = check_res.get("recommended_asset")
+                if rec and rec.get("download_url"):
+                    url = rec["download_url"]
+                    filename = rec.get("name", filename)
+                else:
+                    if sys.platform == "darwin":
+                        filename = filename or "AntiAgent.dmg"
+                    elif sys.platform == "win32":
+                        filename = filename or "AntiAgent-Windows.zip"
+                    else:
+                        filename = filename or "AntiAgent.zip"
+                    url = f"https://github.com/aiden-guan/AntiAgent/releases/latest/download/{filename}"
+
+            if not is_safe_download_url(url):
+                self._send_json({"ok": False, "error": "Security: Untrusted download URL. Only official GitHub releases are allowed."}, status=400)
+                return
+
+            started = global_downloader.start_download(url, filename=filename)
+            self._send_json({"ok": started, "status": global_downloader.get_status()})
+        elif path == "/api/update/cancel":
+            cancelled = global_downloader.cancel()
+            self._send_json({"ok": cancelled, "status": global_downloader.get_status()})
+        elif path == "/api/update/open":
+            file_path = body.get("path") or global_downloader.dest_path
+            opened = open_downloaded_file(file_path)
+            self._send_json({"ok": opened, "path": file_path})
+        elif path == "/api/update/reveal":
+            file_path = body.get("path") or global_downloader.dest_path
+            revealed = reveal_in_file_manager(file_path)
+            self._send_json({"ok": revealed, "path": file_path})
+        elif path == "/api/update/pip":
+            started = global_pip_upgrader.start_upgrade()
+            self._send_json({"ok": started, "status": global_pip_upgrader.get_status()})
         else:
             self.send_response(404)
             self.end_headers()
@@ -228,6 +287,7 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
             masked_key = f"{raw_key[:4]}••••{raw_key[-4:]}" if len(raw_key) > 8 else "••••••••"
 
         resp = {
+            "version": __version__,
             "workspace_path": str(Path(self.workspace_path).resolve()),
             "workspace_hook_active": ws_active,
             "global_hook_active": global_active,

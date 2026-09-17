@@ -4,6 +4,7 @@ import argparse
 import json
 import os
 import sys
+import time
 from pathlib import Path
 from typing import Any, Dict
 
@@ -385,6 +386,96 @@ def run_doctor(workspace_path: str = ".") -> None:
     print("✨ Doctor diagnostics completed.\n")
 
 
+def handle_update_cli(args: argparse.Namespace) -> None:
+    """Handle the 'antiagent update' CLI command."""
+    from antiagent import __version__
+    from antiagent.updater import (
+        PipUpgradeManager,
+        UpdateDownloader,
+        check_for_updates,
+        open_downloaded_file,
+    )
+
+    if args.pip:
+        print("📦 Upgrading AntiAgent via pip...")
+        upgrader = PipUpgradeManager()
+        upgrader.start_upgrade()
+        while upgrader.status == "running":
+            time.sleep(0.3)
+        print("".join(upgrader.logs))
+        if upgrader.status == "success":
+            print("🎉 AntiAgent upgraded successfully!")
+        else:
+            sys.exit(upgrader.returncode or 1)
+        return
+
+    print(f"🔍 Checking for updates (current version: v{__version__})...")
+    info = check_for_updates()
+    if not info.get("ok"):
+        print(f"⚠️  {info.get('error', 'Failed to check for updates')}")
+        print(f"🔗 View releases online: {info.get('html_url')}")
+        return
+
+    latest = info.get("latest_version")
+    update_avail = info.get("update_available")
+    rel_name = info.get("release_name")
+    print(f"📌 Latest Release: v{latest} ({rel_name})")
+
+    if update_avail:
+        print(f"✨ A newer version of AntiAgent is available! (v{__version__} -> v{latest})")
+    else:
+        print(f"✅ You are already on the latest version of AntiAgent (v{__version__}).")
+
+    if args.check and not args.download:
+        rec = info.get("recommended_asset")
+        if rec:
+            size_mb = round(rec.get("size", 0) / (1024 * 1024), 1)
+            print(f"💡 Recommended download for your system: {rec.get('name')} ({size_mb} MB)")
+        print(f"🔗 Release details: {info.get('html_url')}")
+        return
+
+    if args.download or update_avail:
+        asset = None
+        if getattr(args, "asset", None):
+            for a in info.get("assets", []):
+                if a.get("name") == args.asset:
+                    asset = a
+                    break
+        if not asset:
+            asset = info.get("recommended_asset")
+
+        if not asset or not asset.get("download_url"):
+            print("⚠️  No direct download asset found. Please download from GitHub:")
+            print(f"   {info.get('html_url')}")
+            return
+
+        print(f"⬇️  Downloading {asset.get('name')}...")
+        dl = UpdateDownloader()
+        dl.start_download(asset["download_url"], filename=asset.get("name"))
+        last_pct = -1
+        while dl.status == "downloading":
+            st = dl.get_status()
+            pct = st["progress"]
+            if pct != last_pct:
+                mb_done = round(st["downloaded_bytes"] / (1024 * 1024), 1)
+                mb_total = round(st["total_bytes"] / (1024 * 1024), 1)
+                sys.stdout.write(f"\r   [{'#' * (pct // 5)}{'.' * (20 - pct // 5)}] {pct}% ({mb_done}/{mb_total} MB)")
+                sys.stdout.flush()
+                last_pct = pct
+            time.sleep(0.1)
+
+        print("")
+        final_st = dl.get_status()
+        if final_st["status"] == "completed":
+            dest = final_st["dest_path"]
+            print(f"🎉 Download complete! Saved to: {dest}")
+            if sys.platform == "darwin":
+                print("💡 Opening installer...")
+                open_downloaded_file(dest)
+        else:
+            print(f"❌ Download failed: {final_st.get('error')}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         prog="antiagent",
@@ -475,6 +566,13 @@ def main() -> None:
     build_windows_parser = subparsers.add_parser("build-windows", help="Build standalone AntiAgent-Windows.zip (Windows)")
     build_windows_parser.add_argument("--out", default="dist", help="Output directory (default: dist)")
 
+    # update
+    update_parser = subparsers.add_parser("update", help="Check for and download AntiAgent updates")
+    update_parser.add_argument("--check", action="store_true", help="Check for updates without downloading")
+    update_parser.add_argument("--download", action="store_true", help="Download the latest update package to Downloads")
+    update_parser.add_argument("--pip", action="store_true", help="Upgrade AntiAgent using pip")
+    update_parser.add_argument("--asset", help="Specific asset filename to download")
+
     args = parser.parse_args()
 
     if args.command == "install":
@@ -515,6 +613,8 @@ def main() -> None:
         from antiagent.desktop.builder import build_windows_package
         win_zip = build_windows_package(Path(args.out))
         print(f"\n📦 Windows release package ready:\n  • ZIP: {win_zip}")
+    elif args.command == "update":
+        handle_update_cli(args)
     else:
         parser.print_help()
 

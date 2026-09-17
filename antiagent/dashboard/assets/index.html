@@ -421,6 +421,42 @@
       border-color: var(--primary);
       background: #161b22;
     }
+    .progress-track {
+      width: 100%;
+      height: 10px;
+      background: #21262d;
+      border-radius: 6px;
+      overflow: hidden;
+      margin: 10px 0;
+      border: 1px solid var(--card-border);
+    }
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #1f6feb 0%, #3fb950 100%);
+      width: 0%;
+      transition: width 0.2s ease;
+      border-radius: 6px;
+    }
+    .update-banner {
+      background: linear-gradient(135deg, rgba(88, 166, 255, 0.12) 0%, rgba(56, 139, 253, 0.03) 100%);
+      border: 1px solid rgba(88, 166, 255, 0.3);
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    .release-notes-box {
+      background: #0d1117;
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 12px;
+      max-height: 160px;
+      overflow-y: auto;
+      font-size: 12px;
+      line-height: 1.6;
+      color: #c9d1d9;
+      white-space: pre-wrap;
+      font-family: inherit;
+    }
   </style>
 </head>
 <body>
@@ -430,10 +466,14 @@
         <span class="logo-icon">🛡️</span>
         <div>
           <span class="logo-title">AntiAgent</span>
-          <span class="version-tag">v0.1.3</span>
+          <span id="appVersionTag" class="version-tag" onclick="openUpdateModal()" style="cursor: pointer;" title="Click to check for updates">v0.1.3</span>
         </div>
       </div>
       <div class="header-badges">
+        <button id="updateHeaderBtn" class="btn btn-outline btn-sm" onclick="openUpdateModal()" style="display: inline-flex; align-items: center; gap: 6px;" title="Check for updates and download in-app">
+          <span>🔄</span> Updates
+          <span id="updateHeaderPill" class="status-badge badge-active" style="display: none; font-size: 10px; padding: 1px 6px; margin-left: 2px;">Update Available</span>
+        </button>
         <button class="btn btn-outline btn-sm" onclick="openOnboardingModal()" style="display: inline-flex; align-items: center; gap: 6px;">
           <span>⚡</span> Turbo Setup &amp; Guide
         </button>
@@ -848,6 +888,120 @@
       </div>
     </div>
   </div>
+  <div id="updateModal" class="modal-overlay">
+    <div class="modal-card modal-card-lg" style="max-width: 680px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; border-bottom: 1px solid var(--card-border); padding-bottom: 12px;">
+        <div style="font-size: 17px; font-weight: 700; display: flex; align-items: center; gap: 8px;">
+          <span>🔄</span>
+          <span>AntiAgent In-App Updates</span>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="closeModal('updateModal')">✕</button>
+      </div>
+
+      <!-- Version Status Banner -->
+      <div id="updateBanner" class="update-banner">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+          <div>
+            <div id="updateStatusTitle" style="font-weight: 700; font-size: 15px; display: flex; align-items: center; gap: 8px;">
+              <span>Checking for updates...</span>
+            </div>
+            <div id="updateStatusSub" style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">
+              Current installed version: <strong id="updateCurrentVer">v0.1.3</strong>
+            </div>
+          </div>
+          <button id="updateRefreshBtn" class="btn btn-outline btn-sm" onclick="checkForUpdates(false)">
+            <span>🔄</span> Check Now
+          </button>
+        </div>
+      </div>
+
+      <!-- Release Notes (Hidden until fetched) -->
+      <div id="releaseNotesSection" style="margin-bottom: 18px; display: none;">
+        <label style="font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 6px;">
+          What's New in <span id="releaseNotesTag">v...</span>:
+        </label>
+        <div id="releaseNotesContent" class="release-notes-box"></div>
+      </div>
+
+      <!-- In-App Download Card -->
+      <div id="downloadCard" style="background: #0d1117; border: 1px solid var(--card-border); border-radius: 10px; padding: 16px; margin-bottom: 18px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+          <div>
+            <div style="font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 6px;">
+              <span>⬇️</span> Download Update in App
+            </div>
+            <div id="downloadCardSub" style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
+              Directly download and launch the update package for your operating system.
+            </div>
+          </div>
+          <div id="assetSelectContainer" style="display: flex; gap: 6px; align-items: center;">
+            <label style="font-size: 11px; color: var(--text-muted);">Package:</label>
+            <select id="assetSelect" class="form-control" style="width: auto; padding: 4px 8px; font-size: 12px;" onchange="onAssetSelectChanged()"></select>
+          </div>
+        </div>
+
+        <!-- Download CTA / Action -->
+        <div id="downloadActionArea">
+          <button id="startDownloadBtn" class="btn btn-primary" style="width: 100%; padding: 10px 16px; font-size: 13px;" onclick="triggerInAppDownload()">
+            <span>⬇️</span> Download &amp; Install Update
+          </button>
+        </div>
+
+        <!-- Live Progress Section -->
+        <div id="downloadProgressArea" style="display: none; margin-top: 12px;">
+          <div style="display: flex; justify-content: space-between; font-size: 12px; font-weight: 600; margin-bottom: 4px;">
+            <span id="downloadProgressLabel">Downloading update...</span>
+            <span id="downloadProgressPercent">0%</span>
+          </div>
+          <div class="progress-track">
+            <div id="downloadProgressBar" class="progress-fill"></div>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
+            <span id="downloadProgressDetail" style="font-size: 11px; color: var(--text-muted); font-family: monospace;">0 MB / 0 MB</span>
+            <button class="btn btn-outline btn-sm" onclick="cancelInAppDownload()" style="font-size: 11px; padding: 2px 8px;">Cancel</button>
+          </div>
+        </div>
+
+        <!-- Download Complete Section -->
+        <div id="downloadCompleteArea" style="display: none; margin-top: 14px; background: rgba(63, 185, 80, 0.1); border: 1px solid rgba(63, 185, 80, 0.3); border-radius: 8px; padding: 12px;">
+          <div style="font-size: 13px; font-weight: 600; color: var(--success); margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+            <span>✅</span> Update Downloaded Successfully!
+          </div>
+          <div id="downloadFilePath" style="font-size: 11px; color: var(--text-muted); font-family: monospace; margin-bottom: 12px; word-break: break-all;">
+            Saved to: ~/Downloads/AntiAgent.dmg
+          </div>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <button class="btn btn-primary btn-sm" onclick="openDownloadedUpdate()">
+              <span>🚀</span> Launch / Open Installer
+            </button>
+            <button class="btn btn-outline btn-sm" onclick="revealDownloadedUpdate()">
+              <span>📂</span> Show in Finder / Explorer
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Developer / Pip Option -->
+      <div style="background: #0d1117; border: 1px solid var(--card-border); border-radius: 10px; padding: 14px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+          <div>
+            <div style="font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 6px;">
+              <span>🐍</span> Python / Pip Package Update
+            </div>
+            <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
+              Runs <code>pip install --upgrade antiagent</code> in background.
+            </div>
+          </div>
+          <button id="runPipUpgradeBtn" class="btn btn-outline btn-sm" onclick="triggerPipUpgrade()">
+            <span>⚡</span> Run pip upgrade
+          </button>
+        </div>
+        <div id="pipLogArea" style="display: none; margin-top: 10px;">
+          <pre id="pipLogContent" style="background: #000; border: 1px solid var(--card-border); border-radius: 6px; padding: 8px; font-size: 11px; font-family: monospace; max-height: 120px; overflow-y: auto; color: #58a6ff; white-space: pre-wrap;"></pre>
+        </div>
+      </div>
+    </div>
+  </div>
   <script>
     function escapeHtml(str) {
       if (str === null || str === undefined) return '';
@@ -885,6 +1039,13 @@
         } else {
           globalBadge.className = 'status-badge badge-inactive';
           globalBadge.textContent = '🌐 Global: Inactive';
+        }
+
+        if (data.version) {
+          const verTag = document.getElementById('appVersionTag');
+          if (verTag) verTag.textContent = 'v' + data.version;
+          const updateCur = document.getElementById('updateCurrentVer');
+          if (updateCur) updateCur.textContent = 'v' + data.version;
         }
 
         // Update Project Selector Pill in Workspace Bar
@@ -1297,6 +1458,23 @@
           </div>
         `;
 
+        // 6. AntiAgent Version & Updates
+        const currentVer = currentConfig.version || '0.1.3';
+        const hasUpdate = latestUpdateData && latestUpdateData.update_available;
+        const updateText = hasUpdate ? `v${latestUpdateData.latest_version} available (Click to download in app)` : `v${currentVer} installed`;
+        html += `
+          <div class="doctor-row" onclick="openUpdateModal()" style="cursor: pointer;" title="Click to view update details">
+            <div class="doctor-row-left">
+              <span>🔄</span>
+              <div>
+                <div style="font-weight: 600;">AntiAgent App Version</div>
+                <div class="doctor-row-sub">${escapeHtml(updateText)}</div>
+              </div>
+            </div>
+            <span class="status-badge ${hasUpdate ? 'badge-inactive' : 'badge-active'}">${hasUpdate ? 'Update Available' : 'Up to Date'}</span>
+          </div>
+        `;
+
         container.innerHTML = html;
       } catch (err) {
         container.innerHTML = `<div style="color: var(--danger); font-size: 12px; padding: 12px;">Failed to run health check: ${escapeHtml(err.message)}</div>`;
@@ -1410,7 +1588,294 @@
       await fetch('/api/clear_audit', { method: 'POST' });
       await loadAudit();
     }
-    fetchStatus();
+
+    // ==========================================
+    // In-App Update Downloader & Manager Logic
+    // ==========================================
+    let latestUpdateData = null;
+    let downloadPollInterval = null;
+    let pipPollInterval = null;
+
+    async function checkForUpdates(silent = false) {
+      const title = document.getElementById('updateStatusTitle');
+      const sub = document.getElementById('updateStatusSub');
+      const currentVerEl = document.getElementById('updateCurrentVer');
+      const curVer = (currentConfig && currentConfig.version) || '0.1.3';
+      if (currentVerEl) currentVerEl.textContent = 'v' + curVer;
+
+      if (!silent && title) {
+        title.innerHTML = '<span>⏳ Checking GitHub releases...</span>';
+      }
+
+      try {
+        const res = await fetch('/api/update/check');
+        const data = await res.json();
+        latestUpdateData = data;
+
+        const headerPill = document.getElementById('updateHeaderPill');
+        const verTag = document.getElementById('appVersionTag');
+        if (verTag) verTag.textContent = 'v' + curVer;
+
+        if (data.update_available) {
+          if (headerPill) {
+            headerPill.style.display = 'inline-flex';
+            headerPill.textContent = 'v' + data.latest_version + ' Available!';
+          }
+        } else {
+          if (headerPill) headerPill.style.display = 'none';
+        }
+
+        if (title && sub) {
+          if (data.update_available) {
+            title.innerHTML = `<span style="color: #58a6ff;">🚀 New Version Available: v${escapeHtml(data.latest_version)}!</span>`;
+            sub.innerHTML = `You are running v${escapeHtml(curVer)}. Updating is recommended for the latest features & safety rules.`;
+          } else if (data.ok) {
+            title.innerHTML = `<span style="color: var(--success);">✅ You're up to date!</span>`;
+            sub.innerHTML = `AntiAgent v${escapeHtml(curVer)} is the latest version available.`;
+          } else {
+            title.innerHTML = `<span>⚠️ ${escapeHtml(data.error || 'Check completed')}</span>`;
+            sub.innerHTML = `Current version: v${escapeHtml(curVer)}. You can check releases on GitHub.`;
+          }
+        }
+
+        // Populate Release Notes
+        const notesSection = document.getElementById('releaseNotesSection');
+        const notesContent = document.getElementById('releaseNotesContent');
+        const notesTag = document.getElementById('releaseNotesTag');
+        if (notesSection && notesContent && data.release_notes) {
+          notesSection.style.display = 'block';
+          notesTag.textContent = 'v' + (data.latest_version || curVer);
+          notesContent.textContent = data.release_notes;
+        } else if (notesSection) {
+          notesSection.style.display = 'none';
+        }
+
+        // Populate Asset Select Dropdown
+        const assetSelect = document.getElementById('assetSelect');
+        if (assetSelect) {
+          assetSelect.innerHTML = '';
+          const assets = data.assets || [];
+          if (assets.length > 0) {
+            assets.forEach(a => {
+              const opt = document.createElement('option');
+              opt.value = a.download_url;
+              const sizeMb = a.size ? (a.size / (1024 * 1024)).toFixed(1) + ' MB' : '';
+              opt.textContent = `${a.name} (${sizeMb})`;
+              opt.dataset.filename = a.name;
+              assetSelect.appendChild(opt);
+            });
+            // Select recommended if exists
+            if (data.recommended_asset) {
+              assetSelect.value = data.recommended_asset.download_url;
+            }
+          } else {
+            const opt = document.createElement('option');
+            opt.value = '';
+            opt.textContent = 'AntiAgent Standard Package';
+            assetSelect.appendChild(opt);
+          }
+          onAssetSelectChanged();
+        }
+
+        // Check active download status
+        await pollDownloadStatus();
+
+      } catch (err) {
+        console.warn('Update check failed:', err);
+        if (!silent && title) {
+          title.innerHTML = `<span>⚠️ Could not connect to update service</span>`;
+          if (sub) sub.innerHTML = escapeHtml(err.message);
+        }
+      }
+    }
+
+    function onAssetSelectChanged() {
+      const assetSelect = document.getElementById('assetSelect');
+      const startBtn = document.getElementById('startDownloadBtn');
+      if (!assetSelect || !startBtn) return;
+      const selectedOpt = assetSelect.options[assetSelect.selectedIndex];
+      const filename = selectedOpt ? selectedOpt.dataset.filename || '' : '';
+      startBtn.innerHTML = `<span>⬇️</span> Download &amp; Install ${escapeHtml(filename || 'Update')}`;
+    }
+
+    function openUpdateModal(forceCheck = false) {
+      openModal('updateModal');
+      checkForUpdates(!forceCheck && !!latestUpdateData);
+    }
+
+    async function triggerInAppDownload() {
+      const assetSelect = document.getElementById('assetSelect');
+      const selectedOpt = assetSelect ? assetSelect.options[assetSelect.selectedIndex] : null;
+      const download_url = selectedOpt ? selectedOpt.value : null;
+      const filename = selectedOpt ? selectedOpt.dataset.filename : null;
+
+      try {
+        const res = await fetch('/api/update/download', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ download_url, filename })
+        });
+        const data = await res.json();
+        if (data.ok || (data.status && data.status.status === 'downloading')) {
+          showDownloadProgress(data.status);
+          startDownloadPolling();
+        } else {
+          alert('Failed to start download: ' + (data.status?.error || 'Unknown error'));
+        }
+      } catch (err) {
+        alert('Download request failed: ' + err.message);
+      }
+    }
+
+    function startDownloadPolling() {
+      if (downloadPollInterval) clearInterval(downloadPollInterval);
+      downloadPollInterval = setInterval(pollDownloadStatus, 500);
+    }
+
+    async function pollDownloadStatus() {
+      try {
+        const res = await fetch('/api/update/status');
+        const st = await res.json();
+        showDownloadProgress(st);
+        if (st.status !== 'downloading' && downloadPollInterval) {
+          clearInterval(downloadPollInterval);
+          downloadPollInterval = null;
+        }
+      } catch (err) {
+        console.warn('Status poll error:', err);
+      }
+    }
+
+    function showDownloadProgress(st) {
+      const actionArea = document.getElementById('downloadActionArea');
+      const progArea = document.getElementById('downloadProgressArea');
+      const compArea = document.getElementById('downloadCompleteArea');
+      const bar = document.getElementById('downloadProgressBar');
+      const pctText = document.getElementById('downloadProgressPercent');
+      const detailText = document.getElementById('downloadProgressDetail');
+      const pathText = document.getElementById('downloadFilePath');
+
+      if (!st || st.status === 'idle' || st.status === 'cancelled') {
+        if (actionArea) actionArea.style.display = 'block';
+        if (progArea) progArea.style.display = 'none';
+        if (compArea) compArea.style.display = 'none';
+        return;
+      }
+
+      if (st.status === 'downloading') {
+        if (actionArea) actionArea.style.display = 'none';
+        if (progArea) progArea.style.display = 'block';
+        if (compArea) compArea.style.display = 'none';
+
+        const pct = st.progress || 0;
+        if (bar) bar.style.width = pct + '%';
+        if (pctText) pctText.textContent = pct + '%';
+
+        const mbDone = (st.downloaded_bytes / (1024 * 1024)).toFixed(1);
+        const mbTotal = (st.total_bytes / (1024 * 1024)).toFixed(1);
+        const speedMb = (st.speed_bps / (1024 * 1024)).toFixed(1);
+        if (detailText) {
+          detailText.textContent = `${mbDone} MB / ${mbTotal > 0 ? mbTotal + ' MB' : '...'} (${speedMb} MB/s) • ${escapeHtml(st.filename || '')}`;
+        }
+      } else if (st.status === 'completed') {
+        if (actionArea) actionArea.style.display = 'none';
+        if (progArea) progArea.style.display = 'none';
+        if (compArea) compArea.style.display = 'block';
+        if (pathText) pathText.textContent = 'Saved to: ' + (st.dest_path || '~/Downloads');
+      } else if (st.status === 'error') {
+        if (actionArea) actionArea.style.display = 'block';
+        if (progArea) progArea.style.display = 'none';
+        if (compArea) compArea.style.display = 'none';
+        alert('Download error: ' + (st.error || 'Failed to download'));
+      }
+    }
+
+    async function cancelInAppDownload() {
+      try {
+        await fetch('/api/update/cancel', { method: 'POST' });
+        pollDownloadStatus();
+      } catch (err) {
+        console.warn('Cancel error:', err);
+      }
+    }
+
+    async function openDownloadedUpdate() {
+      try {
+        const res = await fetch('/api/update/open', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: '{}'
+        });
+        const data = await res.json();
+        if (data.ok) {
+          closeModal('updateModal');
+        } else {
+          alert('Could not open installer. Please check file at: ' + (data.path || ''));
+        }
+      } catch (err) {
+        alert('Open request failed: ' + err.message);
+      }
+    }
+
+    async function revealDownloadedUpdate() {
+      try {
+        await fetch('/api/update/reveal', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: '{}'
+        });
+      } catch (err) {
+        alert('Reveal request failed: ' + err.message);
+      }
+    }
+
+    async function triggerPipUpgrade() {
+      const btn = document.getElementById('runPipUpgradeBtn');
+      const logArea = document.getElementById('pipLogArea');
+      const logContent = document.getElementById('pipLogContent');
+      if (btn) btn.disabled = true;
+      if (logArea) logArea.style.display = 'block';
+      if (logContent) logContent.textContent = '🚀 Launching pip upgrade...\n';
+
+      try {
+        await fetch('/api/update/pip', { method: 'POST' });
+        if (pipPollInterval) clearInterval(pipPollInterval);
+        pipPollInterval = setInterval(pollPipStatus, 400);
+      } catch (err) {
+        if (btn) btn.disabled = false;
+        alert('Pip upgrade failed to start: ' + err.message);
+      }
+    }
+
+    async function pollPipStatus() {
+      try {
+        const res = await fetch('/api/update/pip_status');
+        const st = await res.json();
+        const logContent = document.getElementById('pipLogContent');
+        const btn = document.getElementById('runPipUpgradeBtn');
+        if (logContent) {
+          logContent.textContent = st.logs || '';
+          logContent.scrollTop = logContent.scrollHeight;
+        }
+        if (st.status !== 'running') {
+          if (pipPollInterval) {
+            clearInterval(pipPollInterval);
+            pipPollInterval = null;
+          }
+          if (btn) btn.disabled = false;
+          if (st.status === 'success') {
+            fetchStatus();
+          }
+        }
+      } catch (err) {
+        console.warn('Pip status poll error:', err);
+      }
+    }
+
+    fetchStatus().then(() => {
+      // Auto-check for updates silently in the background
+      checkForUpdates(true);
+    });
     loadAudit();
     setInterval(loadAudit, 3000);
   </script>
