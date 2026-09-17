@@ -5,7 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/)
 [![macOS App](https://img.shields.io/badge/macOS-Download%20.dmg-blue.svg?logo=apple)](https://github.com/aiden-guan/AntiAgent/releases/latest)
-[![Windows App](https://img.shields.io/badge/Windows-Download%20.zip-0078D6.svg?logo=windows)](https://github.com/aiden-guan/AntiAgent/releases/latest)
+[![Windows App (Beta)](https://img.shields.io/badge/Windows-Download%20.zip%20(Beta)-0078D6.svg?logo=windows)](https://github.com/aiden-guan/AntiAgent/releases/latest)
 [![Antigravity Ready](https://img.shields.io/badge/Antigravity-Lifecycle%20Hooks-purple.svg)](https://antigravity.google)
 [![Status](https://img.shields.io/badge/Status-Active-success.svg)]()
 
@@ -66,12 +66,12 @@ AntiAgent **reviews each proposed command and tool call in real time**:
 > [!TIP]
 > ### ❓ Which download should I choose?
 > - **macOS**: Download **[`AntiAgent.dmg`](https://github.com/aiden-guan/AntiAgent/releases/latest/download/AntiAgent.dmg)** (recommended for 99% of Mac users). Drag to Applications and you're done.
-> - **Windows**: Download **[`AntiAgent-Windows.zip`](https://github.com/aiden-guan/AntiAgent/releases/latest/download/AntiAgent-Windows.zip)**. Extract and double-click `AntiAgent.bat`.
+> - **Windows (Public Beta)**: Download **[`AntiAgent-Windows.zip`](https://github.com/aiden-guan/AntiAgent/releases/latest/download/AntiAgent-Windows.zip)**. Extract and double-click `AntiAgent.bat`.
 > - **What is the difference between DMG, PKG, and ZIP?**
 >   - **`.dmg` (macOS)**: Standard macOS disk image with custom drag-and-drop installer. **Choose this for Mac.**
 >   - **`.pkg` (macOS)**: Guided installer package with automated wizard. Best for enterprise / MDM deployment.
 >   - **`.zip` (macOS)**: Portable `.app` archive without disk image mounting.
->   - **`AntiAgent-Windows.zip` (Windows)**: Complete standalone package for Windows 10 & 11 with native desktop window launcher.
+>   - **`AntiAgent-Windows.zip` (Windows - Beta)**: Complete standalone package for Windows 10 & 11 with native desktop window launcher.
 
 ---
 
@@ -96,11 +96,12 @@ curl -fsSL https://raw.githubusercontent.com/aiden-guan/AntiAgent/main/install.s
 
 ---
 
-### 🪟 Option B: Windows Installation (Windows 10 & 11)
+### 🪟 Option B: Windows Installation (Windows 10 & 11 — Public Beta)
 
-AntiAgent is **fully supported and native on Windows** (PowerShell & CMD).
+> [!NOTE]
+> **Windows Support is currently in Public Beta**: The safety engine, heuristics, and Antigravity lifecycle hooks are fully functioning on Windows. The standalone Windows desktop application mode is newly released in Beta. If you encounter any platform-specific quirks or edge cases, please report them via [GitHub Issues](https://github.com/aiden-guan/AntiAgent/issues) so we can continuously refine the Windows experience!
 
-#### 1. Download Standalone Desktop Package (Recommended)
+#### 1. Download Standalone Desktop Package (Beta — Recommended)
 1. Download **[`AntiAgent-Windows.zip`](https://github.com/aiden-guan/AntiAgent/releases/latest/download/AntiAgent-Windows.zip)** from the latest release.
 2. Extract the ZIP archive anywhere on your PC.
 3. Double-click **`AntiAgent.bat`** to launch the native desktop application.
@@ -246,7 +247,7 @@ Sample output:
 | `antiagent audit [--limit N]` | Inspect recent security verdicts and audit history |
 | `antiagent config` | View and modify configuration settings |
 | `antiagent build-dmg` | Package macOS `.dmg`, `.pkg`, and `.zip` installers |
-| `antiagent build-windows` | Package standalone `AntiAgent-Windows.zip` |
+| `antiagent build-windows` | Package standalone `AntiAgent-Windows.zip` (Windows Beta) |
 
 ---
 

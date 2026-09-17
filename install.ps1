@@ -6,7 +6,7 @@ $ErrorActionPreference = "Stop"
 
 Write-Host ""
 Write-Host "============================================================" -ForegroundColor Cyan
-Write-Host "  🛡️ Installing AntiAgent Guard for Windows..." -ForegroundColor Cyan
+Write-Host "  🛡️ Installing AntiAgent Guard for Windows (Public Beta)..." -ForegroundColor Cyan
 Write-Host "============================================================" -ForegroundColor Cyan
 Write-Host ""
 

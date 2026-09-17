@@ -436,9 +436,9 @@ def build_windows_package(output_dir: Path = None) -> Path:
 
         # 2. Add AntiAgent.bat launcher
         bat_content = """@echo off
-title AntiAgent Guard
+title AntiAgent Guard (Public Beta)
 echo ============================================================
-echo   Starting AntiAgent Guard for Antigravity...
+echo   Starting AntiAgent Guard for Antigravity (Public Beta)...
 echo ============================================================
 set PYTHONPATH=%~dp0;%PYTHONPATH%
 where py >nul 2>nul
@@ -486,10 +486,14 @@ exit /b 1
 
         # 4. Add README.txt
         readme_content = """============================================================
-  🛡️ AntiAgent Guard for Windows (Google Antigravity)
+  🛡️ AntiAgent Guard for Windows (Public Beta)
 ============================================================
 
 Thank you for downloading AntiAgent!
+
+NOTE: Windows support is currently in Public Beta. The core safety
+engine and hooks are fully functional. If you notice any UI or
+platform-specific quirks, please file an issue on GitHub!
 
 QUICKSTART:
 1. Double-click "AntiAgent.bat" to launch the native desktop application.
@@ -510,8 +514,8 @@ REQUIREMENTS:
 - Python 3.9 or newer (Install via https://www.python.org/ or: winget install Python.Python.3.12)
 - Google Antigravity
 
-For documentation and updates:
-https://github.com/aiden-guan/AntiAgent
+For documentation, bug reports, and updates:
+https://github.com/aiden-guan/AntiAgent/issues
 ============================================================
 """
         zf.writestr("AntiAgent/README.txt", readme_content)

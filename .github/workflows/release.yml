@@ -94,9 +94,11 @@ jobs:
             | Package | Operating System | Description |
             | :--- | :--- | :--- |
             | **`AntiAgent.dmg`** | **macOS** | **Recommended for Mac**. Drag-and-drop installer to `/Applications`. |
-            | **`AntiAgent-Windows.zip`** | **Windows** | **Recommended for Windows**. Extract and double-click `AntiAgent.bat`. |
+            | **`AntiAgent-Windows.zip`** | **Windows (Public Beta)** | **Recommended for Windows (Beta)**. Extract and double-click `AntiAgent.bat`. |
             | **`AntiAgent.pkg`** | **macOS** | Standard auto-launching installer package for enterprise / MDM. |
             | **`AntiAgent.zip`** | **macOS** | Standalone portable `.app` bundle archive. |
+
+            > ℹ️ **Windows Support (Public Beta)**: The Windows standalone app mode is currently in Public Beta. If you encounter any platform-specific quirks or edge cases, please submit an issue on GitHub!
 
             ---
 
