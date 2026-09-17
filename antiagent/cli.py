@@ -36,6 +36,9 @@ def get_hook_command() -> str:
             return f'/usr/bin/env PYTHONPATH="{resources_dir}" python3 -m antiagent.hook'
 
     py_exec = sys.executable or "python3"
+    # Quote executable path in case it contains spaces (e.g. C:\Program Files\Python312\python.exe)
+    if " " in py_exec and not (py_exec.startswith('"') and py_exec.endswith('"')):
+        py_exec = f'"{py_exec}"'
     return f"{py_exec} -m antiagent.hook"
 
 
@@ -440,20 +443,24 @@ def main() -> None:
     dashboard_parser.add_argument("--workspace", default=".", help="Workspace path")
 
     # app
-    app_parser = subparsers.add_parser("app", help="Launch the native macOS desktop application")
+    app_parser = subparsers.add_parser("app", help="Launch the native desktop application (macOS & Windows)")
 
     # install-app
-    install_app_parser = subparsers.add_parser("install-app", help="Install native AntiAgent.app to ~/Applications")
+    install_app_parser = subparsers.add_parser("install-app", help="Install native AntiAgent desktop launcher/application")
     install_app_parser.add_argument(
         "--global",
         dest="is_global",
         action="store_true",
-        help="Install to /Applications instead of ~/Applications",
+        help="Install to /Applications instead of ~/Applications (macOS)",
     )
 
     # build-dmg
-    build_dmg_parser = subparsers.add_parser("build-dmg", help="Build standalone AntiAgent.dmg and AntiAgent.zip")
+    build_dmg_parser = subparsers.add_parser("build-dmg", help="Build standalone AntiAgent.dmg and AntiAgent.zip (macOS)")
     build_dmg_parser.add_argument("--out", default="dist", help="Output directory (default: dist)")
+
+    # build-windows
+    build_windows_parser = subparsers.add_parser("build-windows", help="Build standalone AntiAgent-Windows.zip (Windows)")
+    build_windows_parser.add_argument("--out", default="dist", help="Output directory (default: dist)")
 
     args = parser.parse_args()
 
@@ -491,6 +498,10 @@ def main() -> None:
         pkg = build_pkg(Path(args.out))
         zip_file = build_zip(Path(args.out))
         print(f"\n📦 Release packages ready:\n  • DMG: {dmg}\n  • PKG: {pkg}\n  • ZIP: {zip_file}")
+    elif args.command == "build-windows":
+        from antiagent.desktop.builder import build_windows_package
+        win_zip = build_windows_package(Path(args.out))
+        print(f"\n📦 Windows release package ready:\n  • ZIP: {win_zip}")
     else:
         parser.print_help()
 

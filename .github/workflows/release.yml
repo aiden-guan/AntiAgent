@@ -25,15 +25,79 @@ jobs:
         run: |
           python3 -m antiagent build-dmg --out dist
 
+      - name: Upload macOS Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-artifacts
+          path: |
+            dist/AntiAgent.dmg
+            dist/AntiAgent.pkg
+            dist/AntiAgent.zip
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Build AntiAgent Windows Package
+        run: |
+          python -m antiagent build-windows --out dist
+
+      - name: Upload Windows Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-artifacts
+          path: |
+            dist/AntiAgent-Windows.zip
+
+  release:
+    needs: [build-macos, build-windows]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: Download macOS Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-artifacts
+          path: dist
+
+      - name: Download Windows Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-artifacts
+          path: dist
+
       - name: Create Release and Upload Assets
         uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/')
         with:
           name: AntiAgent ${{ github.ref_name }}
           files: |
             dist/AntiAgent.dmg
             dist/AntiAgent.pkg
             dist/AntiAgent.zip
+            dist/AntiAgent-Windows.zip
           draft: false
           prerelease: false
           generate_release_notes: true
+          body: |
+            ### 📥 Which download is right for you?
+
+            | Package | Operating System | Description |
+            | :--- | :--- | :--- |
+            | **`AntiAgent.dmg`** | **macOS** | **Recommended for Mac**. Drag-and-drop installer to `/Applications`. |
+            | **`AntiAgent-Windows.zip`** | **Windows** | **Recommended for Windows**. Extract and double-click `AntiAgent.bat`. |
+            | **`AntiAgent.pkg`** | **macOS** | Standard auto-launching installer package for enterprise / MDM. |
+            | **`AntiAgent.zip`** | **macOS** | Standalone portable `.app` bundle archive. |
+
+            ---
+
+            ### ⚡ 1-Line Terminal Installs
+            - **macOS**: `curl -fsSL https://raw.githubusercontent.com/aiden-guan/AntiAgent/main/install.sh | bash`
+            - **Windows (PowerShell)**: `irm https://raw.githubusercontent.com/aiden-guan/AntiAgent/main/install.ps1 | iex`
+            - **Cross-Platform CLI**: `pip install antiagent && antiagent install --global`

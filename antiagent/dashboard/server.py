@@ -277,20 +277,47 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
             self._send_json({"ok": False, "error": str(e)}, status=500)
 
     def _handle_api_choose_folder(self) -> None:
-        """Open native macOS Finder folder chooser dialog via osascript."""
-        if sys.platform != "darwin":
-            self._send_json({"ok": False, "error": "Native folder dialog is only supported on macOS."}, status=400)
-            return
+        """Open native folder chooser dialog (macOS Finder, Windows Explorer, or Tkinter)."""
+        chosen_path = ""
         try:
-            script = 'POSIX path of (choose folder with prompt "Select Project Folder for AntiAgent:")'
-            res = subprocess.run(["osascript", "-e", script], capture_output=True, text=True)
-            if res.returncode != 0:
-                if "User canceled" in res.stderr or "-128" in res.stderr:
+            if sys.platform == "darwin":
+                script = 'POSIX path of (choose folder with prompt "Select Project Folder for AntiAgent:")'
+                res = subprocess.run(["osascript", "-e", script], capture_output=True, text=True)
+                if res.returncode == 0:
+                    chosen_path = res.stdout.strip().rstrip("/")
+                elif "User canceled" in res.stderr or "-128" in res.stderr:
                     self._send_json({"ok": False, "cancelled": True})
                     return
-                self._send_json({"ok": False, "error": res.stderr.strip()}, status=500)
-                return
-            chosen_path = res.stdout.strip().rstrip("/")
+            elif sys.platform == "win32":
+                ps_script = (
+                    "Add-Type -AssemblyName System.Windows.Forms; "
+                    "$f = New-Object System.Windows.Forms.FolderBrowserDialog; "
+                    "$f.Description = 'Select Project Folder for AntiAgent:'; "
+                    "$f.ShowNewFolderButton = $true; "
+                    "if ($f.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) { Write-Output $f.SelectedPath }"
+                )
+                res = subprocess.run(
+                    ["powershell", "-NoProfile", "-Command", ps_script],
+                    capture_output=True,
+                    text=True,
+                )
+                if res.returncode == 0:
+                    chosen_path = res.stdout.strip()
+
+            if not chosen_path:
+                # Universal fallback via tkinter if available
+                try:
+                    import tkinter as tk
+                    from tkinter import filedialog
+
+                    root = tk.Tk()
+                    root.withdraw()
+                    root.attributes("-topmost", True)
+                    chosen_path = filedialog.askdirectory(title="Select Project Folder for AntiAgent:")
+                    root.destroy()
+                except Exception:
+                    pass
+
             if chosen_path:
                 p = Path(os.path.expanduser(chosen_path)).resolve()
                 DashboardRequestHandler.workspace_path = str(p)

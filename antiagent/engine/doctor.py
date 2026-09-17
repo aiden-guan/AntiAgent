@@ -53,10 +53,33 @@ def get_doctor_report(workspace_path: str = ".") -> Dict[str, Any]:
         session_count = len([d for d in brain_dir.iterdir() if d.is_dir()])
 
     # 5. Native Desktop App
-    user_app = Path(os.path.expanduser("~/Applications/AntiAgent.app"))
-    sys_app = Path("/Applications/AntiAgent.app")
-    desktop_app_installed = user_app.exists() or sys_app.exists()
-    desktop_app_path = str(user_app if user_app.exists() else sys_app) if desktop_app_installed else None
+    desktop_app_installed = False
+    desktop_app_path = None
+
+    if sys.platform == "darwin":
+        user_app = Path(os.path.expanduser("~/Applications/AntiAgent.app"))
+        sys_app = Path("/Applications/AntiAgent.app")
+        desktop_app_installed = user_app.exists() or sys_app.exists()
+        desktop_app_path = str(user_app if user_app.exists() else sys_app) if desktop_app_installed else None
+    elif sys.platform == "win32":
+        # Windows shortcuts & standalone launcher paths
+        win_candidates = [
+            Path(os.path.expanduser("~/Desktop/AntiAgent Guard.lnk")),
+            Path(os.path.expanduser("~/AppData/Roaming/Microsoft/Windows/Start Menu/Programs/AntiAgent Guard.lnk")),
+            Path(os.path.expanduser("~/.antiagent/AntiAgent.bat")),
+            Path(os.getcwd()) / "AntiAgent.bat",
+            Path(os.path.expanduser("~/AppData/Local/Programs/AntiAgent/AntiAgent.exe")),
+        ]
+        for candidate in win_candidates:
+            if candidate.exists():
+                desktop_app_installed = True
+                desktop_app_path = str(candidate)
+                break
+    else:
+        user_app = Path(os.path.expanduser("~/.local/share/applications/antiagent.desktop"))
+        if user_app.exists():
+            desktop_app_installed = True
+            desktop_app_path = str(user_app)
 
     # 6. Daemon Status
     daemon_running = False

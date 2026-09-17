@@ -103,8 +103,25 @@ class CommandGuard:
                 tokens = tokens[1:]
                 first = tokens[0].lower()
 
-            # Check basename of executable (e.g. /bin/ls -> ls)
-            first_base = first.split("/")[-1]
+            # Check basename of executable (e.g. /bin/ls -> ls, C:\bin\dir.exe -> dir)
+            first_base = first.replace("\\", "/").split("/")[-1]
+            if first_base.endswith(".exe"):
+                first_base = first_base[:-4]
+
+            # Handle shell wrapper invocations (cmd /c dir, powershell -Command Get-ChildItem)
+            if first_base in ("cmd", "powershell", "pwsh") and len(tokens) > 1:
+                # Strip wrapper flags like /c, /k, -command, -c
+                sub_tokens = tokens[1:]
+                while sub_tokens and sub_tokens[0].lower() in ("/c", "/k", "-c", "-command"):
+                    sub_tokens = sub_tokens[1:]
+                if sub_tokens:
+                    inner = sub_tokens[0].lower().replace("\\", "/").split("/")[-1]
+                    if inner.endswith(".exe"):
+                        inner = inner[:-4]
+                    if inner in SAFE_COMMAND_PREFIXES:
+                        continue
+                    else:
+                        return False
 
             if first_base not in SAFE_COMMAND_PREFIXES:
                 return False
@@ -118,10 +135,11 @@ class CommandGuard:
             r"^npm\s+run\s+(test|lint|typecheck|check)(\s+.*)?$",
             r"^npx\s+(tsc\s+--noEmit|eslint\s+.*|jest\s+.*|vitest\s+run.*)$",
             r"^pytest(\s+.*)?$",
-            r"^python[0-9]?\s+-m\s+(unittest|pytest)(\s+.*)?$",
+            r"^(python[0-9]?|py)\s+-m\s+(unittest|pytest)(\s+.*)?$",
             r"^cargo\s+test(\s+.*)?$",
             r"^cargo\s+check(\s+.*)?$",
             r"^go\s+test(\s+.*)?$",
+            r"^dotnet\s+test(\s+.*)?$",
         ]
         cleaned = cmd.strip()
         # No file redirection

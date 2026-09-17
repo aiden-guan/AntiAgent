@@ -57,18 +57,36 @@ def handle_pre_tool_use(payload: Dict[str, Any]) -> Dict[str, Any]:
 
 def main() -> None:
     """CLI / hook entrypoint reading from stdin and writing to stdout."""
+    # Ensure UTF-8 on Windows standard streams to prevent CP1252 encoding crashes
+    if sys.platform == "win32":
+        if hasattr(sys.stdin, "reconfigure"):
+            try:
+                sys.stdin.reconfigure(encoding="utf-8")
+            except Exception:
+                pass
+        if hasattr(sys.stdout, "reconfigure"):
+            try:
+                sys.stdout.reconfigure(encoding="utf-8")
+            except Exception:
+                pass
+        if hasattr(sys.stderr, "reconfigure"):
+            try:
+                sys.stderr.reconfigure(encoding="utf-8")
+            except Exception:
+                pass
+
     try:
         raw_input = sys.stdin.read()
         if not raw_input.strip():
             # If empty input, allow or do nothing
             sys.stdout.write(
-                json.dumps({"decision": "allow", "reason": "No input received."})
+                json.dumps({"decision": "allow", "reason": "No input received."}, ensure_ascii=True)
             )
             return
 
         payload = json.loads(raw_input)
         response = handle_pre_tool_use(payload)
-        sys.stdout.write(json.dumps(response))
+        sys.stdout.write(json.dumps(response, ensure_ascii=True))
     except Exception as e:
         # Failsafe: on unexpected crash, require confirmation and write to stderr
         sys.stderr.write(f"[antiagent-hook error] {e}\n")
@@ -76,7 +94,7 @@ def main() -> None:
             "decision": DECISION_ASK,
             "reason": f"AntiAgent internal error: {e}. Confirmation required for safety.",
         }
-        sys.stdout.write(json.dumps(fallback))
+        sys.stdout.write(json.dumps(fallback, ensure_ascii=True))
 
 
 if __name__ == "__main__":

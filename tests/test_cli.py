@@ -34,6 +34,15 @@ class TestCLI(unittest.TestCase):
         data_after = json.loads(hooks_file.read_text(encoding="utf-8"))
         self.assertNotIn("antiagent-guard", data_after)
 
+    def test_get_hook_command_quotes_spaces(self):
+        from unittest.mock import patch
+        from antiagent.cli import get_hook_command
+
+        with patch("sys.executable", "C:\\Program Files\\Python312\\python.exe"):
+            cmd = get_hook_command()
+            self.assertTrue(cmd.startswith('"C:\\Program Files\\Python312\\python.exe"'))
+            self.assertIn("-m antiagent.hook", cmd)
+
 
 if __name__ == "__main__":
     unittest.main()

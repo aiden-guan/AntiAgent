@@ -54,6 +54,7 @@ MUTATING_TOOLS = {
 
 # Safe shell command names (first token) that are strictly read-only
 SAFE_COMMAND_PREFIXES = {
+    # Cross-platform / Unix
     "ls",
     "pwd",
     "cat",
@@ -65,6 +66,7 @@ SAFE_COMMAND_PREFIXES = {
     "find",
     "which",
     "where",
+    "where.exe",
     "echo",
     "wc",
     "diff",
@@ -80,6 +82,33 @@ SAFE_COMMAND_PREFIXES = {
     "tree",
     "true",
     "false",
+    # Windows CMD & PowerShell
+    "dir",
+    "type",
+    "cls",
+    "ver",
+    "systeminfo",
+    "findstr",
+    "fc",
+    "attrib",
+    "hostname",
+    "get-childitem",
+    "gci",
+    "get-content",
+    "gc",
+    "get-location",
+    "gl",
+    "write-output",
+    "clear-host",
+    "select-string",
+    "sls",
+    "test-path",
+    "get-item",
+    "gi",
+    "get-command",
+    "gcm",
+    "get-process",
+    "gps",
 }
 
 # Safe git subcommands
@@ -113,17 +142,27 @@ RISKY_GIT_OPERATIONS = [
 
 # Patterns that are immediately blocked without prompting (Tier 1 Hard Block)
 HARD_DENY_PATTERNS = [
-    # System wiping / destructive deletion (with or without sudo)
+    # System wiping / destructive deletion (Unix)
     r"(?:sudo\s+)?rm\s+(-[a-zA-Z]*r[a-zA-Z]*f|--recursive\s+--force)\s+(/\s*$|/\*|/etc|/usr|/bin|/sbin|/var|/System|/Library|~/?$)",
-    # Disk formatting / raw device overwrites (with or without sudo)
+    # System wiping / destructive deletion (Windows CMD & PowerShell)
+    r"(?:cmd(?:\.exe)?\s+/c\s+)?\b(del|rmdir|rd)\s+.*(/s|/q).*(c:\\windows|c:\\users|\%systemroot\%|\$env:windir|\$env:systemroot)",
+    r"\bRemove-Item\s+.*(-Recurse|-Force).*(c:\\windows|c:\\users|\$env:windir|\$env:systemroot|c:\\\s*$)",
+    # Disk formatting / raw device overwrites
     r"\bmkfs\b",
     r"\bdd\s+if=.*of=(/dev/sd[a-z]|/dev/nvme[0-9]|/dev/disk[0-9])",
+    r"\bformat\s+[a-zA-Z]:",
+    r"\bFormat-Volume\b",
     # Fork bombs
     r":\(\)\s*\{\s*:\s*\|\s*:\s*&\s*\}\s*;\s*:",
-    # Piping untrusted network scripts directly to shell
+    # Piping untrusted network scripts directly to shell (Unix & Windows PowerShell)
     r"(curl|wget|fetch|http)\s+.*\|\s*(sh|bash|zsh|python[0-9]?|ruby|perl)",
+    r"(Invoke-WebRequest|iwr|curl|wget)\s+.*\|\s*(iex|Invoke-Expression|powershell|cmd)",
+    r"\biex\s*\(\s*(New-Object\s+Net\.WebClient|Invoke-WebRequest|iwr|curl|irm|Invoke-RestMethod)",
+    r"\bcertutil\s+(-urlcache|-split|-f)\s+.*\|\s*(cmd|powershell|sh)",
     # SSH and cloud credential exfiltration
     r"(~?/\.ssh/id_[a-zA-Z0-9_]+|\.ssh/id_[a-zA-Z0-9_]+|\.aws/credentials|\.kube/config)",
+    # Windows registry hive / credential dump
+    r"\breg\s+save\s+hklm\\(sam|system|security)",
     # Shadow / password file dump
     r"(?:sudo\s+)?cat\s+.*(/etc/shadow|/etc/master\.passwd)",
     # Tampering with sudoers configuration
@@ -143,4 +182,6 @@ SENSITIVE_TARGETS = [
     r"id_rsa",
     r"id_ed25519",
     r"id_ecdsa",
+    r"(^|/|\\)(sam|system|security)\.hive$",
+    r"(^|/|\\)ntds\.dit$",
 ]

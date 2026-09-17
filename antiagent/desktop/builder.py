@@ -21,7 +21,7 @@ INFO_PLIST_TEMPLATE = """<?xml version="1.0" encoding="UTF-8"?>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
-    <string>0.1.2</string>
+    <string>0.1.3</string>
     <key>CFBundleVersion</key>
     <string>1</string>
     <key>LSMinimumSystemVersion</key>
@@ -322,8 +322,211 @@ exit 0
     return pkg_path
 
 
+def launch_windows_app() -> None:
+    """Launch the AntiAgent desktop application on Windows using Edge/Chrome app mode or default browser."""
+    import time
+    import urllib.request
+    import webbrowser
+
+    # 1. Ensure backend daemon is running
+    url = "http://127.0.0.1:4242/api/status"
+    is_up = False
+    try:
+        with urllib.request.urlopen(url, timeout=0.5) as resp:
+            if resp.status == 200:
+                is_up = True
+    except Exception:
+        is_up = False
+
+    if not is_up:
+        print("🚀 Starting AntiAgent background daemon...")
+        py_exec = sys.executable or "python"
+        creationflags = 0
+        if sys.platform == "win32":
+            creationflags = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0) | getattr(subprocess, "DETACHED_PROCESS", 0)
+        subprocess.Popen(
+            [py_exec, "-m", "antiagent.dashboard", "--no-open"],
+            creationflags=creationflags,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+
+        for _ in range(25):
+            time.sleep(0.2)
+            try:
+                with urllib.request.urlopen(url, timeout=0.3) as resp:
+                    if resp.status == 200:
+                        is_up = True
+                        break
+            except Exception:
+                continue
+
+    # 2. Launch standalone window via Edge app mode, Chrome app mode, or default browser
+    app_url = "http://127.0.0.1:4242"
+    edge_candidates = [
+        os.path.expandvars(r"%ProgramFiles(x86)%\Microsoft\Edge\Application\msedge.exe"),
+        os.path.expandvars(r"%ProgramFiles%\Microsoft\Edge\Application\msedge.exe"),
+        os.path.expandvars(r"%LocalAppData%\Microsoft\Edge\Application\msedge.exe"),
+        shutil.which("msedge"),
+        shutil.which("msedge.exe"),
+    ]
+    edge_bin = next((p for p in edge_candidates if p and os.path.isfile(p)), None)
+
+    if edge_bin:
+        print("🖥️  Launching AntiAgent Guard window via Microsoft Edge App Mode...")
+        subprocess.Popen([edge_bin, f"--app={app_url}", "--window-size=1160,800"])
+        return
+
+    chrome_candidates = [
+        os.path.expandvars(r"%ProgramFiles%\Google\Chrome\Application\chrome.exe"),
+        os.path.expandvars(r"%ProgramFiles(x86)%\Google\Chrome\Application\chrome.exe"),
+        os.path.expandvars(r"%LocalAppData%\Google\Chrome\Application\chrome.exe"),
+        shutil.which("chrome"),
+        shutil.which("chrome.exe"),
+    ]
+    chrome_bin = next((p for p in chrome_candidates if p and os.path.isfile(p)), None)
+
+    if chrome_bin:
+        print("🖥️  Launching AntiAgent Guard window via Chrome App Mode...")
+        subprocess.Popen([chrome_bin, f"--app={app_url}", "--window-size=1160,800"])
+        return
+
+    print("🌐 Opening AntiAgent in default web browser...")
+    webbrowser.open(app_url)
+
+
+def build_windows_package(output_dir: Path = None) -> Path:
+    """Package AntiAgent into a standalone AntiAgent-Windows.zip for Windows 10/11."""
+    import zipfile
+
+    if output_dir is None:
+        output_dir = Path(os.getcwd()) / "dist"
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    zip_path = output_dir / "AntiAgent-Windows.zip"
+    if zip_path.exists():
+        zip_path.unlink()
+
+    repo_root = Path(__file__).resolve().parent.parent.parent
+    antiagent_src = repo_root / "antiagent"
+
+    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+        # 1. Add package files
+        for root, dirs, files in os.walk(antiagent_src):
+            dirs[:] = [d for d in dirs if d not in ("__pycache__", ".pytest_cache")]
+            for file in files:
+                if file.endswith((".pyc", ".DS_Store", ".o")):
+                    continue
+                file_path = Path(root) / file
+                rel_path = file_path.relative_to(repo_root)
+                zf.write(file_path, f"AntiAgent/{rel_path}")
+
+        # 2. Add AntiAgent.bat launcher
+        bat_content = """@echo off
+title AntiAgent Guard
+echo ============================================================
+echo   Starting AntiAgent Guard for Antigravity...
+echo ============================================================
+set PYTHONPATH=%~dp0;%PYTHONPATH%
+where py >nul 2>nul
+if %ERRORLEVEL% equ 0 (
+    py -m antiagent app
+    exit /b %ERRORLEVEL%
+)
+where python >nul 2>nul
+if %ERRORLEVEL% equ 0 (
+    python -m antiagent app
+    exit /b %ERRORLEVEL%
+)
+echo [ERROR] Python 3.9+ was not found on your system!
+echo Please install Python from https://www.python.org/ or run:
+echo   winget install Python.Python.3.12
+pause
+exit /b 1
+"""
+        zf.writestr("AntiAgent/AntiAgent.bat", bat_content)
+
+        # 3. Add Install-Hook.bat
+        install_bat = """@echo off
+title AntiAgent - Register Global Hook
+echo ============================================================
+echo   Installing AntiAgent Global Protection for Antigravity...
+echo ============================================================
+set PYTHONPATH=%~dp0;%PYTHONPATH%
+where py >nul 2>nul
+if %ERRORLEVEL% equ 0 (
+    py -m antiagent install --global
+    pause
+    exit /b 0
+)
+where python >nul 2>nul
+if %ERRORLEVEL% equ 0 (
+    python -m antiagent install --global
+    pause
+    exit /b 0
+)
+echo [ERROR] Python 3.9+ was not found on your system!
+pause
+exit /b 1
+"""
+        zf.writestr("AntiAgent/Install-Hook.bat", install_bat)
+
+        # 4. Add README.txt
+        readme_content = """============================================================
+  🛡️ AntiAgent Guard for Windows (Google Antigravity)
+============================================================
+
+Thank you for downloading AntiAgent!
+
+QUICKSTART:
+1. Double-click "AntiAgent.bat" to launch the native desktop application.
+2. In the top bar, click "🚀 Guide & Doctor" and click "Enable Global Hook".
+3. That's it! Google Antigravity is now automatically protected across all your projects.
+
+OR REGISTER HOOK DIRECTLY:
+- Double-click "Install-Hook.bat" to protect all Antigravity projects globally.
+
+COMMAND LINE USAGE:
+Open PowerShell or CMD in this directory:
+  python -m antiagent status      (Check active protection status)
+  python -m antiagent test        (Run safety simulation test suite)
+  python -m antiagent doctor      (Run environment diagnostic check)
+
+REQUIREMENTS:
+- Windows 10 or 11
+- Python 3.9 or newer (Install via https://www.python.org/ or: winget install Python.Python.3.12)
+- Google Antigravity
+
+For documentation and updates:
+https://github.com/aiden-guan/AntiAgent
+============================================================
+"""
+        zf.writestr("AntiAgent/README.txt", readme_content)
+
+    print(f"📦 Created downloadable Windows release package: {zip_path}")
+    return zip_path
+
+
 def install_app(to_global: bool = False) -> Path:
-    """Install AntiAgent.app to ~/Applications or /Applications."""
+    """Install AntiAgent desktop launcher."""
+    if sys.platform == "win32":
+        antiagent_dir = Path(os.path.expanduser("~/.antiagent"))
+        antiagent_dir.mkdir(parents=True, exist_ok=True)
+        bat_file = antiagent_dir / "AntiAgent.bat"
+        bat_file.write_text(
+            "@echo off\ntitle AntiAgent Guard\npython -m antiagent app\n",
+            encoding="utf-8",
+        )
+        desktop = Path(os.path.expanduser("~/Desktop"))
+        if desktop.is_dir():
+            shortcut_ps = f'''$ws = New-Object -ComObject WScript.Shell; $s = $ws.CreateShortcut("{desktop}\\AntiAgent Guard.lnk"); $s.TargetPath = "{bat_file}"; $s.Save()'''
+            try:
+                subprocess.run(["powershell", "-Command", shortcut_ps], capture_output=True)
+            except Exception:
+                pass
+        print(f"🎉 Installed AntiAgent Windows launcher to {bat_file}")
+        return bat_file
+
     app_bundle = build_macos_app()
 
     if to_global:
@@ -348,6 +551,10 @@ def install_app(to_global: bool = False) -> Path:
 
 def launch_app(dest_app: Path = None) -> None:
     """Open the native desktop app."""
+    if sys.platform == "win32":
+        launch_windows_app()
+        return
+
     if dest_app is None or not dest_app.exists():
         dest_app = build_macos_app()
     subprocess.run(["open", str(dest_app)])
