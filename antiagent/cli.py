@@ -6,7 +6,7 @@ import os
 import sys
 import time
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, List, Optional
 
 # Ensure UTF-8 output streams on Windows to prevent charmap/CP1252 emoji encoding errors
 if sys.platform == "win32":
@@ -165,6 +165,7 @@ def check_status(workspace_path: str = ".") -> None:
     print(f"  Auto-PR Monitor:  {'Enabled' if cfg.auto_pr_monitor else 'Disabled'}")
     print(f"  PR Auto-Merge:    {'Enabled' if cfg.pr_monitor_auto_merge else 'Disabled'}")
     print(f"  Audit Log:        {cfg.audit_log_path}")
+    print(f"  Audit Tool Calls: {'Enabled' if cfg.audit_include_tool_calls else 'Disabled'}")
 
 
 def run_tests(workspace_path: str = ".") -> None:
@@ -261,11 +262,13 @@ def run_tests(workspace_path: str = ".") -> None:
     print(f"Results: {passed}/{len(test_cases)} tests passed.")
 
 
-def view_audit(limit: int = 20, workspace_path: str = ".") -> None:
+def view_audit(limit: int = 20, workspace_path: str = ".", include_tool_calls: Optional[bool] = None) -> None:
     """Print recent audit log events."""
     cfg = load_config(workspace_path)
     logger = AuditLogger(cfg.audit_log_path)
-    entries = logger.read_recent(limit)
+    if include_tool_calls is None:
+        include_tool_calls = cfg.audit_include_tool_calls
+    entries = logger.read_recent(limit, include_tool_calls=include_tool_calls)
 
     if not entries:
         print(f"ℹ️ No audit entries found in {logger.log_path}")
@@ -320,6 +323,10 @@ def configure_cli(args: argparse.Namespace) -> None:
         cfg.pr_monitor_interval = max(3, args.set_pr_interval)
         changed = True
 
+    if getattr(args, "set_audit_include_tool_calls", None) is not None:
+        cfg.audit_include_tool_calls = args.set_audit_include_tool_calls.lower() in ("true", "1", "yes", "on")
+        changed = True
+
     if changed:
         if args.global_config:
             path = save_global_config(cfg)
@@ -328,7 +335,7 @@ def configure_cli(args: argparse.Namespace) -> None:
             path = save_workspace_config(cfg, ".")
             print(f"✅ Workspace configuration updated at {path}")
     else:
-        print("No changes specified. Use --set-profile, --set-provider, --set-model, --set-auto-pr-monitor, or --set-pr-auto-merge.")
+        print("No changes specified. Use --set-profile, --set-provider, --set-model, --set-audit-include-tool-calls, --set-auto-pr-monitor, or --set-pr-auto-merge.")
 
 
 def run_doctor(workspace_path: str = ".") -> None:
@@ -755,12 +762,15 @@ def main() -> None:
     audit_parser = subparsers.add_parser("audit", help="View recent audit log entries")
     audit_parser.add_argument("--limit", type=int, default=20, help="Number of entries to show (default: 20)")
     audit_parser.add_argument("--workspace", default=".", help="Workspace path")
+    audit_parser.add_argument("--all-tools", "--include-tool-calls", dest="include_tool_calls", action="store_true", default=None, help="Include all tool calls and explorations in output")
+    audit_parser.add_argument("--commands-only", dest="include_tool_calls", action="store_false", help="Only show command executions")
 
     # config
     config_parser = subparsers.add_parser("config", help="View or modify AntiAgent configuration")
     config_parser.add_argument("--set-profile", choices=[PROFILE_BALANCED, PROFILE_PARANOID, PROFILE_AUTONOMOUS])
     config_parser.add_argument("--set-provider", help="Provider: native, gemini, openai, ollama, offline")
     config_parser.add_argument("--set-model", help="Model name (e.g. gemini-2.5-flash, gpt-4o-mini)")
+    config_parser.add_argument("--set-audit-include-tool-calls", help="Include tool calls & explorations in audit log (true/false)")
     config_parser.add_argument("--set-auto-pr-monitor", help="Enable/disable auto-PR monitoring on PR creation (true/false)")
     config_parser.add_argument("--set-pr-auto-merge", help="Enable/disable auto-merge when CI checks turn green (true/false)")
     config_parser.add_argument("--set-pr-interval", type=int, help="Poll interval for PR checks in seconds")
@@ -839,7 +849,7 @@ def main() -> None:
     elif args.command == "test":
         run_tests(workspace_path=args.workspace)
     elif args.command == "audit":
-        view_audit(limit=args.limit, workspace_path=args.workspace)
+        view_audit(limit=args.limit, workspace_path=args.workspace, include_tool_calls=args.include_tool_calls)
     elif args.command == "config":
         configure_cli(args)
     elif args.command == "pr":

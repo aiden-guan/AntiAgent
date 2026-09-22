@@ -812,6 +812,197 @@
       background: rgba(255, 255, 255, 0.02);
     }
 
+    /* Activity Sidebar & Drawer */
+    .sidebar-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.65);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      z-index: 140;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+    }
+    .sidebar-overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .activity-sidebar {
+      position: fixed;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      width: 580px;
+      max-width: 100vw;
+      background: rgba(10, 11, 14, 0.95);
+      backdrop-filter: blur(32px) saturate(200%);
+      -webkit-backdrop-filter: blur(32px);
+      border-left: 1px solid var(--card-border);
+      z-index: 150;
+      display: flex;
+      flex-direction: column;
+      transform: translateX(100%);
+      transition: transform 0.32s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.32s ease, width 0.32s ease;
+      box-shadow: -20px 0 60px rgba(0, 0, 0, 0.85);
+    }
+    .activity-sidebar.open {
+      transform: translateX(0);
+    }
+    .activity-sidebar.pinned {
+      box-shadow: -8px 0 30px rgba(0, 0, 0, 0.6);
+    }
+    @media (min-width: 1440px) {
+      body.sidebar-pinned {
+        padding-right: 580px;
+        transition: padding-right 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      body.sidebar-pinned header,
+      body.sidebar-pinned .container {
+        max-width: calc(100vw - 640px);
+        margin-left: 30px;
+        margin-right: auto;
+      }
+    }
+    .sidebar-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--card-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      background: rgba(12, 13, 16, 0.85);
+      flex-shrink: 0;
+    }
+    .sidebar-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      letter-spacing: -0.01em;
+    }
+    .sidebar-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .sidebar-toolbar {
+      padding: 12px 18px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      background: rgba(8, 9, 12, 0.6);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+    .sidebar-filter-pills {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .filter-chip {
+      font-size: 11px;
+      padding: 3px 10px;
+      border-radius: 9999px;
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text-muted);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      cursor: pointer;
+      user-select: none;
+      transition: all 0.15s ease;
+    }
+    .filter-chip:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: #ffffff;
+    }
+    .filter-chip.active {
+      background: rgba(255, 255, 255, 0.16);
+      color: #ffffff;
+      border-color: rgba(255, 255, 255, 0.3);
+      font-weight: 600;
+    }
+    .sidebar-search-box {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+    .sidebar-search-box .icon {
+      position: absolute;
+      left: 10px;
+      width: 14px;
+      height: 14px;
+      color: var(--text-muted);
+      pointer-events: none;
+    }
+    .sidebar-search-input {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 6px 12px 6px 32px;
+      color: #ffffff;
+      font-size: 12px;
+      outline: none;
+      transition: border-color 0.2s ease, background 0.2s ease;
+    }
+    .sidebar-search-input:focus {
+      border-color: rgba(255, 255, 255, 0.35);
+      background: rgba(255, 255, 255, 0.07);
+    }
+    .sidebar-table-container {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: auto;
+    }
+    .sidebar-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+    .sidebar-table th {
+      position: sticky;
+      top: 0;
+      background: #0d0f13;
+      padding: 8px 12px;
+      text-align: left;
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      border-bottom: 1px solid var(--card-border);
+      z-index: 10;
+    }
+    .sidebar-table td {
+      padding: 8px 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.035);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: #e4e4e7;
+      vertical-align: middle;
+    }
+    .sidebar-table tr.clickable-row {
+      cursor: pointer;
+      transition: background 0.12s ease;
+    }
+    .sidebar-table tr.clickable-row:hover td {
+      background: rgba(255, 255, 255, 0.05);
+    }
+    .sidebar-footer {
+      padding: 10px 18px;
+      border-top: 1px solid var(--card-border);
+      background: rgba(8, 9, 12, 0.7);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      color: var(--text-muted);
+      flex-shrink: 0;
+    }
+
     /* Modal Architecture */
     .modal-overlay {
       position: fixed;
@@ -975,10 +1166,15 @@
         </div>
         <div class="logo-title-group">
           <span class="logo-title">AntiAgent</span>
-          <span id="appVersionTag" class="version-tag" onclick="openUpdateModal()" style="cursor: pointer;" title="Click to check for updates">v0.1.6</span>
+          <span id="appVersionTag" class="version-tag" onclick="openUpdateModal()" style="cursor: pointer;" title="Click to check for updates">v0.1.7</span>
         </div>
       </div>
       <div class="header-badges">
+        <button id="sidebarToggleBtn" class="btn btn-outline btn-sm" onclick="toggleActivitySidebar()" title="Toggle Activity &amp; Tool Calls Sidebar (Cmd+B)">
+          <svg class="icon" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+          <span>Activity Sidebar</span>
+          <span id="sidebarCounterBadge" class="status-badge badge-active" style="font-size: 10px; padding: 1px 7px; margin-left: 2px;">0</span>
+        </button>
         <button id="updateHeaderBtn" class="btn btn-outline btn-sm" onclick="openUpdateModal()" title="Check for updates and download in-app">
           <svg class="icon" viewBox="0 0 24 24"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
           <span>Updates</span>
@@ -1180,6 +1376,16 @@
         </div>
         <div class="toggle-row">
           <div>
+            <div class="toggle-label">Include Tool Calls &amp; Explorations</div>
+            <div class="toggle-sublabel">Include file reads, edits, code searches, and subagent tool calls in the audit log (beyond commands)</div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="toggleAuditIncludeToolCalls" onchange="saveToggle('audit_include_tool_calls', this.checked); loadAudit(); loadSidebarAudit();">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="toggle-row">
+          <div>
             <div class="toggle-label">Auto-PR Monitoring (Claude Code style)</div>
             <div class="toggle-sublabel">Track CI check status and catch build/test failures on active PRs</div>
           </div>
@@ -1339,6 +1545,126 @@
       </div>
     </div>
   </main>
+
+  <!-- Activity Sidebar & Overlay -->
+  <div id="sidebarOverlay" class="sidebar-overlay" onclick="closeActivitySidebar()"></div>
+  <aside id="activitySidebar" class="activity-sidebar" aria-label="Activity and Tool Log Sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-title">
+        <svg class="icon" viewBox="0 0 24 24" style="width: 18px; height: 18px; stroke: #ffffff;">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+        </svg>
+        <span>Activity &amp; Tool Calls</span>
+        <span class="status-badge badge-active" style="font-size: 10px; padding: 2px 7px;">
+          <span class="pip pip-active"></span> LIVE
+        </span>
+      </div>
+      <div class="sidebar-controls">
+        <button id="pinSidebarBtn" class="btn btn-outline btn-sm" onclick="togglePinSidebar()" title="Pin/Dock Sidebar side-by-side">
+          <svg class="icon" viewBox="0 0 24 24"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-2l-3-3V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v7l-3 3v2z"/></svg>
+        </button>
+        <button class="btn btn-outline btn-sm" onclick="loadSidebarAudit()" title="Refresh entries">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+        </button>
+        <button class="btn btn-outline btn-sm" onclick="clearAudit()" title="Clear audit history">
+          <svg class="icon" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+        </button>
+        <button class="btn btn-outline btn-sm" onclick="closeActivitySidebar()" title="Close Sidebar (Esc)">✕</button>
+      </div>
+    </div>
+
+    <div class="sidebar-toolbar">
+      <!-- Search input -->
+      <div class="sidebar-search-box">
+        <svg class="icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" id="sidebarSearchInput" class="sidebar-search-input" placeholder="Search commands, file targets, tools..." oninput="renderSidebarAuditTable()">
+      </div>
+
+      <!-- Filter Pills -->
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px;">
+        <div class="sidebar-filter-pills" id="categoryFilterPills">
+          <span class="filter-chip active" data-category="all" onclick="setSidebarCategory('all')">All</span>
+          <span class="filter-chip" data-category="commands" onclick="setSidebarCategory('commands')">Commands</span>
+          <span class="filter-chip" data-category="files" onclick="setSidebarCategory('files')">Files</span>
+          <span class="filter-chip" data-category="searches" onclick="setSidebarCategory('searches')">Searches</span>
+          <span class="filter-chip" data-category="other" onclick="setSidebarCategory('other')">Other</span>
+        </div>
+        <div class="sidebar-filter-pills" id="verdictFilterPills">
+          <span class="filter-chip active" data-verdict="all" onclick="setSidebarVerdict('all')">All</span>
+          <span class="filter-chip" data-verdict="allow" onclick="setSidebarVerdict('allow')">Allow</span>
+          <span class="filter-chip" data-verdict="ask" onclick="setSidebarVerdict('ask')">Ask</span>
+          <span class="filter-chip" data-verdict="deny" onclick="setSidebarVerdict('deny')">Deny</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Table Container -->
+    <div class="sidebar-table-container">
+      <table class="sidebar-table">
+        <thead>
+          <tr>
+            <th style="width: 72px;">Time</th>
+            <th style="width: 65px;">Verdict</th>
+            <th style="width: 95px;">Tool</th>
+            <th>Command / Target</th>
+            <th style="width: 140px;">Reason</th>
+          </tr>
+        </thead>
+        <tbody id="sidebarAuditBody">
+          <tr>
+            <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 32px 14px;">Loading activity events...</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="sidebar-footer">
+      <span id="sidebarEventSummary">0 events</span>
+      <span style="font-size: 10px; color: var(--text-muted);">Shortcut: <kbd style="background: rgba(255,255,255,0.08); padding: 2px 5px; border-radius: 4px;">Cmd+B</kbd></span>
+    </div>
+  </aside>
+
+  <!-- Activity Detail Inspector Modal -->
+  <div id="activityDetailModal" class="modal-overlay">
+    <div class="modal-card modal-card-lg">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid var(--card-border); padding-bottom: 12px;">
+        <div style="font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 10px; color: #ffffff;">
+          <svg class="icon" viewBox="0 0 24 24"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+          <span id="detailToolTitle">Tool Execution Details</span>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="closeModal('activityDetailModal')">✕</button>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px;">
+        <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--card-border); border-radius: 12px; padding: 10px 14px;">
+          <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 4px;">Verdict</div>
+          <div id="detailVerdictBadge" class="verdict-tag verdict-allow" style="margin: 0;">ALLOW</div>
+        </div>
+        <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--card-border); border-radius: 12px; padding: 10px 14px;">
+          <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 4px;">Timestamp</div>
+          <div id="detailTimestamp" style="font-family: var(--font-mono); font-size: 12px; color: #ffffff;"></div>
+        </div>
+      </div>
+
+      <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--card-border); border-radius: 12px; padding: 12px 14px; margin-bottom: 14px;">
+        <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 6px;">Evaluation Rationale</div>
+        <div id="detailReason" style="font-size: 13px; color: #e4e4e7; line-height: 1.5;"></div>
+      </div>
+
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+        <span style="font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.12em;">Arguments / Payload</span>
+        <button class="btn btn-outline btn-sm" onclick="copyDetailArgs()" style="font-size: 10px; padding: 2px 8px;">Copy JSON</button>
+      </div>
+      <div style="background: #050507; border: 1px solid var(--card-border); border-radius: 12px; padding: 12px; max-height: 240px; overflow-y: auto;">
+        <pre id="detailArgsPre" style="margin: 0; font-family: var(--font-mono); font-size: 12px; color: #38bdf8; white-space: pre-wrap; word-break: break-all;"></pre>
+      </div>
+
+      <div id="detailContextFooter" style="margin-top: 14px; font-size: 11px; color: var(--text-muted); font-family: var(--font-mono); display: flex; justify-content: space-between;">
+        <span id="detailConversationId"></span>
+        <span id="detailStepIdx"></span>
+      </div>
+    </div>
+  </div>
 
   <!-- Modals -->
   <!-- 1. Onboarding & Turbo Mode Setup Modal -->
@@ -1533,7 +1859,7 @@
               <span>Checking for updates...</span>
             </div>
             <div id="updateStatusSub" style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">
-              Current installed version: <strong id="updateCurrentVer" style="color: #ffffff;">v0.1.6</strong>
+              Current installed version: <strong id="updateCurrentVer" style="color: #ffffff;">v0.1.7</strong>
             </div>
           </div>
           <button id="updateRefreshBtn" class="btn btn-outline btn-sm" onclick="checkForUpdates(false)">
@@ -1961,6 +2287,10 @@
         document.getElementById('toggleApproveReads').checked = !!data.auto_approve_reads;
         document.getElementById('toggleApproveDev').checked = !!data.auto_approve_dev_commands;
         document.getElementById('toggleAuditEnabled').checked = !!data.audit_enabled;
+        const toggleToolCalls = document.getElementById('toggleAuditIncludeToolCalls');
+        if (toggleToolCalls) {
+          toggleToolCalls.checked = !!data.audit_include_tool_calls;
+        }
         if (document.getElementById('togglePrReview')) {
           document.getElementById('togglePrReview').checked = !!data.pr_monitor_enabled;
           document.getElementById('inputPrRepo').value = data.pr_monitor_repo || '';
@@ -2329,7 +2659,7 @@
           </div>
         `;
 
-        const currentVer = currentConfig.version || '0.1.6';
+        const currentVer = currentConfig.version || '0.1.7';
         const hasUpdate = latestUpdateData && latestUpdateData.update_available;
         const updateText = hasUpdate ? `v${latestUpdateData.latest_version} available (Click to download in app)` : `v${currentVer} installed`;
         html += `
@@ -2425,36 +2755,253 @@
       reason.textContent = data.reason;
     }
 
+    // Activity Sidebar & Real-Time Audit Management
+    window.activityEvents = [];
+    let activeSidebarCategory = 'all';
+    let activeSidebarVerdict = 'all';
+    let sidebarPinned = false;
+
+    function getToolCategory(tool) {
+      if (!tool) return 'other';
+      if (tool === 'run_command') return 'commands';
+      if (['view_file', 'write_to_file', 'replace_file_content'].includes(tool)) return 'files';
+      if (['grep_search', 'find_by_name', 'list_dir', 'search_web', 'read_url_content'].includes(tool)) return 'searches';
+      return 'other';
+    }
+
+    function toggleActivitySidebar() {
+      const sidebar = document.getElementById('activitySidebar');
+      if (!sidebar) return;
+      if (sidebar.classList.contains('open')) {
+        closeActivitySidebar();
+      } else {
+        openActivitySidebar();
+      }
+    }
+
+    function openActivitySidebar() {
+      const sidebar = document.getElementById('activitySidebar');
+      const overlay = document.getElementById('sidebarOverlay');
+      if (!sidebar) return;
+      sidebar.classList.add('open');
+      if (!sidebarPinned && overlay) {
+        overlay.classList.add('active');
+      }
+      loadSidebarAudit();
+    }
+
+    function closeActivitySidebar() {
+      const sidebar = document.getElementById('activitySidebar');
+      const overlay = document.getElementById('sidebarOverlay');
+      if (!sidebar) return;
+      sidebar.classList.remove('open');
+      if (overlay) {
+        overlay.classList.remove('active');
+      }
+      if (sidebarPinned) {
+        togglePinSidebar(false);
+      }
+    }
+
+    function togglePinSidebar(forceState = null) {
+      const sidebar = document.getElementById('activitySidebar');
+      const overlay = document.getElementById('sidebarOverlay');
+      const pinBtn = document.getElementById('pinSidebarBtn');
+      if (!sidebar) return;
+
+      sidebarPinned = forceState !== null ? forceState : !sidebarPinned;
+      localStorage.setItem('antiagent_sidebar_pinned', sidebarPinned ? 'true' : 'false');
+
+      if (sidebarPinned) {
+        sidebar.classList.add('pinned');
+        sidebar.classList.add('open');
+        document.body.classList.add('sidebar-pinned');
+        if (overlay) overlay.classList.remove('active');
+        if (pinBtn) pinBtn.classList.add('active');
+      } else {
+        sidebar.classList.remove('pinned');
+        document.body.classList.remove('sidebar-pinned');
+        if (pinBtn) pinBtn.classList.remove('active');
+      }
+    }
+
+    function setSidebarCategory(cat) {
+      activeSidebarCategory = cat;
+      const pills = document.querySelectorAll('#categoryFilterPills .filter-chip');
+      pills.forEach(p => {
+        p.classList.toggle('active', p.getAttribute('data-category') === cat);
+      });
+      renderSidebarAuditTable();
+    }
+
+    function setSidebarVerdict(verdict) {
+      activeSidebarVerdict = verdict.toLowerCase();
+      const pills = document.querySelectorAll('#verdictFilterPills .filter-chip');
+      pills.forEach(p => {
+        p.classList.toggle('active', p.getAttribute('data-verdict') === activeSidebarVerdict);
+      });
+      renderSidebarAuditTable();
+    }
+
+    function renderSidebarAuditTable() {
+      const tbody = document.getElementById('sidebarAuditBody');
+      const summaryEl = document.getElementById('sidebarEventSummary');
+      if (!tbody) return;
+
+      const searchTerm = (document.getElementById('sidebarSearchInput')?.value || '').toLowerCase().trim();
+
+      const filtered = window.activityEvents.filter(e => {
+        // Category filter
+        if (activeSidebarCategory !== 'all') {
+          if (getToolCategory(e.tool) !== activeSidebarCategory) return false;
+        }
+
+        // Verdict filter
+        if (activeSidebarVerdict !== 'all') {
+          const dec = (e.decision || 'ASK').toLowerCase();
+          if (dec !== activeSidebarVerdict) return false;
+        }
+
+        // Search query
+        if (searchTerm) {
+          const tool = (e.tool || '').toLowerCase();
+          const reason = (e.reason || '').toLowerCase();
+          const argText = e.args ? JSON.stringify(e.args).toLowerCase() : '';
+          const match = tool.includes(searchTerm) || reason.includes(searchTerm) || argText.includes(searchTerm);
+          if (!match) return false;
+        }
+
+        return true;
+      });
+
+      if (summaryEl) {
+        summaryEl.textContent = `${filtered.length} of ${window.activityEvents.length} events`;
+      }
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 32px 14px;">
+              ${window.activityEvents.length === 0 ? 'No activity events recorded yet.' : 'No events match current filter.'}
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      tbody.innerHTML = filtered.map(e => {
+        const ts = (e.timestamp || '').slice(11, 19);
+        const dec = (e.decision || 'ASK').toUpperCase();
+        const badgeClass = dec === 'ALLOW' ? 'verdict-allow' : (dec === 'DENY' ? 'verdict-deny' : 'verdict-ask');
+        const argText = e.args && (e.args.CommandLine || e.args.TargetFile || e.args.AbsolutePath || e.args.Query || JSON.stringify(e.args));
+        const safeTs = escapeHtml(ts);
+        const safeDec = escapeHtml(dec);
+        const safeBadge = escapeHtml(badgeClass);
+        const safeTool = escapeHtml(e.tool || '');
+        const safeArg = escapeHtml((argText || '').slice(0, 36));
+        const safeReason = escapeHtml((e.reason || '').slice(0, 48));
+
+        return `
+          <tr class="clickable-row" onclick="openActivityDetail(${e._idx})" title="Click to inspect full tool arguments and evaluation">
+            <td style="color: var(--text-muted); font-size: 11px;">${safeTs}</td>
+            <td><span class="verdict-tag ${safeBadge}" style="margin:0; padding:1px 6px; font-size: 10px;">${safeDec}</span></td>
+            <td style="color: #ffffff; font-weight: 500;">${safeTool}</td>
+            <td style="color: #ffffff; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${safeArg}</td>
+            <td style="color: var(--text-muted); font-size: 11px; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${safeReason}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    async function loadSidebarAudit() {
+      try {
+        const res = await fetch('/api/audit?limit=150');
+        const events = await res.json();
+        if (!events) return;
+
+        window.activityEvents = events.slice().reverse().map((e, idx) => {
+          e._idx = idx;
+          return e;
+        });
+
+        const countBadge = document.getElementById('sidebarCounterBadge');
+        if (countBadge) {
+          countBadge.textContent = window.activityEvents.length;
+        }
+
+        renderSidebarAuditTable();
+      } catch (err) {
+        console.error('Failed to load sidebar audit:', err);
+      }
+    }
+
+    function openActivityDetail(idx) {
+      const e = window.activityEvents.find(item => item._idx === idx);
+      if (!e) return;
+
+      const dec = (e.decision || 'ASK').toUpperCase();
+      const badgeClass = dec === 'ALLOW' ? 'verdict-allow' : (dec === 'DENY' ? 'verdict-deny' : 'verdict-ask');
+
+      document.getElementById('detailToolTitle').textContent = e.tool ? `Tool: ${e.tool}` : 'Tool Execution Details';
+      const badge = document.getElementById('detailVerdictBadge');
+      badge.textContent = dec;
+      badge.className = `verdict-tag ${badgeClass}`;
+
+      document.getElementById('detailTimestamp').textContent = e.timestamp || 'N/A';
+      document.getElementById('detailReason').textContent = e.reason || 'No rationale provided.';
+      document.getElementById('detailArgsPre').textContent = e.args ? JSON.stringify(e.args, null, 2) : '{}';
+
+      document.getElementById('detailConversationId').textContent = e.conversationId ? `Conv: ${e.conversationId.slice(0, 16)}...` : '';
+      document.getElementById('detailStepIdx').textContent = e.stepIdx !== undefined && e.stepIdx !== -1 ? `Step: #${e.stepIdx}` : '';
+
+      openModal('activityDetailModal');
+    }
+
+    function copyDetailArgs() {
+      const pre = document.getElementById('detailArgsPre');
+      if (!pre) return;
+      navigator.clipboard.writeText(pre.textContent).then(() => {
+        alert('Arguments JSON copied to clipboard!');
+      }).catch(err => {
+        console.error('Failed to copy args:', err);
+      });
+    }
+
     async function loadAudit() {
       try {
-        const res = await fetch('/api/audit?limit=25');
+        const res = await fetch('/api/audit?limit=30');
         const events = await res.json();
         const tbody = document.getElementById('auditBody');
         if (!events || events.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 24px;">No audit events recorded yet.</td></tr>';
+          if (tbody) tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 24px;">No audit events recorded yet.</td></tr>';
           return;
         }
-        tbody.innerHTML = events.reverse().map(e => {
-          const ts = (e.timestamp || '').slice(11, 19);
-          const dec = (e.decision || 'ASK').toUpperCase();
-          const badgeClass = dec === 'ALLOW' ? 'verdict-allow' : (dec === 'DENY' ? 'verdict-deny' : 'verdict-ask');
-          const argText = e.args && (e.args.CommandLine || e.args.TargetFile || e.args.AbsolutePath || JSON.stringify(e.args));
-          const safeTs = escapeHtml(ts);
-          const safeDec = escapeHtml(dec);
-          const safeBadge = escapeHtml(badgeClass);
-          const safeTool = escapeHtml(e.tool || '');
-          const safeArg = escapeHtml((argText || '').slice(0, 42));
-          const safeReason = escapeHtml(e.reason || '');
-          return `
-            <tr>
-              <td style="color: var(--text-muted);">${safeTs}</td>
-              <td><span class="verdict-tag ${safeBadge}" style="margin:0; padding:2px 7px;">${safeDec}</span></td>
-              <td style="color: #ffffff; font-weight: 500;">${safeTool}</td>
-              <td style="color: #ffffff;">${safeArg}</td>
-              <td style="color: var(--text-muted); font-size: 11px;">${safeReason}</td>
-            </tr>
-          `;
-        }).join('');
+        if (tbody) {
+          tbody.innerHTML = events.slice().reverse().map(e => {
+            const ts = (e.timestamp || '').slice(11, 19);
+            const dec = (e.decision || 'ASK').toUpperCase();
+            const badgeClass = dec === 'ALLOW' ? 'verdict-allow' : (dec === 'DENY' ? 'verdict-deny' : 'verdict-ask');
+            const argText = e.args && (e.args.CommandLine || e.args.TargetFile || e.args.AbsolutePath || e.args.Query || JSON.stringify(e.args));
+            const safeTs = escapeHtml(ts);
+            const safeDec = escapeHtml(dec);
+            const safeBadge = escapeHtml(badgeClass);
+            const safeTool = escapeHtml(e.tool || '');
+            const safeArg = escapeHtml((argText || '').slice(0, 42));
+            const safeReason = escapeHtml(e.reason || '');
+            return `
+              <tr>
+                <td style="color: var(--text-muted);">${safeTs}</td>
+                <td><span class="verdict-tag ${safeBadge}" style="margin:0; padding:2px 7px;">${safeDec}</span></td>
+                <td style="color: #ffffff; font-weight: 500;">${safeTool}</td>
+                <td style="color: #ffffff;">${safeArg}</td>
+                <td style="color: var(--text-muted); font-size: 11px;">${safeReason}</td>
+              </tr>
+            `;
+          }).join('');
+        }
+
+        // Also refresh sidebar data
+        loadSidebarAudit();
       } catch (err) {
         console.error('Failed to load audit:', err);
       }
@@ -2463,6 +3010,7 @@
     async function clearAudit() {
       await fetch('/api/clear_audit', { method: 'POST' });
       await loadAudit();
+      await loadSidebarAudit();
     }
 
     // In-App Update Downloader Logic
@@ -2474,7 +3022,7 @@
       const title = document.getElementById('updateStatusTitle');
       const sub = document.getElementById('updateStatusSub');
       const currentVerEl = document.getElementById('updateCurrentVer');
-      const curVer = (currentConfig && currentConfig.version) || '0.1.6';
+      const curVer = (currentConfig && currentConfig.version) || '0.1.7';
       if (currentVerEl) currentVerEl.textContent = 'v' + curVer;
 
       if (!silent && title) {
@@ -3125,6 +3673,24 @@
       }
     }
 
+    // Restore sidebar pinned state
+    if (localStorage.getItem('antiagent_sidebar_pinned') === 'true') {
+      togglePinSidebar(true);
+    }
+
+    // Keyboard shortcuts: Cmd+B / Ctrl+B to toggle sidebar, Esc to close
+    window.addEventListener('keydown', (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'b') {
+        e.preventDefault();
+        toggleActivitySidebar();
+      } else if (e.key === 'Escape') {
+        const sidebar = document.getElementById('activitySidebar');
+        if (sidebar && sidebar.classList.contains('open') && !sidebar.classList.contains('pinned')) {
+          closeActivitySidebar();
+        }
+      }
+    });
+
     window.addEventListener('resize', () => updateStanceIndicator(true));
     window.addEventListener('DOMContentLoaded', () => updateStanceIndicator(true));
     if (document.fonts && document.fonts.ready) {
@@ -3137,6 +3703,7 @@
       updateStanceIndicator(true);
     });
     loadAudit();
+    loadSidebarAudit();
     setInterval(loadAudit, 3000);
   </script>
 </body>

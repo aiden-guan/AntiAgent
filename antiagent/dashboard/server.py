@@ -7,7 +7,7 @@ import sys
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 from urllib.parse import parse_qs, urlparse
 
 from antiagent import __version__
@@ -124,7 +124,8 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
         elif path == "/api/audit":
             query = parse_qs(parsed_url.query)
             limit = int(query.get("limit", ["25"])[0])
-            self._handle_api_audit(limit)
+            include_tool_calls_param = query.get("include_tool_calls", [None])[0]
+            self._handle_api_audit(limit, include_tool_calls_param)
         elif path == "/api/doctor":
             self._handle_api_doctor()
         elif path == "/api/onboarding":
@@ -412,14 +413,19 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
             "custom_allow_patterns": cfg.custom_allow_patterns,
             "custom_deny_patterns": cfg.custom_deny_patterns,
             "audit_log_path": cfg.audit_log_path,
+            "audit_include_tool_calls": cfg.audit_include_tool_calls,
             "onboarding_completed": cfg.onboarding_completed,
         }
         self._send_json(resp)
 
-    def _handle_api_audit(self, limit: int) -> None:
+    def _handle_api_audit(self, limit: int, include_tool_calls_param: Optional[str] = None) -> None:
         cfg = load_config(self.workspace_path)
+        if include_tool_calls_param is not None:
+            include_tool_calls = include_tool_calls_param.lower() in ("true", "1", "yes")
+        else:
+            include_tool_calls = cfg.audit_include_tool_calls
         logger = AuditLogger(cfg.audit_log_path)
-        entries = logger.read_recent(limit=limit)
+        entries = logger.read_recent(limit=limit, include_tool_calls=include_tool_calls)
         self._send_json(entries)
 
     def _handle_api_config(self, body: Dict[str, Any]) -> None:
@@ -452,6 +458,8 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
             cfg.auto_review = bool(body["auto_review"])
         if "audit_enabled" in body:
             cfg.audit_enabled = bool(body["audit_enabled"])
+        if "audit_include_tool_calls" in body:
+            cfg.audit_include_tool_calls = bool(body["audit_include_tool_calls"])
         if "auto_pr_monitor" in body:
             cfg.auto_pr_monitor = bool(body["auto_pr_monitor"])
         if "pr_monitor_auto_merge" in body:

@@ -42,15 +42,17 @@ def handle_pre_tool_use(payload: Dict[str, Any]) -> Dict[str, Any]:
 
     # Log to audit trail if enabled
     if config.audit_enabled:
-        audit_logger = AuditLogger(config.audit_log_path)
-        audit_logger.log_event(
-            tool_name=tool_name,
-            tool_args=tool_args,
-            decision=result.decision,
-            reason=result.reason,
-            conversation_id=conversation_id,
-            step_idx=step_idx,
-        )
+        is_command = (tool_name == "run_command")
+        if is_command or config.audit_include_tool_calls:
+            audit_logger = AuditLogger(config.audit_log_path)
+            audit_logger.log_event(
+                tool_name=tool_name,
+                tool_args=tool_args,
+                decision=result.decision,
+                reason=result.reason,
+                conversation_id=conversation_id,
+                step_idx=step_idx,
+            )
 
     return result.to_antigravity_dict()
 

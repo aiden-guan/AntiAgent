@@ -5,6 +5,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ---
 
+## [v0.1.7] — 2026-09-22
+
+### Summary
+Introduced a high-density, real-time Activity Sidebar and audit log toggle (`audit_include_tool_calls`), solving the problem of agent tool calls, file accesses, searches, and exploratory operations getting buried in chat accordions during complex tasks. Developers and security auditors can now view, filter, dock, and inspect every command and tool invocation with full JSON payloads and rationale without cluttering default command logs.
+
+### Architectural & Functional Highlights
+
+| Area / Component | Improvement |
+| :--- | :--- |
+| **Activity Sidebar** | Added slide-out, dockable/pinnable Activity Sidebar (`#activitySidebar`) in `antiagent/dashboard/assets/index.html` with keyboard shortcut (<kbd>Cmd</kbd>+<kbd>B</kbd> / <kbd>Ctrl</kbd>+<kbd>B</kbd>), live activity count badge, category filters (Commands, Files, Searches, Other), verdict chips, and real-time search filtering. |
+| **Activity Inspector Modal** | Added dense JSON inspector modal (`#activityDetailModal`) showing timestamp, tool name, verdict badge, formatted JSON arguments, agent rationale, and conversation context with 1-click clipboard copy. |
+| **Tool Calls Audit Toggle** | Added `audit_include_tool_calls: bool` config parameter (default `False`), configurable via dashboard switch in Card 3, CLI (`antiagent config --set-audit-include-tool-calls true|false`), or environment variable `ANTIAGENT_AUDIT_INCLUDE_TOOL_CALLS`. |
+| **Hook & Audit Logging** | Updated `antiagent/hook.py` and `antiagent/audit/logger.py` to record tool calls and explorations when enabled, while maintaining lean command-only audit records by default. |
+| **API & CLI Enhancements** | Added `include_tool_calls` query parameter to `GET /api/audit`, exposed status in `GET /api/status`, added `--all-tools` and `--commands-only` flags to `antiagent audit`, and displayed state in `antiagent status`. |
+| **Automated Verification** | Added comprehensive unit test suite in `tests/test_activity_sidebar.py` verifying config persistence, hook logging gating, audit log filtering, API endpoints, CLI arguments, and DOM elements. |
+
+### Verification Proof
+- All 124 unit tests passed (`python3 -m unittest discover tests`).
+- Verified live rendering, docking, search, filtering, and detail modal inspection across all tool categories and verdicts.
+
+---
+
 ## [v0.1.6] — 2026-09-22
 
 ### Summary

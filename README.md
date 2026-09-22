@@ -231,11 +231,15 @@ antiagent config --set-provider gemini --set-model gemini-2.5-flash
 
 # Toggle Auto-PR monitoring & auto-merge
 antiagent config --set-auto-pr-monitor true --set-pr-auto-merge false
+
+# Include file explorations & tool calls in audit log alongside commands
+antiagent config --set-audit-include-tool-calls true
 ```
 
 Supported Environment Variables:
 - `ANTIAGENT_PROFILE`: `balanced` | `paranoid` | `autonomous`
 - `ANTIAGENT_PROVIDER`: `native` | `gemini` | `openai` | `ollama` | `offline`
+- `ANTIAGENT_AUDIT_INCLUDE_TOOL_CALLS`: `true` | `false` (default: `false` for commands only)
 - `ANTIAGENT_AUTO_PR_MONITOR`: `true` | `false`
 - `ANTIAGENT_PR_AUTO_MERGE`: `true` | `false`
 - `ANTIAGENT_PR_INTERVAL`: Polling interval in seconds (default: 15)
@@ -285,7 +289,7 @@ Sample output:
 | `antiagent uninstall [--global]` | Remove safety hook |
 | `antiagent status` | View active protection scope, profiles, and provider |
 | `antiagent test` | Run full security test matrix |
-| `antiagent audit [--limit N]` | Inspect recent security verdicts and audit history |
+| `antiagent audit [--limit N] [--all-tools]` | Inspect recent security verdicts and activity audit history |
 | `antiagent config` | View and modify configuration settings |
 | `antiagent build-dmg` | Package macOS `.dmg`, `.pkg`, and `.zip` installers |
 | `antiagent build-windows` | Package standalone `AntiAgent-Windows.zip` (Windows Beta) |

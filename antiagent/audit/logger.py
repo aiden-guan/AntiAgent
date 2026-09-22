@@ -62,7 +62,7 @@ class AuditLogger:
         except Exception as e:
             sys.stderr.write(f"[antiagent] Failed to write audit log: {e}\n")
 
-    def read_recent(self, limit: int = 25) -> List[Dict[str, Any]]:
+    def read_recent(self, limit: int = 25, include_tool_calls: bool = True) -> List[Dict[str, Any]]:
         """Read the most recent audit entries without unbounded memory consumption."""
         if not self.log_path.is_file():
             return []
@@ -83,13 +83,19 @@ class AuditLogger:
                 if file_size > max_read and len(lines) > 1:
                     lines = lines[1:]
 
-                for line in lines[-limit:]:
+                for line in reversed(lines):
                     line = line.strip()
                     if line:
                         try:
-                            entries.append(json.loads(line))
+                            entry = json.loads(line)
+                            if not include_tool_calls and entry.get("tool") != "run_command":
+                                continue
+                            entries.append(entry)
+                            if len(entries) >= limit:
+                                break
                         except Exception:
                             continue
+                entries.reverse()
         except Exception as e:
             sys.stderr.write(f"[antiagent] Failed to read audit log: {e}\n")
 

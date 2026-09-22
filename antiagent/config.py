@@ -49,6 +49,7 @@ class AntiAgentConfig:
     # Audit logging
     audit_enabled: bool = True
     audit_log_path: Optional[str] = None
+    audit_include_tool_calls: bool = False
 
     # Onboarding completion status
     onboarding_completed: bool = False
@@ -169,6 +170,9 @@ def load_config(workspace_dir: Optional[str] = None) -> AntiAgentConfig:
             cfg.pr_monitor_interval = max(3, int(os.getenv("ANTIAGENT_PR_INTERVAL")))
         except ValueError:
             pass
+
+    if os.getenv("ANTIAGENT_AUDIT_INCLUDE_TOOL_CALLS"):
+        cfg.audit_include_tool_calls = os.getenv("ANTIAGENT_AUDIT_INCLUDE_TOOL_CALLS").lower() in ("true", "1", "yes")
 
     return cfg
 
