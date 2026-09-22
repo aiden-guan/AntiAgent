@@ -4,536 +4,1061 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AntiAgent Dashboard — Antigravity Safety Gatekeeper</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg: #0d1117;
-      --card-bg: rgba(22, 27, 34, 0.85);
-      --card-border: #30363d;
-      --text: #f0f6fc;
-      --text-muted: #8b949e;
-      --primary: #58a6ff;
-      --primary-hover: #1f6feb;
-      --success: #3fb950;
-      --success-bg: rgba(63, 185, 80, 0.15);
-      --warning: #d29922;
-      --warning-bg: rgba(210, 153, 34, 0.15);
-      --danger: #f85149;
-      --danger-bg: rgba(248, 81, 73, 0.15);
-      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      --bg: #050507;
+      --card-bg: rgba(14, 15, 18, 0.72);
+      --card-bg-hover: rgba(20, 22, 27, 0.85);
+      --inner-card: rgba(8, 9, 12, 0.8);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --card-border-active: rgba(255, 255, 255, 0.22);
+      --card-border-subtle: rgba(255, 255, 255, 0.04);
+      --text: #f4f4f5;
+      --text-muted: #82828e;
+      --text-dim: #52525b;
+      --primary: #ffffff;
+      --primary-text: #050507;
+      --primary-hover: #e4e4e7;
+      --accent-pill: rgba(255, 255, 255, 0.06);
+      --accent-pill-hover: rgba(255, 255, 255, 0.12);
+      --status-active-pip: #22c55e;
+      --status-inactive-pip: #52525b;
+      --danger: #f87171;
+      --danger-bg: rgba(248, 113, 113, 0.08);
+      --danger-border: rgba(248, 113, 113, 0.25);
+      --warning: #fbbf24;
+      --warning-bg: rgba(251, 191, 36, 0.08);
+      --warning-border: rgba(251, 191, 36, 0.25);
+      --success: #4ade80;
+      --success-bg: rgba(74, 222, 128, 0.08);
+      --success-border: rgba(74, 222, 128, 0.25);
+      --font: 'Geist', -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
+      --font-mono: 'JetBrains Mono', SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
     }
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
+
     body {
       background-color: var(--bg);
       color: var(--text);
       font-family: var(--font);
       line-height: 1.5;
-      padding-bottom: 80px;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      overflow-x: hidden;
+      min-height: 100vh;
+      padding-bottom: 96px;
+      position: relative;
     }
-    .container {
-      max-width: 1100px;
-      margin: 0 auto;
-      padding: 0 20px;
-    }
-    header {
-      border-bottom: 1px solid var(--card-border);
-      background: rgba(13, 17, 23, 0.95);
-      backdrop-filter: blur(10px);
-      position: sticky;
+
+    /* Ambient Background & Grid Texture */
+    #ambientCanvas {
+      position: fixed;
       top: 0;
-      z-index: 100;
-      padding: 14px 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.55;
     }
-    .header-content {
+
+    .noise-overlay {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 1;
+      opacity: 0.022;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+    }
+
+    .ambient-radial-glow {
+      position: fixed;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 1000px;
+      height: 480px;
+      background: radial-gradient(50% 50% at 50% 0%, rgba(255, 255, 255, 0.05) 0%, transparent 100%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 0 24px;
+      position: relative;
+      z-index: 2;
+    }
+
+    /* Floating Island Nav Header */
+    header {
+      position: sticky;
+      top: 14px;
+      z-index: 100;
+      margin: 14px 20px 0;
+    }
+
+    .header-island {
+      max-width: 1180px;
+      margin: 0 auto;
+      background: rgba(10, 11, 14, 0.8);
+      backdrop-filter: blur(28px) saturate(190%);
+      -webkit-backdrop-filter: blur(28px) saturate(190%);
+      border: 1px solid var(--card-border);
+      border-radius: 9999px;
+      padding: 10px 18px;
       display: flex;
       justify-content: space-between;
       align-items: center;
       gap: 16px;
-      flex-wrap: wrap;
+      box-shadow: 0 16px 36px -10px rgba(0, 0, 0, 0.75), inset 0 1px 0 0 rgba(255, 255, 255, 0.1);
+      transition: border-color 0.3s ease;
     }
+
     .logo-group {
       display: flex;
       align-items: center;
       gap: 12px;
+      cursor: default;
     }
-    .logo-icon { font-size: 28px; }
+
+    .logo-badge {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: #000000;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.2), 0 0 15px rgba(255, 255, 255, 0.05);
+      position: relative;
+    }
+
+    .logo-title-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
     .logo-title {
-      font-size: 20px;
+      font-size: 16px;
       font-weight: 700;
-      letter-spacing: -0.5px;
+      letter-spacing: -0.03em;
+      color: #ffffff;
     }
+
     .version-tag {
+      font-family: var(--font-mono);
       font-size: 11px;
-      background: #21262d;
+      font-weight: 500;
+      background: rgba(255, 255, 255, 0.05);
       padding: 2px 8px;
-      border-radius: 12px;
+      border-radius: 9999px;
       color: var(--text-muted);
       border: 1px solid var(--card-border);
+      transition: all 0.2s var(--ease-spring);
     }
+    .version-tag:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: #ffffff;
+      border-color: rgba(255, 255, 255, 0.25);
+    }
+
     .header-badges {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 8px;
+      flex-wrap: wrap;
     }
+
+    /* Status Badges & Pips */
     .status-badge {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
-      padding: 4px 12px;
-      border-radius: 20px;
+      gap: 7px;
+      padding: 6px 12px;
+      border-radius: 9999px;
       font-size: 12px;
-      font-weight: 600;
+      font-weight: 500;
+      letter-spacing: -0.01em;
+      transition: all 0.2s var(--ease-spring);
+      user-select: none;
+      border: 1px solid transparent;
+      cursor: pointer;
     }
-    .badge-active { background: var(--success-bg); color: var(--success); border: 1px solid rgba(63, 185, 80, 0.3); }
-    .badge-inactive { background: var(--warning-bg); color: var(--warning); border: 1px solid rgba(210, 153, 34, 0.3); }
-    button.status-badge:hover { opacity: 0.9; filter: brightness(1.1); transform: translateY(-1px); }
-    button.status-badge:active { transform: scale(0.97); }
+
+    .status-badge:active {
+      transform: scale(0.96);
+    }
+
+    .badge-active {
+      background: rgba(255, 255, 255, 0.06);
+      color: #ffffff;
+      border-color: rgba(255, 255, 255, 0.16);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    }
+    .badge-active:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.3);
+      transform: translateY(-1px);
+    }
+
+    .badge-inactive {
+      background: rgba(255, 255, 255, 0.02);
+      color: var(--text-muted);
+      border-color: rgba(255, 255, 255, 0.06);
+    }
+    .badge-inactive:hover {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text);
+      border-color: rgba(255, 255, 255, 0.15);
+      transform: translateY(-1px);
+    }
+
+    .pip {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      display: inline-block;
+    }
+    .pip-active {
+      background: #ffffff;
+      box-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
+      animation: pulseGlow 2.5s infinite var(--ease-spring);
+    }
+    .pip-emerald {
+      background: #22c55e;
+      box-shadow: 0 0 8px rgba(34, 197, 94, 0.8);
+      animation: pulseGlowEmerald 2.5s infinite var(--ease-spring);
+    }
+    .pip-inactive {
+      background: var(--status-inactive-pip);
+    }
+
+    @keyframes pulseGlow {
+      0%, 100% { transform: scale(1); opacity: 0.9; }
+      50% { transform: scale(1.25); opacity: 0.5; }
+    }
+    @keyframes pulseGlowEmerald {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.3); opacity: 0.45; }
+    }
+
+    /* Buttons (Shadcn UI style with fluid spring physics) */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      font-size: 13px;
+      font-weight: 500;
+      letter-spacing: -0.01em;
+      padding: 8px 16px;
+      border-radius: 9999px;
+      border: 1px solid transparent;
+      cursor: pointer;
+      font-family: inherit;
+      user-select: none;
+      white-space: nowrap;
+      position: relative;
+      overflow: hidden;
+      transition: transform 120ms cubic-bezier(0.16, 1, 0.3, 1),
+                  background-color 160ms cubic-bezier(0.16, 1, 0.3, 1),
+                  border-color 160ms cubic-bezier(0.16, 1, 0.3, 1),
+                  box-shadow 160ms cubic-bezier(0.16, 1, 0.3, 1),
+                  color 160ms cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .btn:active {
+      transform: scale(0.96);
+    }
+    .btn:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 2px #050507, 0 0 0 4px rgba(255, 255, 255, 0.4);
+    }
+
+    .btn-primary {
+      background: #ffffff;
+      color: #09090b;
+      font-weight: 600;
+      border: 1px solid rgba(255, 255, 255, 0.9);
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), inset 0 1px 1px #ffffff;
+    }
+    .btn-primary::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        105deg,
+        transparent 30%,
+        rgba(255, 255, 255, 0.45) 50%,
+        transparent 70%
+      );
+      transform: translateX(-100%);
+      transition: transform 0.65s cubic-bezier(0.16, 1, 0.3, 1);
+      pointer-events: none;
+    }
+    .btn-primary:hover::after {
+      transform: translateX(100%);
+    }
+    .btn-primary:hover {
+      background: #f4f4f5;
+      border-color: #ffffff;
+      box-shadow: 0 6px 22px -4px rgba(255, 255, 255, 0.35), inset 0 1px 1px #ffffff;
+      transform: translateY(-1px);
+    }
+    .btn-primary:active {
+      transform: scale(0.96) translateY(0);
+      box-shadow: 0 2px 8px -2px rgba(255, 255, 255, 0.2);
+    }
+
+    .btn-outline {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #e4e4e7;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    }
+    .btn-outline:hover {
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(255, 255, 255, 0.28);
+      color: #ffffff;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 16px -4px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    }
+    .btn-outline:active {
+      transform: scale(0.96) translateY(0);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .btn-danger {
+      background: rgba(239, 68, 68, 0.08);
+      border: 1px solid rgba(239, 68, 68, 0.25);
+      color: #f87171;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    }
+    .btn-danger:hover {
+      background: rgba(239, 68, 68, 0.18);
+      border-color: rgba(239, 68, 68, 0.5);
+      color: #ffffff;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 18px -3px rgba(239, 68, 68, 0.3);
+    }
+    .btn-danger:active {
+      transform: scale(0.96) translateY(0);
+    }
+
+    .btn-sm {
+      padding: 6px 13px;
+      font-size: 12px;
+      border-radius: 9999px;
+    }
+
+    .btn svg.icon {
+      transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .btn:hover svg.icon {
+      transform: scale(1.08);
+    }
+
+    .btn-icon-circle {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: rgba(0, 0, 0, 0.12);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin-left: 2px;
+      margin-right: -4px;
+      transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .btn:hover .btn-icon-circle {
+      transform: translateX(1px);
+    }
+
+    /* Workspace Bar */
     .workspace-bar {
-      background: #161b22;
+      background: rgba(14, 15, 18, 0.65);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
       border: 1px solid var(--card-border);
-      border-radius: 10px;
-      padding: 14px 18px;
-      margin-top: 20px;
+      border-radius: 20px;
+      padding: 14px 20px;
+      margin-top: 24px;
       display: flex;
       justify-content: space-between;
       align-items: center;
       flex-wrap: wrap;
-      gap: 12px;
+      gap: 14px;
+      box-shadow: 0 12px 30px -10px rgba(0, 0, 0, 0.5), inset 0 1px 0 0 rgba(255, 255, 255, 0.07);
     }
+
     .ws-info {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 12px;
       font-size: 13px;
     }
-    .ws-path {
-      font-family: monospace;
-      background: #0d1117;
-      padding: 4px 10px;
-      border-radius: 6px;
-      border: 1px solid var(--card-border);
-      color: var(--primary);
+
+    .eyebrow-label {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
     }
+
+    .project-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      background: rgba(8, 9, 12, 0.85);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 8px 16px;
+      cursor: pointer;
+      transition: all 0.2s var(--ease-spring);
+      user-select: none;
+    }
+    .project-pill:hover {
+      border-color: rgba(255, 255, 255, 0.3);
+      background: rgba(20, 22, 28, 0.95);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+      transform: translateY(-1px);
+    }
+    .project-pill:active {
+      transform: scale(0.98);
+    }
+    .project-pill-global {
+      border-color: rgba(255, 255, 255, 0.2);
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    /* Dashboard Layout Grid */
     .dashboard-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 20px;
       margin-top: 20px;
     }
-    @media (max-width: 900px) {
+    @media (max-width: 960px) {
       .dashboard-grid { grid-template-columns: 1fr; }
     }
+
+    /* Double-Bezel Hardware Cards */
     .card {
       background: var(--card-bg);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
       border: 1px solid var(--card-border);
-      border-radius: 12px;
-      padding: 22px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+      border-radius: 22px;
+      padding: 24px;
+      box-shadow: 0 24px 48px -18px rgba(0, 0, 0, 0.85), inset 0 1px 0 0 rgba(255, 255, 255, 0.08);
+      position: relative;
+      overflow: hidden;
+      transition: border-color 0.25s var(--ease-spring), box-shadow 0.25s var(--ease-spring);
     }
+    .card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 22px;
+      padding: 1px;
+      background: radial-gradient(400px circle at var(--mouse-x, -500px) var(--mouse-y, -500px), rgba(255, 255, 255, 0.18), transparent 40%);
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      pointer-events: none;
+      opacity: 0.8;
+      transition: opacity 0.3s ease;
+    }
+
     .card-title {
-      font-size: 15px;
+      font-size: 14px;
       font-weight: 600;
-      margin-bottom: 16px;
+      letter-spacing: -0.02em;
+      color: #ffffff;
+      margin-bottom: 20px;
       display: flex;
       align-items: center;
       justify-content: space-between;
     }
-    .btn {
-      display: inline-flex;
+
+    .card-title-left {
+      display: flex;
       align-items: center;
-      justify-content: center;
-      gap: 6px;
+      gap: 9px;
+    }
+
+    .card-title-icon {
+      width: 18px;
+      height: 18px;
+      color: var(--text-muted);
+    }
+
+    /* Nested Inner Hardware Boxes */
+    .hook-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    @media (max-width: 600px) {
+      .hook-grid { grid-template-columns: 1fr; }
+    }
+
+    .hook-box {
+      background: var(--inner-card);
+      border: 1px solid var(--card-border-subtle);
+      border-radius: 14px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+      transition: border-color 0.2s var(--ease-spring);
+    }
+    .hook-box:hover {
+      border-color: rgba(255, 255, 255, 0.12);
+    }
+    .hook-box h4 {
       font-size: 13px;
       font-weight: 600;
-      padding: 8px 14px;
-      border-radius: 6px;
-      border: 1px solid transparent;
-      cursor: pointer;
-      transition: all 0.15s ease;
+      letter-spacing: -0.01em;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      color: #ffffff;
     }
-    .btn-primary { background: #238636; color: #fff; }
-    .btn-primary:hover { background: #2ea043; }
-    .btn-danger { background: #da3633; color: #fff; }
-    .btn-danger:hover { background: #b62324; }
-    .btn-outline { background: #21262d; border-color: var(--card-border); color: var(--text); }
-    .btn-outline:hover { background: #30363d; border-color: var(--text-muted); }
-    .btn-blue { background: #1f6feb; color: #fff; }
-    .btn-blue:hover { background: #388bfd; }
-    .btn-sm { padding: 4px 10px; font-size: 12px; }
+    .hook-box p {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 14px;
+      line-height: 1.45;
+      min-height: 36px;
+    }
+
+    /* Segmented Control (Shadcn Tabs with fluid spring sliding pill) */
     .segmented-control {
       display: flex;
-      background: #0d1117;
-      border: 1px solid var(--card-border);
-      border-radius: 8px;
-      padding: 3px;
+      background: rgba(10, 11, 15, 0.95);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+      padding: 4px;
       margin-bottom: 14px;
+      gap: 3px;
+      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.6);
+      position: relative;
+      user-select: none;
+    }
+    .segmented-indicator {
+      position: absolute;
+      top: 4px;
+      bottom: 4px;
+      left: 0;
+      width: 0;
+      background: #ffffff;
+      border-radius: 10px;
+      box-shadow: 0 3px 12px rgba(0, 0, 0, 0.45), 0 1px 2px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 1);
+      z-index: 1;
+      pointer-events: none;
+      opacity: 0;
+      transform: translateX(0);
+      transition: transform 0.32s cubic-bezier(0.34, 1.28, 0.64, 1), width 0.32s cubic-bezier(0.34, 1.28, 0.64, 1), opacity 0.15s ease;
+      will-change: transform, width;
     }
     .segmented-btn {
       flex: 1;
-      padding: 8px 10px;
+      position: relative;
+      z-index: 2;
+      padding: 8px 14px;
       text-align: center;
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 500;
+      letter-spacing: -0.01em;
       border: none;
-      background: transparent;
+      background: transparent !important;
       color: var(--text-muted);
       cursor: pointer;
-      border-radius: 6px;
-      transition: all 0.15s ease;
+      border-radius: 10px;
+      transition: color 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.12s ease-out;
+      font-family: inherit;
+      user-select: none;
+      box-shadow: none !important;
+    }
+    .segmented-btn:hover {
+      color: #ffffff;
+    }
+    .segmented-btn:active {
+      transform: scale(0.97);
     }
     .segmented-btn.active {
-      background: #21262d;
-      color: var(--text);
+      color: #09090b !important;
       font-weight: 600;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+      background: transparent !important;
+      box-shadow: none !important;
     }
-    .form-group { margin-bottom: 14px; }
+    .segmented-btn.active:hover {
+      color: #09090b !important;
+    }
+
+    /* Form Controls (Shadcn input aesthetic) */
+    .form-group { margin-bottom: 16px; }
     .form-group label {
       display: block;
-      font-size: 11px;
+      font-size: 10px;
       font-weight: 600;
       color: var(--text-muted);
-      margin-bottom: 6px;
+      margin-bottom: 7px;
       text-transform: uppercase;
-      letter-spacing: 0.5px;
+      letter-spacing: 0.14em;
     }
     .form-control {
       width: 100%;
-      background: #0d1117;
-      border: 1px solid var(--card-border);
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.1);
       color: var(--text);
-      padding: 8px 12px;
-      border-radius: 6px;
+      padding: 10px 14px;
+      border-radius: 10px;
       font-size: 13px;
       font-family: inherit;
+      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.4);
+      transition: border-color 0.15s cubic-bezier(0.16, 1, 0.3, 1),
+                  box-shadow 0.15s cubic-bezier(0.16, 1, 0.3, 1),
+                  background-color 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+      outline: none;
     }
-    .form-control:focus { outline: none; border-color: var(--primary); }
-    textarea.form-control { font-family: monospace; font-size: 12px; resize: vertical; }
+    .form-control:hover {
+      border-color: rgba(255, 255, 255, 0.18);
+    }
+    .form-control:focus {
+      border-color: rgba(255, 255, 255, 0.45);
+      background: rgba(255, 255, 255, 0.04);
+      box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.45), 0 0 20px rgba(255, 255, 255, 0.06);
+    }
+    textarea.form-control {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      resize: vertical;
+      line-height: 1.6;
+    }
+
+    /* Monochrome Toggle Row */
     .toggle-row {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 10px 0;
-      border-bottom: 1px solid rgba(48, 54, 61, 0.4);
+      padding: 13px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
     }
     .toggle-row:last-child { border-bottom: none; }
-    .toggle-label { font-size: 13px; font-weight: 500; }
-    .toggle-sublabel { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+    .toggle-label { font-size: 13px; font-weight: 500; color: #ffffff; letter-spacing: -0.01em; }
+    .toggle-sublabel { font-size: 11px; color: var(--text-muted); margin-top: 2px; line-height: 1.4; }
+
+    /* Smooth Liquid Glass Toggle Switches */
     .toggle-switch {
       position: relative;
       display: inline-block;
       width: 44px;
       height: 24px;
       flex-shrink: 0;
+      cursor: pointer;
     }
-    .toggle-switch input { opacity: 0; width: 0; height: 0; }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; position: absolute; }
     .toggle-slider {
       position: absolute;
       cursor: pointer;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background-color: #30363d;
-      transition: .2s;
-      border-radius: 24px;
+      inset: 0;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 9999px;
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+      transition: background-color 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+                  border-color 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+                  box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .toggle-switch:hover .toggle-slider {
+      background: rgba(255, 255, 255, 0.09);
+      border-color: rgba(255, 255, 255, 0.22);
+      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.6), 0 0 12px rgba(255, 255, 255, 0.1);
     }
     .toggle-slider:before {
       position: absolute;
       content: "";
       height: 18px;
       width: 18px;
-      left: 3px;
-      bottom: 3px;
-      background-color: white;
-      transition: .2s;
-      border-radius: 50%;
+      left: 2px;
+      bottom: 2px;
+      background: #e4e4e7;
+      border-radius: 9999px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6), 0 0 1px rgba(255, 255, 255, 0.8), inset 0 1px 1px #ffffff;
+      transition: transform 0.34s cubic-bezier(0.34, 1.45, 0.64, 1),
+                  width 0.18s ease-out,
+                  background-color 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+                  box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1);
     }
-    input:checked + .toggle-slider { background-color: #238636; }
-    input:checked + .toggle-slider:before { transform: translateX(20px); }
-    .hook-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-      margin-bottom: 16px;
+    /* Liquid glass dynamic stretch upon press */
+    .toggle-switch:active .toggle-slider:before {
+      width: 23px;
     }
-    .hook-box {
-      background: #0d1117;
-      border: 1px solid var(--card-border);
-      border-radius: 8px;
-      padding: 14px;
+    input:checked + .toggle-slider {
+      background-color: #ffffff;
+      border-color: #ffffff;
+      box-shadow: 0 0 24px rgba(255, 255, 255, 0.45), inset 0 1px 2px rgba(255, 255, 255, 0.8);
     }
-    .hook-box h4 {
-      font-size: 13px;
-      font-weight: 600;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 6px;
+    input:checked + .toggle-slider:before {
+      background-color: #09090b;
+      transform: translateX(20px);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45), inset 0 1px 1px rgba(255, 255, 255, 0.3);
     }
-    .hook-box p {
-      font-size: 11px;
-      color: var(--text-muted);
-      margin-bottom: 12px;
-      min-height: 32px;
+    .toggle-switch:active input:checked + .toggle-slider:before {
+      transform: translateX(15px);
+      width: 23px;
     }
-    .simulator-box { display: flex; gap: 8px; margin-bottom: 12px; }
+
+    /* Quick Preset Chips */
     .quick-preset-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
     .chip {
-      background: #21262d;
+      background: rgba(255, 255, 255, 0.03);
       border: 1px solid var(--card-border);
-      padding: 3px 8px;
-      border-radius: 12px;
+      padding: 5px 12px;
+      border-radius: 9999px;
       font-size: 11px;
-      font-family: monospace;
+      font-family: var(--font-mono);
       color: var(--text-muted);
       cursor: pointer;
-      transition: 0.15s;
+      transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+      user-select: none;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
     }
-    .chip:hover { background: #30363d; color: var(--text); border-color: var(--primary); }
+    .chip:hover {
+      background: rgba(255, 255, 255, 0.09);
+      color: #ffffff;
+      border-color: rgba(255, 255, 255, 0.28);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.4);
+    }
+    .chip:active {
+      transform: scale(0.95);
+    }
+
+    /* Simulator */
+    .simulator-box { display: flex; gap: 8px; margin-bottom: 14px; }
+    @media (max-width: 600px) {
+      .simulator-box { flex-direction: column; }
+    }
     .sim-result {
-      background: #0d1117;
+      background: rgba(8, 9, 12, 0.9);
       border: 1px solid var(--card-border);
-      border-radius: 8px;
-      padding: 14px;
+      border-radius: 12px;
+      padding: 16px;
       display: none;
-      animation: fadeIn 0.2s ease;
+      animation: fadeIn 0.25s var(--ease-spring);
     }
     @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(4px); }
+      from { opacity: 0; transform: translateY(6px); }
       to { opacity: 1; transform: translateY(0); }
     }
+
     .verdict-tag {
+      font-family: var(--font-mono);
       font-size: 11px;
       font-weight: 700;
       padding: 3px 8px;
-      border-radius: 4px;
+      border-radius: 6px;
       display: inline-block;
       margin-bottom: 6px;
+      letter-spacing: 0.04em;
     }
-    .verdict-allow { background: var(--success-bg); color: var(--success); border: 1px solid rgba(63,185,80,0.4); }
-    .verdict-ask { background: var(--warning-bg); color: var(--warning); border: 1px solid rgba(210,153,34,0.4); }
-    .verdict-deny { background: var(--danger-bg); color: var(--danger); border: 1px solid rgba(248,81,73,0.4); }
+    .verdict-allow { background: rgba(255, 255, 255, 0.09); color: #ffffff; border: 1px solid rgba(255, 255, 255, 0.25); }
+    .verdict-ask { background: var(--warning-bg); color: var(--warning); border: 1px solid var(--warning-border); }
+    .verdict-deny { background: var(--danger-bg); color: var(--danger); border: 1px solid var(--danger-border); }
+
+    /* Real-Time Audit Stream */
     .audit-section { margin-top: 24px; }
-    .audit-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 12px; }
+    .audit-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 14px; }
     .audit-table th {
       text-align: left;
-      padding: 8px 12px;
-      background: #161b22;
+      padding: 10px 14px;
+      background: rgba(8, 9, 12, 0.95);
       color: var(--text-muted);
+      font-size: 10px;
       font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
       border-bottom: 1px solid var(--card-border);
     }
     .audit-table td {
-      padding: 8px 12px;
-      border-bottom: 1px solid var(--card-border);
-      font-family: monospace;
+      padding: 10px 14px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      font-family: var(--font-mono);
       font-size: 12px;
+      color: #e4e4e7;
     }
-    .audit-table tr:hover td { background: rgba(255,255,255,0.02); }
+    .audit-table tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    /* Modal Architecture */
     .modal-overlay {
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0, 0, 0, 0.7);
-      backdrop-filter: blur(4px);
+      background: rgba(0, 0, 0, 0.78);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
       display: none;
       align-items: center;
       justify-content: center;
       z-index: 200;
+      padding: 20px;
     }
     .modal-card {
-      background: #161b22;
-      border: 1px solid var(--card-border);
-      border-radius: 12px;
-      padding: 24px;
+      background: rgba(12, 13, 16, 0.94);
+      border: 1px solid var(--card-border-active);
+      border-radius: 24px;
+      padding: 28px;
       width: 100%;
-      max-width: 500px;
-      box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+      max-width: 520px;
+      box-shadow: 0 30px 60px -15px rgba(0,0,0,0.9), inset 0 1px 0 0 rgba(255, 255, 255, 0.15);
+      animation: modalSpring 0.3s var(--ease-spring);
     }
-    .modal-title { font-size: 16px; font-weight: 600; margin-bottom: 14px; }
     .modal-card-lg {
       max-width: 760px;
       max-height: 85vh;
       overflow-y: auto;
     }
+    @keyframes modalSpring {
+      from { opacity: 0; transform: scale(0.96) translateY(8px); }
+      to { opacity: 1; transform: scale(1) translateY(0); }
+    }
+    .modal-title {
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: #ffffff;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .selector-option-card {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 18px;
+      background: rgba(8, 9, 12, 0.8);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      margin-bottom: 10px;
+      transition: all 0.2s var(--ease-spring);
+    }
+    .selector-option-card:hover {
+      border-color: rgba(255, 255, 255, 0.25);
+      background: rgba(20, 22, 28, 0.9);
+      transform: translateY(-1px);
+    }
+
     .doctor-row {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 10px 14px;
-      background: #0d1117;
+      padding: 12px 16px;
+      background: rgba(8, 9, 12, 0.85);
       border: 1px solid var(--card-border);
-      border-radius: 8px;
+      border-radius: 12px;
       margin-bottom: 8px;
     }
     .doctor-row-left {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 12px;
       font-size: 13px;
     }
     .doctor-row-sub {
       font-size: 11px;
       color: var(--text-muted);
       margin-top: 2px;
-      font-family: monospace;
+      font-family: var(--font-mono);
     }
-    .project-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 12px;
-      background: #0d1117;
-      border: 1px solid var(--card-border);
-      border-radius: 8px;
-      padding: 7px 14px;
-      cursor: pointer;
-      transition: all 0.15s ease;
-      user-select: none;
-    }
-    .project-pill:hover {
-      border-color: var(--primary);
-      background: #1c2128;
-      box-shadow: 0 2px 10px rgba(88, 166, 255, 0.12);
-    }
-    .project-pill-global {
-      border-color: rgba(88, 166, 255, 0.4);
-      background: rgba(88, 166, 255, 0.08);
-    }
-    .project-pill-global:hover {
-      border-color: var(--primary);
-      background: rgba(88, 166, 255, 0.15);
-    }
+
     .turbo-callout {
-      background: linear-gradient(135deg, rgba(210, 153, 34, 0.14) 0%, rgba(235, 179, 58, 0.04) 100%);
-      border: 1px solid rgba(210, 153, 34, 0.35);
-      border-radius: 12px;
-      padding: 18px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: 16px;
+      padding: 20px;
       margin-bottom: 20px;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
     }
-    .selector-option-card {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 12px 16px;
-      background: #0d1117;
-      border: 1px solid var(--card-border);
-      border-radius: 8px;
-      margin-bottom: 10px;
-      transition: all 0.15s ease;
-    }
-    .selector-option-card:hover {
-      border-color: var(--primary);
-      background: #161b22;
-    }
+
     .progress-track {
       width: 100%;
-      height: 10px;
-      background: #21262d;
-      border-radius: 6px;
+      height: 8px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 9999px;
       overflow: hidden;
       margin: 10px 0;
       border: 1px solid var(--card-border);
     }
     .progress-fill {
       height: 100%;
-      background: linear-gradient(90deg, #1f6feb 0%, #3fb950 100%);
+      background: #ffffff;
       width: 0%;
       transition: width 0.2s ease;
-      border-radius: 6px;
+      border-radius: 9999px;
+      box-shadow: 0 0 12px rgba(255, 255, 255, 0.6);
     }
+
     .update-banner {
-      background: linear-gradient(135deg, rgba(88, 166, 255, 0.12) 0%, rgba(56, 139, 253, 0.03) 100%);
-      border: 1px solid rgba(88, 166, 255, 0.3);
-      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 14px;
       padding: 16px;
       margin-bottom: 16px;
     }
+
     .release-notes-box {
-      background: #0d1117;
+      background: #000000;
       border: 1px solid var(--card-border);
-      border-radius: 8px;
-      padding: 12px;
-      max-height: 160px;
+      border-radius: 10px;
+      padding: 14px;
+      max-height: 180px;
       overflow-y: auto;
       font-size: 12px;
       line-height: 1.6;
-      color: #c9d1d9;
+      color: #d4d4d8;
       white-space: pre-wrap;
-      font-family: inherit;
+      font-family: var(--font-mono);
+    }
+
+    /* Micro-SVGs */
+    .icon {
+      width: 16px;
+      height: 16px;
+      stroke-width: 1.5;
+      stroke: currentColor;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      vertical-align: middle;
+      display: inline-block;
     }
   </style>
 </head>
 <body>
+  <!-- Ambient Particle Constellation Canvas -->
+  <canvas id="ambientCanvas"></canvas>
+  <div class="noise-overlay"></div>
+  <div class="ambient-radial-glow"></div>
+
+  <!-- Header -->
   <header>
-    <div class="container header-content">
+    <div class="header-island">
       <div class="logo-group">
-        <span class="logo-icon">🛡️</span>
-        <div>
+        <div class="logo-badge">
+          <svg class="icon" viewBox="0 0 24 24" style="width: 18px; height: 18px; stroke-width: 1.7; color: #ffffff;">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          </svg>
+        </div>
+        <div class="logo-title-group">
           <span class="logo-title">AntiAgent</span>
-          <span id="appVersionTag" class="version-tag" onclick="openUpdateModal()" style="cursor: pointer;" title="Click to check for updates">v0.1.3</span>
+          <span id="appVersionTag" class="version-tag" onclick="openUpdateModal()" style="cursor: pointer;" title="Click to check for updates">v0.1.5</span>
         </div>
       </div>
       <div class="header-badges">
-        <button id="updateHeaderBtn" class="btn btn-outline btn-sm" onclick="openUpdateModal()" style="display: inline-flex; align-items: center; gap: 6px;" title="Check for updates and download in-app">
-          <span>🔄</span> Updates
-          <span id="updateHeaderPill" class="status-badge badge-active" style="display: none; font-size: 10px; padding: 1px 6px; margin-left: 2px;">Update Available</span>
+        <button id="updateHeaderBtn" class="btn btn-outline btn-sm" onclick="openUpdateModal()" title="Check for updates and download in-app">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+          <span>Updates</span>
+          <span id="updateHeaderPill" class="status-badge badge-active" style="display: none; font-size: 10px; padding: 2px 7px; margin-left: 2px;">Update Available</span>
         </button>
-        <button class="btn btn-outline btn-sm" onclick="openOnboardingModal()" style="display: inline-flex; align-items: center; gap: 6px;">
-          <span>⚡</span> Turbo Setup &amp; Guide
+        <button class="btn btn-outline btn-sm" onclick="openOnboardingModal()">
+          <svg class="icon" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          <span>Turbo Setup</span>
         </button>
-        <button id="wsBadge" class="status-badge badge-inactive" onclick="toggleHook('workspace')" title="Click to enable or disable Workspace Hook" style="cursor: pointer; border: 1px solid var(--card-border); font-family: inherit; font-size: 11px; transition: all 0.15s ease;">
-          <span>📁 Workspace: Checking...</span>
+        <button id="wsBadge" class="status-badge badge-inactive" onclick="toggleHook('workspace')" title="Click to enable or disable Workspace Hook">
+          <span class="pip pip-inactive" id="wsPip"></span>
+          <span>Workspace: Checking...</span>
         </button>
-        <button id="globalBadge" class="status-badge badge-inactive" onclick="toggleHook('global')" title="Click to enable or disable Global Hook" style="cursor: pointer; border: 1px solid var(--card-border); font-family: inherit; font-size: 11px; transition: all 0.15s ease;">
-          <span>🌐 Global: Checking...</span>
+        <button id="globalBadge" class="status-badge badge-inactive" onclick="toggleHook('global')" title="Click to enable or disable Global Hook">
+          <span class="pip pip-inactive" id="globalPip"></span>
+          <span>Global: Checking...</span>
         </button>
       </div>
     </div>
   </header>
+
   <main class="container">
+    <!-- Workspace Selector Bar -->
     <div class="workspace-bar">
       <div class="ws-info">
-        <span style="font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Current Project:</span>
+        <span class="eyebrow-label">Project Target</span>
         <div id="projectSelectorPill" class="project-pill" onclick="openProjectSelectorModal()" title="Click to select folder or switch scope">
-          <span id="projectPillIcon" style="font-size: 18px;">🌐</span>
+          <span id="projectPillIcon" style="display: flex; align-items: center;">
+            <svg class="icon" style="width: 17px; height: 17px;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+          </span>
           <div>
-            <div id="projectPillMain" style="font-weight: 600; font-size: 13px; color: var(--text); display: flex; align-items: center; gap: 6px;">
-              <span>Global</span>
-              <span class="status-badge badge-active" style="font-size: 10px; padding: 1px 6px;">All Projects</span>
+            <div id="projectPillMain" style="font-weight: 600; font-size: 13px; color: var(--text); display: flex; align-items: center; gap: 8px;">
+              <span>Global Protection</span>
+              <span class="status-badge badge-active" style="font-size: 10px; padding: 1px 7px;">All Projects</span>
             </div>
-            <div id="projectPillSub" style="font-size: 11px; color: var(--text-muted); font-family: monospace;">Loading active workspace...</div>
+            <div id="projectPillSub" style="font-size: 11px; color: var(--text-muted); font-family: var(--font-mono);">Loading active workspace...</div>
           </div>
-          <span style="font-size: 12px; color: var(--text-muted); margin-left: 4px;">▾</span>
+          <svg class="icon" style="width: 14px; height: 14px; color: var(--text-muted); margin-left: 4px;" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
         </div>
       </div>
       <div style="display: flex; gap: 8px; align-items: center;">
         <button class="btn btn-outline btn-sm" onclick="chooseNativeFolder()" title="Select a specific project folder via native file dialog">
-          <span>📁</span> Select Folder...
+          <svg class="icon" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+          <span>Select Folder</span>
         </button>
-        <button class="btn btn-blue btn-sm" onclick="openModal('newProjectModal')">
-          <span>⚡</span> New Project
+        <button class="btn btn-primary btn-sm" onclick="openModal('newProjectModal')">
+          <svg class="icon" viewBox="0 0 24 24" style="stroke: #050507;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          <span>New Project</span>
         </button>
       </div>
     </div>
+
+    <!-- Main Grid -->
     <div class="dashboard-grid">
+      <!-- Card 1: Lifecycle Hooks & Safety Profile -->
       <div class="card">
         <div class="card-title">
-          <span>🔌 Lifecycle Hooks & Activation</span>
-          <span style="font-size: 11px; color: var(--text-muted);">PreToolUse Gatekeeper</span>
+          <div class="card-title-left">
+            <svg class="card-title-icon" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            <span>Lifecycle Hooks &amp; Stance</span>
+          </div>
+          <span class="eyebrow-label">PreToolUse</span>
         </div>
         <div class="hook-grid">
           <div class="hook-box">
             <h4>
               <span>Workspace Hook</span>
-              <span id="wsHookPill" class="status-badge badge-inactive" style="font-size: 10px; padding: 2px 6px;">Inactive</span>
+              <span id="wsHookPill" class="status-badge badge-inactive" style="font-size: 10px; padding: 2px 7px;">Inactive</span>
             </h4>
-            <p>Guards only current repository via <code>.agents/hooks.json</code>.</p>
+            <p>Guards current project via <code>.agents/hooks.json</code>.</p>
             <div id="wsHookActions">
-              <button class="btn btn-primary btn-sm" style="width: 100%;" onclick="installHook('workspace')">Enable for Workspace</button>
+              <button class="btn btn-primary btn-sm" style="width: 100%;" onclick="installHook('workspace')">Enable Workspace</button>
             </div>
           </div>
           <div class="hook-box">
             <h4>
               <span>Global Hook</span>
-              <span id="globalHookPill" class="status-badge badge-inactive" style="font-size: 10px; padding: 2px 6px;">Inactive</span>
+              <span id="globalHookPill" class="status-badge badge-inactive" style="font-size: 10px; padding: 2px 7px;">Inactive</span>
             </h4>
-            <p>Protects ALL Antigravity projects automatically via <code>~/.gemini/config/hooks.json</code>.</p>
+            <p>Protects all Antigravity projects automatically via <code>~/.gemini/config/hooks.json</code>.</p>
             <div id="globalHookActions">
               <button class="btn btn-outline btn-sm" style="width: 100%;" onclick="installHook('global')">Enable Globally</button>
             </div>
@@ -541,30 +1066,36 @@
         </div>
         <div class="form-group" style="margin-top: 18px;">
           <label>Safety Profile Stance</label>
-          <div class="segmented-control">
+          <div class="segmented-control" id="stanceSegmentedControl">
+            <div class="segmented-indicator" id="stanceIndicator"></div>
             <button id="profBalanced" class="segmented-btn active" onclick="setProfile('balanced')">Balanced</button>
             <button id="profParanoid" class="segmented-btn" onclick="setProfile('paranoid')">Paranoid</button>
             <button id="profAutonomous" class="segmented-btn" onclick="setProfile('autonomous')">Autonomous</button>
           </div>
-          <p id="profileDesc" style="font-size: 12px; color: var(--text-muted); line-height: 1.4;">
+          <p id="profileDesc" style="font-size: 12px; color: var(--text-muted); line-height: 1.5;">
             <strong>Balanced:</strong> Auto-approves safe reads, tests, and edits inside the project. Prompts before destructive commands.
           </p>
         </div>
-        <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--card-border);">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--card-border-subtle);">
           <div style="display: flex; align-items: center; gap: 8px;">
-            <label style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">Save Target:</label>
-            <select id="configScopeSelect" class="form-control" style="width: auto; padding: 4px 8px; font-size: 12px;">
+            <label style="font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.14em; margin-bottom: 0;">Save Target:</label>
+            <select id="configScopeSelect" class="form-control" style="width: auto; padding: 4px 10px; font-size: 12px;">
               <option value="workspace">Workspace (.antiagent.json)</option>
               <option value="global">Global (~/.antiagent/config.json)</option>
             </select>
           </div>
-          <span id="saveIndicator" style="font-size: 12px; color: var(--success); display: none; font-weight: 600;">Saved!</span>
+          <span id="saveIndicator" style="font-size: 12px; color: var(--success); display: none; font-weight: 600;">Saved</span>
         </div>
       </div>
+
+      <!-- Card 2: Supervisor Engine & Provider -->
       <div class="card">
         <div class="card-title">
-          <span>🧠 Supervisor Engine & Provider</span>
-          <span style="font-size: 11px; color: var(--text-muted);">Tier 2 AI Reviewer</span>
+          <div class="card-title-left">
+            <svg class="card-title-icon" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/></svg>
+            <span>Supervisor Engine &amp; Provider</span>
+          </div>
+          <span class="eyebrow-label">Tier 2 Evaluator</span>
         </div>
         <div class="form-group">
           <label>Provider</label>
@@ -577,31 +1108,40 @@
           </select>
         </div>
         <div class="form-group" id="modelGroup">
-          <label>Model Name</label>
+          <label>Model Identifier</label>
           <input type="text" id="inputModel" class="form-control" placeholder="e.g. gemini-2.5-flash, gpt-4o-mini">
         </div>
         <div class="form-group" id="apiKeyGroup">
           <label>API Key (Optional override)</label>
-          <div style="display: flex; gap: 6px;">
+          <div style="display: flex; gap: 8px;">
             <input type="password" id="inputApiKey" class="form-control" placeholder="Leave empty to use environment variable">
-            <button class="btn btn-outline btn-sm" type="button" onclick="togglePassword()">👁️</button>
+            <button class="btn btn-outline btn-sm" type="button" onclick="togglePassword()" style="padding: 0 12px;">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
           </div>
         </div>
         <div class="form-group" id="endpointGroup" style="display: none;">
           <label>Custom Endpoint URL (Ollama / Local)</label>
           <input type="text" id="inputEndpoint" class="form-control" placeholder="http://localhost:11434">
         </div>
-        <button class="btn btn-primary" style="width: 100%; margin-top: 10px;" onclick="saveEngineConfig()">Save Engine Settings</button>
+        <button class="btn btn-primary" style="width: 100%; margin-top: 8px;" onclick="saveEngineConfig()">
+          <span>Save Engine Settings</span>
+        </button>
       </div>
+
+      <!-- Card 3: Execution Rules & Toggles -->
       <div class="card">
         <div class="card-title">
-          <span>🛡️ Feature Toggles & Guards</span>
-          <span style="font-size: 11px; color: var(--text-muted);">Instant Execution Rules</span>
+          <div class="card-title-left">
+            <svg class="card-title-icon" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            <span>Autonomous Execution Rules</span>
+          </div>
+          <span class="eyebrow-label">Instant Guards</span>
         </div>
         <div class="toggle-row">
           <div>
             <div class="toggle-label">"Approve for Me" Auto-Review</div>
-            <div class="toggle-sublabel">Intuitively evaluates semantic coherence with your prompt & screens vulnerabilities</div>
+            <div class="toggle-sublabel">Evaluates semantic coherence with your prompt & screens threats</div>
           </div>
           <label class="toggle-switch">
             <input type="checkbox" id="toggleAutoReview" onchange="saveToggle('auto_review', this.checked)">
@@ -659,10 +1199,15 @@
           </label>
         </div>
       </div>
+
+      <!-- Card 4: Custom Policy Regex Rules -->
       <div class="card">
         <div class="card-title">
-          <span>📜 Custom Policy Regex Rules</span>
-          <span style="font-size: 11px; color: var(--text-muted);">Whitelist & Blacklist</span>
+          <div class="card-title-left">
+            <svg class="card-title-icon" viewBox="0 0 24 24"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+            <span>Custom Policy Regex Rules</span>
+          </div>
+          <span class="eyebrow-label">Policy Whitelist &amp; Blacklist</span>
         </div>
         <div class="form-group">
           <label>Custom Allow Patterns (Whitelist — 1 regex per line)</label>
@@ -672,31 +1217,52 @@
           <label>Custom Deny Patterns (Blacklist — 1 regex per line)</label>
           <textarea id="customDenyInput" class="form-control" rows="3" placeholder="drop\s+database&#10;halt_system"></textarea>
         </div>
-        <button class="btn btn-outline" style="width: 100%;" onclick="saveCustomPatterns()">Save Custom Regex Rules</button>
+        <button class="btn btn-outline" style="width: 100%;" onclick="saveCustomPatterns()">
+          <span>Save Custom Regex Rules</span>
+        </button>
       </div>
     </div>
+
     <!-- Pull Request & CI Monitor Card -->
     <div class="card" style="margin-top: 20px;" id="prMonitorCard">
       <div class="card-title">
-        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-          <span>🐙 Pull Request & CI Monitor</span>
-          <span id="prStatusBadge" class="status-badge badge-inactive" style="font-size: 11px;">Checking...</span>
+        <div class="card-title-left">
+          <svg class="card-title-icon" viewBox="0 0 24 24"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><line x1="6" y1="9" x2="6" y2="21"/></svg>
+          <span>Pull Request &amp; CI Monitor</span>
+          <span id="prStatusBadge" class="status-badge badge-inactive" style="font-size: 11px; padding: 2px 8px;">Checking...</span>
         </div>
         <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-          <button class="btn btn-outline btn-sm" onclick="fetchPRStatus()">🔄 Refresh</button>
-          <button id="prWatchBtn" class="btn btn-primary btn-sm" onclick="toggleBackgroundPRMonitor()">👁️ Monitor PR</button>
-          <button id="prAutofixBtn" class="btn btn-outline btn-sm" style="display: none; color: var(--danger); border-color: rgba(248, 81, 73, 0.4);" onclick="openFailureLogsModal()">⚡ Failure Logs</button>
-          <button id="prMergeBtn" class="btn btn-sm" style="display: none; background: #8957e5; color: white; border: none;" onclick="mergeActivePR()">🔀 Merge PR</button>
+          <button class="btn btn-outline btn-sm" onclick="fetchPRStatus()">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+            <span>Refresh</span>
+          </button>
+          <button id="prWatchBtn" class="btn btn-primary btn-sm" onclick="toggleBackgroundPRMonitor()">
+            <svg class="icon" viewBox="0 0 24 24" style="stroke: #050507;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            <span>Monitor PR</span>
+          </button>
+          <button id="prAutofixBtn" class="btn btn-outline btn-sm" style="display: none; color: var(--danger); border-color: var(--danger-border);" onclick="openFailureLogsModal()">
+            <svg class="icon" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            <span>Failure Logs</span>
+          </button>
+          <button id="prMergeBtn" class="btn btn-sm btn-primary" style="display: none;" onclick="mergeActivePR()">
+            <svg class="icon" viewBox="0 0 24 24" style="stroke: #050507;"><path d="M18 15l-6-6-6 6"/></svg>
+            <span>Merge PR</span>
+          </button>
         </div>
       </div>
       <div id="prInfoContainer" style="margin-top: 8px;">
         <div style="font-size: 13px; color: var(--text-muted); padding: 8px 0;">Loading pull request data...</div>
       </div>
     </div>
+
+    <!-- Live Safety Playground Card -->
     <div class="card" style="margin-top: 20px;">
       <div class="card-title">
-        <span>🧪 Live Safety Playground</span>
-        <span style="font-size: 11px; color: var(--text-muted);">Test how AntiAgent evaluates commands in this project</span>
+        <div class="card-title-left">
+          <svg class="card-title-icon" viewBox="0 0 24 24"><path d="M10 2v7.31M14 9.3V1.99M8.5 2h7M14 9.3a6.5 6.5 0 1 1-4 0"/></svg>
+          <span>Live Safety Playground</span>
+        </div>
+        <span class="eyebrow-label">Simulate Intercepts</span>
       </div>
       <div class="quick-preset-chips">
         <span class="chip" onclick="setSim('run_command', 'ls -la')">ls -la</span>
@@ -709,18 +1275,18 @@
         <span class="chip" onclick="setSim('run_command', 'cat ~/.ssh/id_rsa')">cat ~/.ssh/id_rsa</span>
       </div>
       <div class="form-group" style="margin-bottom: 10px;">
-        <label style="font-size: 11px;">Active User Request / Goal Context (Auto-Review Evaluates Semantic Coherence)</label>
+        <label>Active User Goal Context (Auto-Review Evaluates Semantic Intent)</label>
         <input type="text" id="simContext" class="form-control" placeholder="e.g. Build a backend and test it (or 'Fix typo in README')">
       </div>
-      <div class="quick-preset-chips" style="margin-bottom: 12px;">
-        <span style="font-size: 11px; color: var(--text-muted); align-self: center;">Quick Contexts:</span>
-        <span class="chip" onclick="setContext('Add unit tests and run verification suite')">Goal: Run Tests</span>
-        <span class="chip" onclick="setContext('Install FastAPI dependencies and setup project')">Goal: Install Dependencies</span>
-        <span class="chip" onclick="setContext('Fix navbar CSS alignment and typography')">Goal: Edit CSS</span>
-        <span class="chip" onclick="setContext('')">✕ Clear Context</span>
+      <div class="quick-preset-chips" style="margin-bottom: 14px;">
+        <span style="font-size: 11px; color: var(--text-muted); align-self: center;">Goal Quick-fills:</span>
+        <span class="chip" onclick="setContext('Add unit tests and run verification suite')">Run Tests</span>
+        <span class="chip" onclick="setContext('Install FastAPI dependencies and setup project')">Install Deps</span>
+        <span class="chip" onclick="setContext('Fix navbar CSS alignment and typography')">Edit CSS</span>
+        <span class="chip" onclick="setContext('')">Clear Context</span>
       </div>
       <div class="simulator-box">
-        <select id="simTool" class="form-control" style="width: 160px;">
+        <select id="simTool" class="form-control" style="width: 170px;">
           <option value="run_command">run_command</option>
           <option value="view_file">view_file</option>
           <option value="write_to_file">write_to_file</option>
@@ -731,86 +1297,98 @@
       </div>
       <div id="simResult" class="sim-result">
         <div id="verdictBadge" class="verdict-tag verdict-allow">ALLOW</div>
-        <div id="verdictReason" style="font-size: 13px; color: var(--text); margin-top: 4px;"></div>
+        <div id="verdictReason" style="font-size: 13px; color: var(--text); margin-top: 4px; font-family: var(--font-mono); line-height: 1.5;"></div>
       </div>
     </div>
+
+    <!-- Real-Time Audit Stream Card -->
     <div class="card audit-section">
       <div class="card-title">
-        <span>📜 Real-Time Audit Stream</span>
+        <div class="card-title-left">
+          <svg class="card-title-icon" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          <span>Real-Time Audit Stream</span>
+        </div>
         <div style="display: flex; gap: 8px;">
-          <button class="btn btn-outline btn-sm" onclick="loadAudit()">Refresh</button>
-          <button class="btn btn-outline btn-sm" onclick="clearAudit()">Clear</button>
+          <button class="btn btn-outline btn-sm" onclick="loadAudit()">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+            <span>Refresh</span>
+          </button>
+          <button class="btn btn-outline btn-sm" onclick="clearAudit()">
+            <svg class="icon" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            <span>Clear</span>
+          </button>
         </div>
       </div>
       <div style="overflow-x: auto;">
         <table class="audit-table">
           <thead>
             <tr>
-              <th style="width: 130px;">Timestamp</th>
-              <th style="width: 70px;">Verdict</th>
-              <th style="width: 110px;">Tool</th>
+              <th style="width: 120px;">Timestamp</th>
+              <th style="width: 80px;">Verdict</th>
+              <th style="width: 140px;">Tool</th>
               <th>Command / Target</th>
               <th>Reason</th>
             </tr>
           </thead>
           <tbody id="auditBody">
             <tr>
-              <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 20px;">Loading audit events...</td>
+              <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 24px;">Loading audit events...</td>
             </tr>
           </tbody>
         </table>
       </div>
     </div>
   </main>
+
+  <!-- Modals -->
+  <!-- 1. Onboarding & Turbo Mode Setup Modal -->
   <div id="onboardingModal" class="modal-overlay">
     <div class="modal-card modal-card-lg">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; border-bottom: 1px solid var(--card-border); padding-bottom: 14px;">
-        <div style="font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 8px;">
-          <span>🛡️</span>
-          <span>Welcome to AntiAgent — Setup &amp; Turbo Mode Guide</span>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid var(--card-border); padding-bottom: 14px;">
+        <div style="font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 10px; color: #ffffff;">
+          <svg class="icon" style="width: 22px; height: 22px;" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          <span>AntiAgent Setup &amp; Turbo Guide</span>
         </div>
-        <button class="btn btn-outline btn-sm" onclick="closeModal('onboardingModal')">✕ Close</button>
+        <button class="btn btn-outline btn-sm" onclick="closeModal('onboardingModal')">✕</button>
       </div>
 
-      <!-- Step 1: Crucial Antigravity Turbo Mode Callout -->
+      <!-- Turbo Mode Callout -->
       <div class="turbo-callout">
-        <div style="display: flex; align-items: center; gap: 8px; font-weight: 700; color: #f0883e; font-size: 15px; margin-bottom: 8px;">
-          <span style="font-size: 18px;">⚡</span>
-          <span>CRITICAL SETUP: Set Antigravity to Turbo Mode (Always Proceed)</span>
+        <div style="display: flex; align-items: center; gap: 8px; font-weight: 700; color: #ffffff; font-size: 15px; margin-bottom: 8px;">
+          <svg class="icon" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          <span>RECOMMENDED: Enable Turbo Mode (Always Proceed) in Antigravity</span>
         </div>
-        <div style="font-size: 13px; color: #e6edf3; line-height: 1.6;">
-          <p><strong>AntiAgent is designed to operate with Antigravity in Turbo Mode ("Always Proceed").</strong></p>
-          <p style="margin-top: 6px; font-size: 12px; color: #c9d1d9;">
-            Normally, running AI coding assistants without guardrails requires either tedious manual prompts for every simple command, or risking unmonitored execution in Turbo Mode. AntiAgent solves this by embedding directly into Antigravity's <code>PreToolUse</code> lifecycle hook.
-          </p>
-          <div style="margin-top: 10px; background: rgba(0,0,0,0.3); border-radius: 8px; padding: 12px; border: 1px solid rgba(210, 153, 34, 0.25);">
-            <div style="font-weight: 600; color: #f0f6fc; margin-bottom: 6px; font-size: 12px;">🛡️ How AntiAgent protects you in Turbo Mode:</div>
-            <ul style="list-style: none; padding-left: 0; font-size: 12px; line-height: 1.6; color: #c9d1d9;">
-              <li>⚡ <strong>Harmless Actions (ls, cat, git status, tests):</strong> Auto-approved instantly so Antigravity works at full Turbo speed without interruptions.</li>
-              <li>🛑 <strong>Dangerous Actions (git push --force, rm -rf, secrets access):</strong> AntiAgent issues a native <code>force_ask</code> verdict that <strong>overrides Turbo Mode</strong>, pausing execution and prompting you for manual confirmation!</li>
-              <li>🚫 <strong>Catastrophic Threats (root wipes, curl | bash):</strong> Hard-denied on the spot with clear explanation.</li>
+        <div style="font-size: 13px; color: #d4d4d8; line-height: 1.6;">
+          <p>AntiAgent is specifically architected to let you run Antigravity at full velocity without dangerous blind spots.</p>
+          <div style="margin-top: 12px; background: rgba(0,0,0,0.4); border-radius: 10px; padding: 14px; border: 1px solid rgba(255, 255, 255, 0.08);">
+            <div style="font-weight: 600; color: #ffffff; margin-bottom: 8px; font-size: 12px;">How AntiAgent protects you in Turbo Mode:</div>
+            <ul style="list-style: none; padding-left: 0; font-size: 12px; line-height: 1.7; color: var(--text-muted);">
+              <li>⚡ <strong style="color: #ffffff;">Harmless Actions (ls, cat, git status, unit tests):</strong> Auto-approved instantly so you never wait for prompts.</li>
+              <li>🛑 <strong style="color: #ffffff;">Destructive Actions (git push --force, rm -rf, viewing secrets):</strong> AntiAgent issues a native <code>force_ask</code> that <strong>overrides Turbo Mode</strong> and pauses execution for confirmation!</li>
+              <li>🚫 <strong style="color: #ffffff;">Catastrophic Threats (root wipes, piped bash scripts):</strong> Hard-denied immediately with explicit reason.</li>
             </ul>
           </div>
-          <div style="margin-top: 12px; background: #161b22; border: 1px solid var(--card-border); border-radius: 8px; padding: 12px;">
-            <div style="font-weight: 600; color: var(--primary); font-size: 12px; margin-bottom: 4px;">👉 How to set Turbo Mode in Antigravity:</div>
+          <div style="margin-top: 12px; background: #000000; border: 1px solid var(--card-border); border-radius: 10px; padding: 12px;">
+            <div style="font-weight: 600; color: #ffffff; font-size: 12px; margin-bottom: 4px;">How to set Turbo Mode in Antigravity:</div>
             <div style="font-size: 12px; color: var(--text-muted); line-height: 1.5;">
-              • <strong>In Antigravity IDE:</strong> Click the execution mode toggle in the chat prompt bar (look for the ⚡ lightning bolt icon) and select <strong>Turbo / Always Proceed</strong>.<br>
-              • <strong>In Antigravity CLI:</strong> Launch tasks with <code>agy --turbo</code> or set <code>always_proceed: true</code>.
+              • <strong>In Antigravity IDE:</strong> Click the execution toggle in the prompt bar (⚡ lightning icon) and select <strong>Turbo / Always Proceed</strong>.<br>
+              • <strong>In CLI:</strong> Launch tasks with <code>agy --turbo</code> or set <code>always_proceed: true</code>.
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Step 2: Global vs Workspace Protection -->
-      <div style="background: #0d1117; border: 1px solid var(--card-border); border-radius: 10px; padding: 16px; margin-bottom: 18px;">
+      <!-- Global Protection -->
+      <div style="background: rgba(8, 9, 12, 0.85); border: 1px solid var(--card-border); border-radius: 14px; padding: 18px; margin-bottom: 18px;">
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
           <div>
-            <div style="font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 8px;">
-              <span>🌐</span> <strong>Global Protection (Recommended)</strong>
-              <span id="onboardingGlobalPill" class="status-badge badge-inactive" style="font-size: 11px; padding: 2px 8px;">Inactive</span>
+            <div style="font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 8px; color: #ffffff;">
+              <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+              <span>Global Protection (Recommended)</span>
+              <span id="onboardingGlobalPill" class="status-badge badge-inactive" style="font-size: 10px; padding: 1px 7px;">Inactive</span>
             </div>
             <p style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">
-              Automatically guards all projects and Antigravity sessions on your machine via <code>~/.gemini/config/hooks.json</code>.
+              Automatically protects all repositories and Antigravity sessions via <code>~/.gemini/config/hooks.json</code>.
             </p>
           </div>
           <div id="onboardingGlobalAction">
@@ -819,53 +1397,56 @@
         </div>
       </div>
 
-      <!-- Step 3: Diagnostic Health Check -->
+      <!-- Health Check -->
       <div style="margin-bottom: 20px;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-          <span style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted);">🩺 Diagnostic Health Check</span>
+          <span class="eyebrow-label">System Diagnostics</span>
           <button class="btn btn-outline btn-sm" onclick="runDoctorCheck()" style="font-size: 11px; padding: 2px 8px;">Refresh Check</button>
         </div>
         <div id="doctorList">
-          <div style="text-align: center; color: var(--text-muted); padding: 12px; font-size: 12px;">Checking system health...</div>
+          <div style="text-align: center; color: var(--text-muted); padding: 14px; font-size: 12px;">Checking system health...</div>
         </div>
       </div>
 
-      <!-- Bottom Action -->
-      <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--card-border); padding-top: 16px;">
-        <span style="font-size: 12px; color: var(--text-muted);">You can reopen this guide anytime from the header button.</span>
-        <button class="btn btn-primary" onclick="completeOnboarding()" style="padding: 8px 18px; font-size: 13px; font-weight: 600;">
-          🚀 Got It, I've Set Turbo Mode &amp; Finish Setup
+      <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--card-border); padding-top: 18px;">
+        <span style="font-size: 12px; color: var(--text-muted);">Reopen this guide anytime from the header button.</span>
+        <button class="btn btn-primary" onclick="completeOnboarding()" style="padding: 10px 22px; font-size: 13px; font-weight: 600;">
+          <span>Set Turbo Mode &amp; Finish</span>
         </button>
       </div>
     </div>
   </div>
 
+  <!-- 2. Project Selector Modal -->
   <div id="projectSelectorModal" class="modal-overlay">
-    <div class="modal-card" style="max-width: 560px;">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid var(--card-border); padding-bottom: 10px;">
-        <div class="modal-title" style="margin-bottom: 0;">📍 Select Project or Protection Scope</div>
+    <div class="modal-card" style="max-width: 540px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; border-bottom: 1px solid var(--card-border); padding-bottom: 12px;">
+        <div class="modal-title" style="margin-bottom: 0;">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+          <span>Select Project or Scope</span>
+        </div>
         <button class="btn btn-outline btn-sm" onclick="closeModal('projectSelectorModal')">✕</button>
       </div>
 
-      <!-- Option 1: Native Folder Picker -->
       <div class="selector-option-card">
         <div>
-          <div style="font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 6px;">
-            <span>📁</span> Choose Project Folder
+          <div style="font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 8px; color: #ffffff;">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+            <span>Choose Project Folder</span>
           </div>
           <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
-            Open native file browser to select any project folder on your machine.
+            Open native file picker to select any local project folder.
           </div>
         </div>
         <button class="btn btn-primary btn-sm" onclick="chooseNativeFolder()">Browse Folder...</button>
       </div>
 
-      <!-- Option 2: Global Mode -->
       <div class="selector-option-card">
         <div>
-          <div style="font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 6px;">
-            <span>🌐</span> Global Protection Scope
-            <span id="projModalGlobalPill" class="status-badge badge-inactive" style="font-size: 10px; padding: 1px 6px;">Inactive</span>
+          <div style="font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 8px; color: #ffffff;">
+            <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+            <span>Global Protection Scope</span>
+            <span id="projModalGlobalPill" class="status-badge badge-inactive" style="font-size: 10px; padding: 1px 7px;">Inactive</span>
           </div>
           <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
             Guards all projects and Antigravity sessions across your computer.
@@ -874,63 +1455,71 @@
         <button id="projModalGlobalBtn" class="btn btn-outline btn-sm" onclick="toggleGlobalFromModal()">Enable Global</button>
       </div>
 
-      <!-- Option 3: Create New Project -->
       <div class="selector-option-card">
         <div>
-          <div style="font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 6px;">
-            <span>⚡</span> Create New Project
+          <div style="font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 8px; color: #ffffff;">
+            <svg class="icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            <span>Create New Project</span>
           </div>
           <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
-            Scaffold a new git repository with AntiAgent protection.
+            Scaffold a new git repository with AntiAgent protection registered.
           </div>
         </div>
-        <button class="btn btn-blue btn-sm" onclick="closeModal('projectSelectorModal'); openModal('newProjectModal');">New Project...</button>
+        <button class="btn btn-outline btn-sm" onclick="closeModal('projectSelectorModal'); openModal('newProjectModal');">New Project...</button>
       </div>
 
-      <!-- Option 4: Manual Path Input -->
-      <div style="margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--card-border);">
-        <label style="font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase;">Or Enter Path Manually:</label>
-        <div style="display: flex; gap: 6px; margin-top: 6px;">
+      <div style="margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--card-border);">
+        <label style="font-size: 10px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.14em;">Or Enter Path Manually:</label>
+        <div style="display: flex; gap: 8px; margin-top: 6px;">
           <input type="text" id="manualProjectPathInput" class="form-control" placeholder="/path/to/project">
           <button class="btn btn-outline btn-sm" onclick="submitManualProjectSwitch()">Switch</button>
         </div>
       </div>
     </div>
   </div>
+
+  <!-- 3. Switch Workspace Modal -->
   <div id="switchWsModal" class="modal-overlay">
     <div class="modal-card">
       <div class="modal-title">Switch Active Workspace</div>
-      <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">
+      <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 14px;">
         Point the AntiAgent dashboard to an existing project folder on your machine:
       </p>
       <input type="text" id="switchWsPathInput" class="form-control" placeholder="/Users/username/Projects/my-project">
-      <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px;">
+      <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px;">
         <button class="btn btn-outline btn-sm" onclick="closeModal('switchWsModal')">Cancel</button>
         <button class="btn btn-primary btn-sm" onclick="submitSwitchWorkspace()">Switch Workspace</button>
       </div>
     </div>
   </div>
+
+  <!-- 4. New Project Modal -->
   <div id="newProjectModal" class="modal-overlay">
     <div class="modal-card">
-      <div class="modal-title">⚡ Create & Protect New Project</div>
-      <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">
-        Creates a new project directory, initializes Git, and registers AntiAgent protection automatically:
+      <div class="modal-title">
+        <svg class="icon" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        <span>Create &amp; Protect New Project</span>
+      </div>
+      <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 14px;">
+        Creates a new directory, initializes Git, and registers AntiAgent protection:
       </p>
       <div class="form-group">
-        <label>New Project Path or Name</label>
+        <label>New Project Directory Path</label>
         <input type="text" id="newProjectPathInput" class="form-control" placeholder="/Users/aidenguan/Documents/Projects/my-app">
       </div>
-      <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px;">
+      <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px;">
         <button class="btn btn-outline btn-sm" onclick="closeModal('newProjectModal')">Cancel</button>
-        <button class="btn btn-blue btn-sm" onclick="submitCreateProject()">Scaffold & Protect</button>
+        <button class="btn btn-primary btn-sm" onclick="submitCreateProject()">Scaffold &amp; Protect</button>
       </div>
     </div>
   </div>
+
+  <!-- 5. Update Modal -->
   <div id="updateModal" class="modal-overlay">
     <div class="modal-card modal-card-lg" style="max-width: 680px;">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; border-bottom: 1px solid var(--card-border); padding-bottom: 12px;">
-        <div style="font-size: 17px; font-weight: 700; display: flex; align-items: center; gap: 8px;">
-          <span>🔄</span>
+        <div style="font-size: 17px; font-weight: 700; display: flex; align-items: center; gap: 8px; color: #ffffff;">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
           <span>AntiAgent In-App Updates</span>
         </div>
         <button class="btn btn-outline btn-sm" onclick="closeModal('updateModal')">✕</button>
@@ -940,53 +1529,55 @@
       <div id="updateBanner" class="update-banner">
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
           <div>
-            <div id="updateStatusTitle" style="font-weight: 700; font-size: 15px; display: flex; align-items: center; gap: 8px;">
+            <div id="updateStatusTitle" style="font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 8px; color: #ffffff;">
               <span>Checking for updates...</span>
             </div>
             <div id="updateStatusSub" style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">
-              Current installed version: <strong id="updateCurrentVer">v0.1.3</strong>
+              Current installed version: <strong id="updateCurrentVer" style="color: #ffffff;">v0.1.5</strong>
             </div>
           </div>
           <button id="updateRefreshBtn" class="btn btn-outline btn-sm" onclick="checkForUpdates(false)">
-            <span>🔄</span> Check Now
+            <svg class="icon" viewBox="0 0 24 24"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+            <span>Check Now</span>
           </button>
         </div>
       </div>
 
-      <!-- Release Notes (Hidden until fetched) -->
+      <!-- Release Notes -->
       <div id="releaseNotesSection" style="margin-bottom: 18px; display: none;">
-        <label style="font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 6px;">
+        <label style="font-size: 10px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.14em; display: block; margin-bottom: 6px;">
           What's New in <span id="releaseNotesTag">v...</span>:
         </label>
         <div id="releaseNotesContent" class="release-notes-box"></div>
       </div>
 
-      <!-- In-App Download Card -->
-      <div id="downloadCard" style="background: #0d1117; border: 1px solid var(--card-border); border-radius: 10px; padding: 16px; margin-bottom: 18px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+      <!-- Download Card -->
+      <div id="downloadCard" style="background: rgba(8, 9, 12, 0.85); border: 1px solid var(--card-border); border-radius: 14px; padding: 18px; margin-bottom: 18px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 8px;">
           <div>
-            <div style="font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 6px;">
-              <span>⬇️</span> Download Update in App
+            <div style="font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 6px; color: #ffffff;">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              <span>Download Update Package</span>
             </div>
             <div id="downloadCardSub" style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
-              Directly download and launch the update package for your operating system.
+              Directly download and launch the installer for your OS.
             </div>
           </div>
           <div id="assetSelectContainer" style="display: flex; gap: 6px; align-items: center;">
-            <label style="font-size: 11px; color: var(--text-muted);">Package:</label>
+            <label style="font-size: 11px; color: var(--text-muted); margin-bottom: 0;">Package:</label>
             <select id="assetSelect" class="form-control" style="width: auto; padding: 4px 8px; font-size: 12px;" onchange="onAssetSelectChanged()"></select>
           </div>
         </div>
 
-        <!-- Download CTA / Action -->
         <div id="downloadActionArea">
           <button id="startDownloadBtn" class="btn btn-primary" style="width: 100%; padding: 10px 16px; font-size: 13px;" onclick="triggerInAppDownload()">
-            <span>⬇️</span> Download &amp; Install Update
+            <svg class="icon" viewBox="0 0 24 24" style="stroke: #050507;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            <span>Download &amp; Install Update</span>
           </button>
         </div>
 
-        <!-- Live Progress Section -->
-        <div id="downloadProgressArea" style="display: none; margin-top: 12px;">
+        <!-- Download Progress -->
+        <div id="downloadProgressArea" style="display: none; margin-top: 14px;">
           <div style="display: flex; justify-content: space-between; font-size: 12px; font-weight: 600; margin-bottom: 4px;">
             <span id="downloadProgressLabel">Downloading update...</span>
             <span id="downloadProgressPercent">0%</span>
@@ -995,74 +1586,174 @@
             <div id="downloadProgressBar" class="progress-fill"></div>
           </div>
           <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
-            <span id="downloadProgressDetail" style="font-size: 11px; color: var(--text-muted); font-family: monospace;">0 MB / 0 MB</span>
+            <span id="downloadProgressDetail" style="font-size: 11px; color: var(--text-muted); font-family: var(--font-mono);">0 MB / 0 MB</span>
             <button class="btn btn-outline btn-sm" onclick="cancelInAppDownload()" style="font-size: 11px; padding: 2px 8px;">Cancel</button>
           </div>
         </div>
 
-        <!-- Download Complete Section -->
-        <div id="downloadCompleteArea" style="display: none; margin-top: 14px; background: rgba(63, 185, 80, 0.1); border: 1px solid rgba(63, 185, 80, 0.3); border-radius: 8px; padding: 12px;">
-          <div style="font-size: 13px; font-weight: 600; color: var(--success); margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
-            <span>✅</span> Update Downloaded Successfully!
+        <!-- Download Complete -->
+        <div id="downloadCompleteArea" style="display: none; margin-top: 14px; background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 10px; padding: 14px;">
+          <div style="font-size: 13px; font-weight: 600; color: #ffffff; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+            <svg class="icon" viewBox="0 0 24 24" style="stroke: #4ade80;"><polyline points="20 6 9 17 4 12"/></svg>
+            <span>Update Downloaded Successfully</span>
           </div>
-          <div id="downloadFilePath" style="font-size: 11px; color: var(--text-muted); font-family: monospace; margin-bottom: 12px; word-break: break-all;">
+          <div id="downloadFilePath" style="font-size: 11px; color: var(--text-muted); font-family: var(--font-mono); margin-bottom: 12px; word-break: break-all;">
             Saved to: ~/Downloads/AntiAgent.dmg
           </div>
           <div style="display: flex; gap: 8px; flex-wrap: wrap;">
             <button class="btn btn-primary btn-sm" onclick="openDownloadedUpdate()">
-              <span>🚀</span> Launch / Open Installer
+              <svg class="icon" viewBox="0 0 24 24" style="stroke: #050507;"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              <span>Launch Installer</span>
             </button>
             <button class="btn btn-outline btn-sm" onclick="revealDownloadedUpdate()">
-              <span>📂</span> Show in Finder / Explorer
+              <svg class="icon" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+              <span>Show in Finder</span>
             </button>
           </div>
         </div>
       </div>
 
-      <!-- Developer / Pip Option -->
-      <div style="background: #0d1117; border: 1px solid var(--card-border); border-radius: 10px; padding: 14px;">
+      <!-- Pip Upgrade Card -->
+      <div style="background: rgba(8, 9, 12, 0.85); border: 1px solid var(--card-border); border-radius: 14px; padding: 16px;">
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
           <div>
-            <div style="font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 6px;">
-              <span>🐍</span> Python / Pip Package Update
+            <div style="font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 6px; color: #ffffff;">
+              <svg class="icon" viewBox="0 0 24 24"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+              <span>Python Pip Package Upgrade</span>
             </div>
             <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
-              Runs <code>pip install --upgrade antiagent</code> in background.
+              Executes <code>pip install --upgrade antiagent</code> in background.
             </div>
           </div>
           <button id="runPipUpgradeBtn" class="btn btn-outline btn-sm" onclick="triggerPipUpgrade()">
-            <span>⚡</span> Run pip upgrade
+            <span>Run pip upgrade</span>
           </button>
         </div>
         <div id="pipLogArea" style="display: none; margin-top: 10px;">
-          <pre id="pipLogContent" style="background: #000; border: 1px solid var(--card-border); border-radius: 6px; padding: 8px; font-size: 11px; font-family: monospace; max-height: 120px; overflow-y: auto; color: #58a6ff; white-space: pre-wrap;"></pre>
+          <pre id="pipLogContent" style="background: #000; border: 1px solid var(--card-border); border-radius: 8px; padding: 10px; font-size: 11px; font-family: var(--font-mono); max-height: 120px; overflow-y: auto; color: #e4e4e7; white-space: pre-wrap;"></pre>
         </div>
       </div>
     </div>
   </div>
-  <!-- CI Failure Logs Modal -->
+
+  <!-- 6. CI Failure Logs Modal -->
   <div id="failureLogsModal" class="modal-overlay" style="display: none;">
     <div class="modal-card" style="max-width: 800px; width: 90%;">
-      <div class="modal-header">
-        <div style="display: flex; align-items: center; gap: 8px;">
-          <span style="font-size: 20px;">🚨</span>
-          <h3 style="font-size: 16px; font-weight: 700;">CI Failure Logs & Diagnostics</h3>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid var(--card-border); padding-bottom: 12px;">
+        <div style="display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 700; color: #ffffff;">
+          <svg class="icon" viewBox="0 0 24 24" style="stroke: var(--danger);"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <h3>CI Failure Logs &amp; Diagnostics</h3>
         </div>
-        <button class="modal-close" onclick="closeFailureLogsModal()">✕</button>
+        <button class="btn btn-outline btn-sm" onclick="closeFailureLogsModal()">✕</button>
       </div>
-      <div class="modal-body">
-        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px;">
-          Captured step failure logs from GitHub Actions. Feed this to Antigravity to generate a targeted patch or fix:
+      <div>
+        <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">
+          Captured step failure logs from GitHub Actions CI runs:
         </p>
-        <pre id="failureLogsContent" style="background: #0d1117; border: 1px solid var(--card-border); border-radius: 8px; padding: 14px; font-family: monospace; font-size: 12px; color: #ff7b72; max-height: 420px; overflow-y: auto; white-space: pre-wrap; word-break: break-all;"></pre>
+        <pre id="failureLogsContent" style="background: #000000; border: 1px solid var(--card-border); border-radius: 12px; padding: 16px; font-family: var(--font-mono); font-size: 12px; color: #f87171; max-height: 420px; overflow-y: auto; white-space: pre-wrap; word-break: break-all; line-height: 1.6;"></pre>
       </div>
-      <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center;">
-        <button class="btn btn-outline btn-sm" onclick="copyFailureLogs()">📋 Copy Logs</button>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 16px;">
+        <button class="btn btn-outline btn-sm" onclick="copyFailureLogs()">
+          <svg class="icon" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          <span>Copy Logs</span>
+        </button>
         <button class="btn btn-primary btn-sm" onclick="closeFailureLogsModal()">Close</button>
       </div>
     </div>
   </div>
+
   <script>
+    // --- Ambient Particle Constellation Canvas Script ---
+    (function initAmbientCanvas() {
+      const canvas = document.getElementById('ambientCanvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      let width = canvas.width = window.innerWidth;
+      let height = canvas.height = window.innerHeight;
+
+      let mouse = { x: width / 2, y: height / 2, targetX: width / 2, targetY: height / 2 };
+
+      window.addEventListener('resize', () => {
+        width = canvas.width = window.innerWidth;
+        height = canvas.height = window.innerHeight;
+      });
+
+      window.addEventListener('pointermove', (e) => {
+        mouse.targetX = e.clientX;
+        mouse.targetY = e.clientY;
+
+        // Card spotlight variables
+        document.querySelectorAll('.card').forEach(card => {
+          const rect = card.getBoundingClientRect();
+          card.style.setProperty('--mouse-x', (e.clientX - rect.left) + 'px');
+          card.style.setProperty('--mouse-y', (e.clientY - rect.top) + 'px');
+        });
+      });
+
+      const particleCount = 42;
+      const particles = [];
+
+      for (let i = 0; i < particleCount; i++) {
+        particles.push({
+          x: Math.random() * width,
+          y: Math.random() * height,
+          vx: (Math.random() - 0.5) * 0.35,
+          vy: (Math.random() - 0.5) * 0.35,
+          radius: Math.random() * 1.5 + 0.8,
+          alpha: Math.random() * 0.4 + 0.15
+        });
+      }
+
+      function render() {
+        ctx.clearRect(0, 0, width, height);
+
+        // Smooth mouse interpolate
+        mouse.x += (mouse.targetX - mouse.x) * 0.05;
+        mouse.y += (mouse.targetY - mouse.y) * 0.05;
+
+        // Draw connections
+        for (let i = 0; i < particles.length; i++) {
+          const p1 = particles[i];
+
+          p1.x += p1.vx;
+          p1.y += p1.vy;
+
+          if (p1.x < 0) p1.x = width;
+          else if (p1.x > width) p1.x = 0;
+          if (p1.y < 0) p1.y = height;
+          else if (p1.y > height) p1.y = 0;
+
+          // Connect nearby particles
+          for (let j = i + 1; j < particles.length; j++) {
+            const p2 = particles[j];
+            const dx = p1.x - p2.x;
+            const dy = p1.y - p2.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            if (dist < 140) {
+              const lineAlpha = (1 - dist / 140) * 0.12;
+              ctx.strokeStyle = `rgba(255, 255, 255, ${lineAlpha})`;
+              ctx.lineWidth = 0.8;
+              ctx.beginPath();
+              ctx.moveTo(p1.x, p1.y);
+              ctx.lineTo(p2.x, p2.y);
+              ctx.stroke();
+            }
+          }
+
+          // Draw node
+          ctx.fillStyle = `rgba(255, 255, 255, ${p1.alpha})`;
+          ctx.beginPath();
+          ctx.arc(p1.x, p1.y, p1.radius, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        requestAnimationFrame(render);
+      }
+      render();
+    })();
+
+    // --- Core Application Logic ---
     function escapeHtml(str) {
       if (str === null || str === undefined) return '';
       return String(str)
@@ -1072,6 +1763,7 @@
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
     }
+
     let currentConfig = {};
     function openModal(id) { document.getElementById(id).style.display = 'flex'; }
     function closeModal(id) { document.getElementById(id).style.display = 'none'; }
@@ -1079,26 +1771,31 @@
       const el = document.getElementById('inputApiKey');
       el.type = el.type === 'password' ? 'text' : 'password';
     }
+
     async function fetchStatus() {
       try {
         const res = await fetch('/api/status');
         const data = await res.json();
         currentConfig = data;
+
         const wsBadge = document.getElementById('wsBadge');
+        const wsPip = document.getElementById('wsPip');
         if (data.workspace_hook_active) {
           wsBadge.className = 'status-badge badge-active';
-          wsBadge.textContent = '📁 Workspace: Active';
+          wsBadge.innerHTML = `<span class="pip pip-emerald"></span> <span>Workspace: Active</span>`;
         } else {
           wsBadge.className = 'status-badge badge-inactive';
-          wsBadge.textContent = '📁 Workspace: Inactive';
+          wsBadge.innerHTML = `<span class="pip pip-inactive"></span> <span>Workspace: Inactive</span>`;
         }
+
         const globalBadge = document.getElementById('globalBadge');
+        const globalPip = document.getElementById('globalPip');
         if (data.global_hook_active) {
           globalBadge.className = 'status-badge badge-active';
-          globalBadge.textContent = '🌐 Global: Active';
+          globalBadge.innerHTML = `<span class="pip pip-emerald"></span> <span>Global: Active</span>`;
         } else {
           globalBadge.className = 'status-badge badge-inactive';
-          globalBadge.textContent = '🌐 Global: Inactive';
+          globalBadge.innerHTML = `<span class="pip pip-inactive"></span> <span>Global: Inactive</span>`;
         }
 
         if (data.version) {
@@ -1108,7 +1805,7 @@
           if (updateCur) updateCur.textContent = 'v' + data.version;
         }
 
-        // Update Project Selector Pill in Workspace Bar
+        // Update Project Selector Pill
         const projectPill = document.getElementById('projectSelectorPill');
         const projectPillIcon = document.getElementById('projectPillIcon');
         const projectPillMain = document.getElementById('projectPillMain');
@@ -1118,15 +1815,15 @@
 
         if (data.global_hook_active) {
           projectPill.className = 'project-pill project-pill-global';
-          projectPillIcon.textContent = '🌐';
-          projectPillMain.innerHTML = `<span>Global</span> <span class="status-badge badge-active" style="font-size: 10px; padding: 1px 6px;">All Projects Protected</span>`;
-          projectPillSub.textContent = `Active folder: ${folderName} (${data.workspace_path || ''}) — Click to select folder`;
+          projectPillIcon.innerHTML = `<svg class="icon" style="width: 17px; height: 17px;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>`;
+          projectPillMain.innerHTML = `<span>Global Protection</span> <span class="status-badge badge-active" style="font-size: 10px; padding: 1px 7px;">All Projects</span>`;
+          projectPillSub.textContent = `Active folder: ${folderName} (${data.workspace_path || ''}) — Click to switch`;
         } else {
           projectPill.className = 'project-pill';
-          projectPillIcon.textContent = '📁';
+          projectPillIcon.innerHTML = `<svg class="icon" style="width: 17px; height: 17px;" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>`;
           const wsActive = data.workspace_hook_active;
-          projectPillMain.innerHTML = `<span>${escapeHtml(folderName)}</span> <span class="status-badge ${wsActive ? 'badge-active' : 'badge-inactive'}" style="font-size: 10px; padding: 1px 6px;">${wsActive ? 'Workspace Hook Active' : 'No Hook Active'}</span>`;
-          projectPillSub.textContent = `${data.workspace_path || ''} — Click to select folder`;
+          projectPillMain.innerHTML = `<span>${escapeHtml(folderName)}</span> <span class="status-badge ${wsActive ? 'badge-active' : 'badge-inactive'}" style="font-size: 10px; padding: 1px 7px;">${wsActive ? 'Workspace Hook Active' : 'No Hook Active'}</span>`;
+          projectPillSub.textContent = `${data.workspace_path || ''} — Click to switch`;
         }
 
         if (document.getElementById('manualProjectPathInput')) {
@@ -1164,8 +1861,9 @@
         } else {
           wsHookPill.className = 'status-badge badge-inactive';
           wsHookPill.textContent = 'Inactive';
-          wsHookActions.innerHTML = `<button class="btn btn-primary btn-sm" style="width:100%;" onclick="installHook('workspace')">Enable for Workspace</button>`;
+          wsHookActions.innerHTML = `<button class="btn btn-primary btn-sm" style="width:100%;" onclick="installHook('workspace')">Enable Workspace</button>`;
         }
+
         const globalHookPill = document.getElementById('globalHookPill');
         const globalHookActions = document.getElementById('globalHookActions');
         if (data.global_hook_active) {
@@ -1177,13 +1875,15 @@
           globalHookPill.textContent = 'Inactive';
           globalHookActions.innerHTML = `<button class="btn btn-outline btn-sm" style="width:100%;" onclick="installHook('global')">Enable Globally</button>`;
         }
+
         if (data.global_hook_active && !data.workspace_hook_active) {
           const scopeSelect = document.getElementById('configScopeSelect');
           if (scopeSelect) {
             scopeSelect.value = 'global';
           }
         }
-        setProfileUI(data.profile || 'balanced');
+
+        setProfileUI(data.profile || 'balanced', true);
         document.getElementById('selectProvider').value = data.provider || 'native';
         document.getElementById('inputModel').value = data.model || '';
         document.getElementById('inputApiKey').value = data.api_key || '';
@@ -1193,10 +1893,9 @@
         document.getElementById('toggleApproveReads').checked = !!data.auto_approve_reads;
         document.getElementById('toggleApproveDev').checked = !!data.auto_approve_dev_commands;
         document.getElementById('toggleAuditEnabled').checked = !!data.audit_enabled;
-        if (document.getElementById('toggleAutoPrMonitor')) {
-          document.getElementById('toggleAutoPrMonitor').checked = !!data.auto_pr_monitor;
-        }
-        if (document.getElementById('togglePrAutoMerge')) {
+        if (document.getElementById('togglePrReview')) {
+          document.getElementById('togglePrReview').checked = !!data.pr_monitor_enabled;
+          document.getElementById('inputPrRepo').value = data.pr_monitor_repo || '';
           document.getElementById('togglePrAutoMerge').checked = !!data.pr_monitor_auto_merge;
         }
         document.getElementById('customAllowInput').value = (data.custom_allow_patterns || []).join('\n');
@@ -1206,7 +1905,37 @@
         console.error('Failed to fetch status:', err);
       }
     }
-    function setProfileUI(profile) {
+
+    function updateStanceIndicator(instant = false) {
+      const container = document.getElementById('stanceSegmentedControl');
+      if (!container) return;
+      const activeBtn = container.querySelector('.segmented-btn.active');
+      const indicator = document.getElementById('stanceIndicator');
+      if (!activeBtn || !indicator) return;
+
+      const leftOffset = activeBtn.offsetLeft;
+      const width = activeBtn.offsetWidth;
+
+      if (width === 0) {
+        requestAnimationFrame(() => updateStanceIndicator(instant));
+        return;
+      }
+
+      if (instant) {
+        indicator.style.transition = 'none';
+        indicator.style.width = width + 'px';
+        indicator.style.transform = `translateX(${leftOffset}px)`;
+        indicator.style.opacity = '1';
+        indicator.offsetHeight; // Force layout reflow
+        indicator.style.transition = '';
+      } else {
+        indicator.style.width = width + 'px';
+        indicator.style.transform = `translateX(${leftOffset}px)`;
+        indicator.style.opacity = '1';
+      }
+    }
+
+    function setProfileUI(profile, instantIndicator = false) {
       document.getElementById('profBalanced').className = profile === 'balanced' ? 'segmented-btn active' : 'segmented-btn';
       document.getElementById('profParanoid').className = profile === 'paranoid' ? 'segmented-btn active' : 'segmented-btn';
       document.getElementById('profAutonomous').className = profile === 'autonomous' ? 'segmented-btn active' : 'segmented-btn';
@@ -1216,8 +1945,12 @@
         autonomous: '<strong>Autonomous:</strong> Auto-approves all non-catastrophic actions confined to the project workspace. Hard-blocks system destructions.'
       };
       document.getElementById('profileDesc').innerHTML = descMap[profile] || '';
+      updateStanceIndicator(instantIndicator);
     }
+
     async function setProfile(profile) {
+      // Optimistically animate the sliding pill immediately on press for instant tactile feel
+      setProfileUI(profile, false);
       const scope = document.getElementById('configScopeSelect').value;
       try {
         const res = await fetch('/api/config', {
@@ -1228,17 +1961,18 @@
         if (res.ok) {
           const resData = await res.json();
           const activeProf = (resData.config && resData.config.profile) ? resData.config.profile : profile;
-          setProfileUI(activeProf);
+          setProfileUI(activeProf, false);
           flashSave();
         } else {
           console.error('Failed to save profile:', res.statusText);
-          await loadStatus();
+          await fetchStatus();
         }
       } catch (err) {
         console.error('Error saving profile:', err);
-        await loadStatus();
+        await fetchStatus();
       }
     }
+
     function onProviderChanged() {
       const prov = document.getElementById('selectProvider').value;
       const endpointGroup = document.getElementById('endpointGroup');
@@ -1254,6 +1988,7 @@
         apiKeyGroup.style.display = 'block';
       }
     }
+
     async function saveEngineConfig() {
       const scope = document.getElementById('configScopeSelect').value;
       const provider = document.getElementById('selectProvider').value;
@@ -1267,6 +2002,7 @@
       });
       flashSave();
     }
+
     async function saveToggle(key, value) {
       const scope = document.getElementById('configScopeSelect').value;
       const payload = { scope };
@@ -1278,6 +2014,7 @@
       });
       flashSave();
     }
+
     async function saveCustomPatterns() {
       const scope = document.getElementById('configScopeSelect').value;
       const custom_allow_patterns = document.getElementById('customAllowInput').value;
@@ -1289,11 +2026,13 @@
       });
       flashSave();
     }
+
     function flashSave() {
       const ind = document.getElementById('saveIndicator');
       ind.style.display = 'inline';
       setTimeout(() => { ind.style.display = 'none'; }, 2000);
     }
+
     async function installHook(scope) {
       await fetch('/api/install', {
         method: 'POST',
@@ -1302,6 +2041,7 @@
       });
       await fetchStatus();
     }
+
     async function uninstallHook(scope) {
       await fetch('/api/uninstall', {
         method: 'POST',
@@ -1310,6 +2050,7 @@
       });
       await fetchStatus();
     }
+
     async function toggleHook(scope) {
       if (scope === 'workspace') {
         if (currentConfig && currentConfig.workspace_hook_active) {
@@ -1325,6 +2066,7 @@
         }
       }
     }
+
     let initialOnboardingChecked = false;
     function checkInitialOnboarding(data) {
       if (initialOnboardingChecked) return;
@@ -1392,9 +2134,8 @@
           closeModal('projectSelectorModal');
           closeModal('switchWsModal');
         } else if (data.cancelled) {
-          // User cancelled picker; do nothing
+          // User cancelled
         } else {
-          // Fallback to manual path input modal if native picker not available
           closeModal('projectSelectorModal');
           openModal('switchWsModal');
         }
@@ -1442,22 +2183,21 @@
     async function runDoctorCheck() {
       const container = document.getElementById('doctorList');
       if (!container) return;
-      container.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 12px; font-size: 12px;">Checking system health...</div>';
+      container.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 14px; font-size: 12px;">Checking system health...</div>';
       try {
         const res = await fetch('/api/doctor');
         const data = await res.json();
         let html = '';
 
-        // 1. Python Runtime
         const pyOk = data.python && data.python.ok;
         const pyVer = escapeHtml(data.python ? data.python.version : 'Unknown');
         const pyExec = escapeHtml(data.python ? data.python.executable : 'python3');
         html += `
           <div class="doctor-row">
             <div class="doctor-row-left">
-              <span>${pyOk ? '✅' : '⚠️'}</span>
+              <span class="pip ${pyOk ? 'pip-emerald' : 'pip-inactive'}"></span>
               <div>
-                <div style="font-weight: 600;">Python Runtime (${pyVer})</div>
+                <div style="font-weight: 600; color: #ffffff;">Python Runtime (${pyVer})</div>
                 <div class="doctor-row-sub">${pyExec}</div>
               </div>
             </div>
@@ -1465,14 +2205,13 @@
           </div>
         `;
 
-        // 2. Global Hook
         const gActive = data.global_hook && data.global_hook.active;
         html += `
           <div class="doctor-row">
             <div class="doctor-row-left">
-              <span>${gActive ? '✅' : '⚪'}</span>
+              <span class="pip ${gActive ? 'pip-emerald' : 'pip-inactive'}"></span>
               <div>
-                <div style="font-weight: 600;">Global Lifecycle Hook (~/.gemini/config/hooks.json)</div>
+                <div style="font-weight: 600; color: #ffffff;">Global Lifecycle Hook (~/.gemini/config/hooks.json)</div>
                 <div class="doctor-row-sub">${gActive ? 'Active — guarding all Antigravity projects' : 'Inactive (Click Enable Global to protect all projects)'}</div>
               </div>
             </div>
@@ -1480,15 +2219,14 @@
           </div>
         `;
 
-        // 3. Workspace Hook
         const wsActive = data.workspace_hook && data.workspace_hook.active;
         const safeWsPath = escapeHtml(data.workspace_path || 'None');
         html += `
           <div class="doctor-row">
             <div class="doctor-row-left">
-              <span>${wsActive ? '✅' : '⚪'}</span>
+              <span class="pip ${wsActive ? 'pip-emerald' : 'pip-inactive'}"></span>
               <div>
-                <div style="font-weight: 600;">Active Workspace Hook (.agents/hooks.json)</div>
+                <div style="font-weight: 600; color: #ffffff;">Active Workspace Hook (.agents/hooks.json)</div>
                 <div class="doctor-row-sub">${safeWsPath}</div>
               </div>
             </div>
@@ -1496,14 +2234,13 @@
           </div>
         `;
 
-        // 4. Antigravity Brain Sessions
         const sessionCount = data.antigravity_sessions ? Number(data.antigravity_sessions.count) || 0 : 0;
         html += `
           <div class="doctor-row">
             <div class="doctor-row-left">
-              <span>🧠</span>
+              <span class="pip pip-active"></span>
               <div>
-                <div style="font-weight: 600;">Antigravity Brain Sessions</div>
+                <div style="font-weight: 600; color: #ffffff;">Antigravity Brain Sessions</div>
                 <div class="doctor-row-sub">${sessionCount} active or historical agent session(s) detected</div>
               </div>
             </div>
@@ -1511,30 +2248,28 @@
           </div>
         `;
 
-        // 5. Turbo Mode Compatibility
         html += `
-          <div class="doctor-row" style="background: rgba(210, 153, 34, 0.08); border-color: rgba(210, 153, 34, 0.3);">
+          <div class="doctor-row" style="background: rgba(255, 255, 255, 0.04); border-color: rgba(255, 255, 255, 0.15);">
             <div class="doctor-row-left">
-              <span>⚡</span>
+              <span class="pip pip-emerald"></span>
               <div>
-                <div style="font-weight: 600; color: #f0883e;">Antigravity Turbo Mode (Always Proceed)</div>
-                <div class="doctor-row-sub" style="color: #c9d1d9;">Recommended: AntiAgent pre-screens tools; force_ask automatically protects you in Turbo Mode</div>
+                <div style="font-weight: 600; color: #ffffff;">Antigravity Turbo Mode (Always Proceed)</div>
+                <div class="doctor-row-sub">Recommended: AntiAgent pre-screens tools; force_ask automatically protects you in Turbo Mode</div>
               </div>
             </div>
-            <span class="status-badge badge-active" style="border-color: rgba(63, 185, 80, 0.4);">Supported</span>
+            <span class="status-badge badge-active">Supported</span>
           </div>
         `;
 
-        // 6. AntiAgent Version & Updates
-        const currentVer = currentConfig.version || '0.1.3';
+        const currentVer = currentConfig.version || '0.1.5';
         const hasUpdate = latestUpdateData && latestUpdateData.update_available;
         const updateText = hasUpdate ? `v${latestUpdateData.latest_version} available (Click to download in app)` : `v${currentVer} installed`;
         html += `
           <div class="doctor-row" onclick="openUpdateModal()" style="cursor: pointer;" title="Click to view update details">
             <div class="doctor-row-left">
-              <span>🔄</span>
+              <span class="pip ${hasUpdate ? 'pip-inactive' : 'pip-emerald'}"></span>
               <div>
-                <div style="font-weight: 600;">AntiAgent App Version</div>
+                <div style="font-weight: 600; color: #ffffff;">AntiAgent App Version</div>
                 <div class="doctor-row-sub">${escapeHtml(updateText)}</div>
               </div>
             </div>
@@ -1547,6 +2282,7 @@
         container.innerHTML = `<div style="color: var(--danger); font-size: 12px; padding: 12px;">Failed to run health check: ${escapeHtml(err.message)}</div>`;
       }
     }
+
     async function submitSwitchWorkspace() {
       const path = document.getElementById('switchWsPathInput').value.trim();
       if (!path) return;
@@ -1564,6 +2300,7 @@
         alert(data.error || 'Failed to switch workspace');
       }
     }
+
     async function submitCreateProject() {
       const path = document.getElementById('newProjectPathInput').value.trim();
       if (!path) return;
@@ -1577,11 +2314,12 @@
         closeModal('newProjectModal');
         await fetchStatus();
         await loadAudit();
-        alert('🎉 Successfully scaffolded and protected new project at: ' + data.workspace_path);
+        alert('Successfully scaffolded and protected new project at: ' + data.workspace_path);
       } else {
         alert(data.error || 'Failed to create project');
       }
     }
+
     function setContext(text) {
       document.getElementById('simContext').value = text;
       runSimulation();
@@ -1591,6 +2329,7 @@
       document.getElementById('simInput').value = arg;
       runSimulation();
     }
+
     async function runSimulation() {
       const tool = document.getElementById('simTool').value;
       const val = document.getElementById('simInput').value;
@@ -1617,13 +2356,14 @@
       badge.className = 'verdict-tag verdict-' + data.decision.toLowerCase();
       reason.textContent = data.reason;
     }
+
     async function loadAudit() {
       try {
         const res = await fetch('/api/audit?limit=25');
         const events = await res.json();
         const tbody = document.getElementById('auditBody');
         if (!events || events.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 20px;">No audit events recorded yet.</td></tr>';
+          tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 24px;">No audit events recorded yet.</td></tr>';
           return;
         }
         tbody.innerHTML = events.reverse().map(e => {
@@ -1635,14 +2375,14 @@
           const safeDec = escapeHtml(dec);
           const safeBadge = escapeHtml(badgeClass);
           const safeTool = escapeHtml(e.tool || '');
-          const safeArg = escapeHtml((argText || '').slice(0, 40));
+          const safeArg = escapeHtml((argText || '').slice(0, 42));
           const safeReason = escapeHtml(e.reason || '');
           return `
             <tr>
-              <td>${safeTs}</td>
-              <td><span class="verdict-tag ${safeBadge}" style="margin:0; padding:2px 6px;">${safeDec}</span></td>
-              <td>${safeTool}</td>
-              <td style="color: var(--primary);">${safeArg}</td>
+              <td style="color: var(--text-muted);">${safeTs}</td>
+              <td><span class="verdict-tag ${safeBadge}" style="margin:0; padding:2px 7px;">${safeDec}</span></td>
+              <td style="color: #ffffff; font-weight: 500;">${safeTool}</td>
+              <td style="color: #ffffff;">${safeArg}</td>
               <td style="color: var(--text-muted); font-size: 11px;">${safeReason}</td>
             </tr>
           `;
@@ -1651,14 +2391,13 @@
         console.error('Failed to load audit:', err);
       }
     }
+
     async function clearAudit() {
       await fetch('/api/clear_audit', { method: 'POST' });
       await loadAudit();
     }
 
-    // ==========================================
-    // In-App Update Downloader & Manager Logic
-    // ==========================================
+    // In-App Update Downloader Logic
     let latestUpdateData = null;
     let downloadPollInterval = null;
     let pipPollInterval = null;
@@ -1667,11 +2406,11 @@
       const title = document.getElementById('updateStatusTitle');
       const sub = document.getElementById('updateStatusSub');
       const currentVerEl = document.getElementById('updateCurrentVer');
-      const curVer = (currentConfig && currentConfig.version) || '0.1.3';
+      const curVer = (currentConfig && currentConfig.version) || '0.1.5';
       if (currentVerEl) currentVerEl.textContent = 'v' + curVer;
 
       if (!silent && title) {
-        title.innerHTML = '<span>⏳ Checking GitHub releases...</span>';
+        title.innerHTML = '<span>Checking GitHub releases...</span>';
       }
 
       try {
@@ -1686,7 +2425,7 @@
         if (data.update_available) {
           if (headerPill) {
             headerPill.style.display = 'inline-flex';
-            headerPill.textContent = 'v' + data.latest_version + ' Available!';
+            headerPill.textContent = 'v' + data.latest_version + ' Available';
           }
         } else {
           if (headerPill) headerPill.style.display = 'none';
@@ -1694,14 +2433,14 @@
 
         if (title && sub) {
           if (data.update_available) {
-            title.innerHTML = `<span style="color: #58a6ff;">🚀 New Version Available: v${escapeHtml(data.latest_version)}!</span>`;
-            sub.innerHTML = `You are running v${escapeHtml(curVer)}. Updating is recommended for the latest features & safety rules.`;
+            title.innerHTML = `<span style="color: #ffffff;">New Version Available: v${escapeHtml(data.latest_version)}</span>`;
+            sub.innerHTML = `You are running v${escapeHtml(curVer)}. Updating is recommended.`;
           } else if (data.ok) {
-            title.innerHTML = `<span style="color: var(--success);">✅ You're up to date!</span>`;
+            title.innerHTML = `<span style="color: #ffffff;">Up to Date</span>`;
             sub.innerHTML = `AntiAgent v${escapeHtml(curVer)} is the latest version available.`;
           } else {
-            title.innerHTML = `<span>⚠️ ${escapeHtml(data.error || 'Check completed')}</span>`;
-            sub.innerHTML = `Current version: v${escapeHtml(curVer)}. You can check releases on GitHub.`;
+            title.innerHTML = `<span>${escapeHtml(data.error || 'Check completed')}</span>`;
+            sub.innerHTML = `Current version: v${escapeHtml(curVer)}.`;
           }
         }
 
@@ -1731,7 +2470,6 @@
               opt.dataset.filename = a.name;
               assetSelect.appendChild(opt);
             });
-            // Select recommended if exists
             if (data.recommended_asset) {
               assetSelect.value = data.recommended_asset.download_url;
             }
@@ -1744,13 +2482,12 @@
           onAssetSelectChanged();
         }
 
-        // Check active download status
         await pollDownloadStatus();
 
       } catch (err) {
         console.warn('Update check failed:', err);
         if (!silent && title) {
-          title.innerHTML = `<span>⚠️ Could not connect to update service</span>`;
+          title.innerHTML = `<span>Could not connect to update service</span>`;
           if (sub) sub.innerHTML = escapeHtml(err.message);
         }
       }
@@ -1762,7 +2499,7 @@
       if (!assetSelect || !startBtn) return;
       const selectedOpt = assetSelect.options[assetSelect.selectedIndex];
       const filename = selectedOpt ? selectedOpt.dataset.filename || '' : '';
-      startBtn.innerHTML = `<span>⬇️</span> Download &amp; Install ${escapeHtml(filename || 'Update')}`;
+      startBtn.innerHTML = `<span>Download &amp; Install ${escapeHtml(filename || 'Update')}</span>`;
     }
 
     function openUpdateModal(forceCheck = false) {
@@ -1902,7 +2639,7 @@
       const logContent = document.getElementById('pipLogContent');
       if (btn) btn.disabled = true;
       if (logArea) logArea.style.display = 'block';
-      if (logContent) logContent.textContent = '🚀 Launching pip upgrade...\n';
+      if (logContent) logContent.textContent = 'Launching pip upgrade...\n';
 
       try {
         await fetch('/api/update/pip', { method: 'POST' });
@@ -1939,7 +2676,7 @@
       }
     }
 
-    // --- Pull Request & CI Monitor (Claude Code Style) ---
+    // Pull Request & CI Monitor Logic
     let currentPRData = null;
     let prPollInterval = null;
     let isPRMonitoringActive = false;
@@ -1961,13 +2698,12 @@
           badge.textContent = 'No Active PR';
           autofixBtn.style.display = 'none';
           mergeBtn.style.display = 'none';
-          watchBtn.textContent = '👁️ Monitor PR';
+          watchBtn.innerHTML = `<span>Monitor PR</span>`;
           container.innerHTML = `
-            <div style="background: rgba(22, 27, 34, 0.5); border: 1px dashed var(--card-border); border-radius: 8px; padding: 18px; text-align: center;">
-              <div style="font-size: 24px; margin-bottom: 6px;">🐙</div>
-              <div style="font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 4px;">No Open Pull Request on Current Branch</div>
-              <div style="font-size: 12px; color: var(--text-muted); max-width: 500px; margin: 0 auto;">
-                Create a pull request using <code>gh pr create</code> or Antigravity's tools. AntiAgent will automatically detect and monitor your CI/CD checks in real time.
+            <div style="background: rgba(8, 9, 12, 0.6); border: 1px dashed var(--card-border); border-radius: 12px; padding: 22px; text-align: center;">
+              <div style="font-size: 13px; font-weight: 600; color: #ffffff; margin-bottom: 4px;">No Open Pull Request on Current Branch</div>
+              <div style="font-size: 12px; color: var(--text-muted); max-width: 480px; margin: 0 auto; line-height: 1.5;">
+                Create a pull request with <code>gh pr create</code> or Antigravity's tools. AntiAgent will automatically monitor your CI checks in real time.
               </div>
             </div>
           `;
@@ -1991,25 +2727,25 @@
 
       if (overall === 'SUCCESS') {
         badge.className = 'status-badge badge-active';
-        badge.textContent = '✅ CI Passed';
+        badge.innerHTML = `<span class="pip pip-emerald"></span> <span>CI Passed</span>`;
         autofixBtn.style.display = 'none';
         mergeBtn.style.display = 'inline-flex';
       } else if (overall === 'FAILURE') {
         badge.className = 'status-badge';
         badge.style.background = 'var(--danger-bg)';
         badge.style.color = 'var(--danger)';
-        badge.style.border = '1px solid rgba(248, 81, 73, 0.3)';
-        badge.textContent = `❌ ${summary.failed} Checks Failed`;
+        badge.style.borderColor = 'var(--danger-border)';
+        badge.innerHTML = `<span class="pip" style="background: var(--danger);"></span> <span>${summary.failed} Failed</span>`;
         autofixBtn.style.display = 'inline-flex';
         mergeBtn.style.display = 'none';
       } else if (overall === 'PENDING') {
         badge.className = 'status-badge badge-inactive';
-        badge.textContent = `⏳ Running (${summary.passed}/${summary.total})`;
+        badge.innerHTML = `<span class="pip pip-active"></span> <span>Running (${summary.passed}/${summary.total})</span>`;
         autofixBtn.style.display = 'none';
         mergeBtn.style.display = 'none';
       } else {
         badge.className = 'status-badge badge-inactive';
-        badge.textContent = '⚪ No Checks';
+        badge.textContent = 'No Checks';
         autofixBtn.style.display = 'none';
         mergeBtn.style.display = 'none';
       }
@@ -2022,34 +2758,31 @@
         checksHtml = '<div style="display: flex; flex-direction: column; gap: 6px; margin-top: 10px;">';
         checks.forEach(c => {
           const conc = c.conclusion || 'PENDING';
-          let icon = '⏳';
-          let bg = 'rgba(210, 153, 34, 0.1)';
-          let color = 'var(--warning)';
+          let pipColor = 'pip-active';
+          let badgeBg = 'rgba(255, 255, 255, 0.05)';
+          let badgeColor = '#ffffff';
+
           if (conc === 'SUCCESS') {
-            icon = '✅';
-            bg = 'rgba(63, 185, 80, 0.1)';
-            color = 'var(--success)';
+            pipColor = 'pip-emerald';
+            badgeBg = 'var(--success-bg)';
+            badgeColor = 'var(--success)';
           } else if (conc === 'FAILURE' || conc === 'CANCELLED' || conc === 'TIMED_OUT') {
-            icon = '❌';
-            bg = 'rgba(248, 81, 73, 0.1)';
-            color = 'var(--danger)';
-          } else if (conc === 'SKIPPED') {
-            icon = '⚪';
-            bg = 'rgba(139, 148, 158, 0.1)';
-            color = 'var(--text-muted)';
+            pipColor = 'pip-inactive';
+            badgeBg = 'var(--danger-bg)';
+            badgeColor = 'var(--danger)';
           }
 
-          const linkPart = c.url ? `<a href="${escapeHtml(c.url)}" target="_blank" style="font-size: 11px; color: var(--primary); text-decoration: none;">View Log ↗</a>` : '';
+          const linkPart = c.url ? `<a href="${escapeHtml(c.url)}" target="_blank" style="font-size: 11px; color: #ffffff; text-decoration: none; display: flex; align-items: center; gap: 4px;">Log ↗</a>` : '';
 
           checksHtml += `
-            <div style="display: flex; justify-content: space-between; align-items: center; background: #0d1117; border: 1px solid var(--card-border); border-radius: 6px; padding: 8px 12px; font-size: 12px;">
-              <div style="display: flex; align-items: center; gap: 8px;">
-                <span>${icon}</span>
-                <span style="font-weight: 600; color: var(--text);">${escapeHtml(c.name)}</span>
+            <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(8, 9, 12, 0.8); border: 1px solid var(--card-border-subtle); border-radius: 8px; padding: 10px 14px; font-size: 12px;">
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <span class="pip ${pipColor}"></span>
+                <span style="font-weight: 600; color: #ffffff;">${escapeHtml(c.name)}</span>
                 ${c.workflow ? `<span style="font-size: 11px; color: var(--text-muted);">(${escapeHtml(c.workflow)})</span>` : ''}
               </div>
-              <div style="display: flex; align-items: center; gap: 10px;">
-                <span style="padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: 600; background: ${bg}; color: ${color};">${escapeHtml(conc)}</span>
+              <div style="display: flex; align-items: center; gap: 12px;">
+                <span style="padding: 2px 8px; border-radius: 9999px; font-size: 10px; font-weight: 600; background: ${badgeBg}; color: ${badgeColor}; font-family: var(--font-mono);">${escapeHtml(conc)}</span>
                 ${linkPart}
               </div>
             </div>
@@ -2059,27 +2792,25 @@
       }
 
       container.innerHTML = `
-        <div style="background: #161b22; border: 1px solid var(--card-border); border-radius: 8px; padding: 14px; margin-bottom: 12px;">
+        <div style="background: rgba(8, 9, 12, 0.85); border: 1px solid var(--card-border); border-radius: 12px; padding: 16px; margin-bottom: 12px;">
           <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap;">
             <div>
-              <div style="font-size: 14px; font-weight: 700; color: var(--text);">
-                <a href="${escapeHtml(data.url)}" target="_blank" style="color: var(--text); text-decoration: none;">#${data.number}: ${escapeHtml(data.title)} ↗</a>
+              <div style="font-size: 14px; font-weight: 700; color: #ffffff;">
+                <a href="${escapeHtml(data.url)}" target="_blank" style="color: #ffffff; text-decoration: none;">#${data.number}: ${escapeHtml(data.title)} ↗</a>
               </div>
-              <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">
-                Branch: <code style="color: var(--primary);">${escapeHtml(data.branch)}</code> &rarr; <code>${escapeHtml(data.base_branch)}</code>
-                &bull; State: <span style="font-weight: 600;">${escapeHtml(data.state)}</span>
-                &bull; Review: <span>${escapeHtml(data.review_decision)}</span>
-                &bull; Mergeable: <span>${escapeHtml(data.mergeable)}</span>
+              <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px; font-family: var(--font-mono);">
+                Branch: <code style="color: #ffffff;">${escapeHtml(data.branch)}</code> &rarr; <code>${escapeHtml(data.base_branch)}</code>
+                &bull; State: <span>${escapeHtml(data.state)}</span>
               </div>
             </div>
             <div style="display: flex; gap: 6px; align-items: center;">
-              <span style="font-size: 11px; padding: 2px 8px; border-radius: 10px; background: rgba(63, 185, 80, 0.15); color: var(--success); font-weight: 600;">${summary.passed} Passed</span>
-              <span style="font-size: 11px; padding: 2px 8px; border-radius: 10px; background: rgba(248, 81, 73, 0.15); color: var(--danger); font-weight: 600;">${summary.failed} Failed</span>
-              <span style="font-size: 11px; padding: 2px 8px; border-radius: 10px; background: rgba(210, 153, 34, 0.15); color: var(--warning); font-weight: 600;">${summary.pending} Pending</span>
+              <span style="font-size: 11px; padding: 3px 10px; border-radius: 9999px; background: rgba(255, 255, 255, 0.08); color: #ffffff; font-weight: 600; font-family: var(--font-mono);">${summary.passed} Passed</span>
+              <span style="font-size: 11px; padding: 3px 10px; border-radius: 9999px; background: var(--danger-bg); color: var(--danger); font-weight: 600; font-family: var(--font-mono);">${summary.failed} Failed</span>
+              <span style="font-size: 11px; padding: 3px 10px; border-radius: 9999px; background: var(--warning-bg); color: var(--warning); font-weight: 600; font-family: var(--font-mono);">${summary.pending} Pending</span>
             </div>
           </div>
           ${currentConfig.pr_monitor_auto_merge ? `
-            <div style="margin-top: 10px; font-size: 11px; color: #8957e5; background: rgba(137, 87, 229, 0.1); border: 1px solid rgba(137, 87, 229, 0.3); border-radius: 6px; padding: 6px 10px;">
+            <div style="margin-top: 12px; font-size: 11px; color: #ffffff; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.18); border-radius: 8px; padding: 8px 12px;">
               ⚡ <strong>Auto-Merge Armed</strong>: AntiAgent will autonomously squash-merge this PR once all required CI checks turn green.
             </div>
           ` : ''}
@@ -2094,12 +2825,12 @@
         await fetch('/api/pr/stop_monitor', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
         if (prPollInterval) clearInterval(prPollInterval);
         isPRMonitoringActive = false;
-        watchBtn.textContent = '👁️ Monitor PR';
+        watchBtn.innerHTML = `<span>Monitor PR</span>`;
         watchBtn.className = 'btn btn-primary btn-sm';
       } else {
         await fetch('/api/pr/monitor', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
         isPRMonitoringActive = true;
-        watchBtn.textContent = '⏹️ Stop Monitoring';
+        watchBtn.innerHTML = `<span>Stop Monitoring</span>`;
         watchBtn.className = 'btn btn-danger btn-sm';
         if (prPollInterval) clearInterval(prPollInterval);
         prPollInterval = setInterval(fetchPRStatus, 4000);
@@ -2137,7 +2868,7 @@
     function copyFailureLogs() {
       const text = document.getElementById('failureLogsContent').textContent;
       navigator.clipboard.writeText(text).then(() => {
-        alert('Failure logs copied to clipboard!');
+        alert('Failure logs copied to clipboard');
       });
     }
 
@@ -2151,7 +2882,7 @@
         });
         const data = await res.json();
         if (data.ok) {
-          alert(data.message || 'Pull request merged successfully!');
+          alert(data.message || 'Pull request merged successfully');
           fetchPRStatus();
         } else {
           alert('Merge error: ' + (data.error || 'Failed to merge'));
@@ -2161,9 +2892,16 @@
       }
     }
 
+    window.addEventListener('resize', () => updateStanceIndicator(true));
+    window.addEventListener('DOMContentLoaded', () => updateStanceIndicator(true));
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(() => updateStanceIndicator(true));
+    }
+    updateStanceIndicator(true);
+
     fetchStatus().then(() => {
-      // Auto-check for updates silently in the background
       checkForUpdates(true);
+      updateStanceIndicator(true);
     });
     loadAudit();
     setInterval(loadAudit, 3000);
