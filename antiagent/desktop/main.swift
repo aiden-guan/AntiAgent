@@ -78,8 +78,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNavigati
                 let existingPythonPath = env["PYTHONPATH"] ?? ""
                 env["PYTHONPATH"] = existingPythonPath.isEmpty ? resPath : "\(resPath):\(existingPythonPath)"
             }
+            env["PYTHONDONTWRITEBYTECODE"] = "1"
             proc.environment = env
-            proc.arguments = ["python3", "-m", "antiagent.dashboard", "--no-open"]
+            proc.arguments = ["python3", "-B", "-m", "antiagent.dashboard", "--no-open"]
             try? proc.run()
             daemonProcess = proc
 

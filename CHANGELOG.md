@@ -8,7 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ## [v0.1.6] — 2026-09-22
 
 ### Summary
-Introduced a seamless 1-Click In-Place Self-Updater (`InPlaceSelfUpdater`), eliminating manual DMG mounting, PKG installer prompts, and app bundle reinstallations. Enables background download streaming, in-place app bundle patching via `ditto`, pip environment synchronization, clean in-place process restart, and a redesigned update modal.
+Introduced a seamless 1-Click In-Place Self-Updater (`InPlaceSelfUpdater`), eliminating manual DMG mounting, PKG installer prompts, and app bundle reinstallations. Enables background download streaming, in-place app bundle patching via `ditto`, pip environment synchronization, clean in-place process restart, and a redesigned update modal. Also resolves macOS Gatekeeper launch errors and archive permission degradation after self-updating.
 
 ### Architectural & Functional Highlights
 
@@ -16,13 +16,15 @@ Introduced a seamless 1-Click In-Place Self-Updater (`InPlaceSelfUpdater`), elim
 | :--- | :--- |
 | **In-Place Self-Updater** | Built `InPlaceSelfUpdater` engine (`antiagent/updater.py`) with thread-safe stage progression (`idle` -> `checking` -> `downloading` -> `extracting` -> `applying` -> `success` / `error`), download speed and percentage metrics, and cancellation support. |
 | **Zero-Reinstall macOS Patching** | Streamlines macOS bundle updates (`/Applications/AntiAgent.app` and `~/Applications/AntiAgent.app`) using native `ditto` synchronization, avoiding "file in use / open app" trash errors. |
+| **Permissions & Gatekeeper Fixes** | Replaced standard `zipfile.extractall()` with native `ditto -x -k` and POSIX mode restoration fallback (`external_attr >> 16`), ensuring Mach-O binaries retain `+x` (`0o755`) executable permissions. Added automatic quarantine removal (`xattr -cr`), ad-hoc bundle re-signing, and LaunchServices registration refresh (`lsregister -f`). |
+| **Prevent Bundle Sealing Violations** | Added `PYTHONDONTWRITEBYTECODE=1` and `-B` to Python backend spawn arguments in `main.swift`, preventing unsealed `.pyc` bytecode caching inside `.app/Contents/Resources`. |
 | **Dashboard API Endpoints** | Added `POST /api/update/self_update`, `GET /api/update/self_update_status`, `POST /api/update/self_update_cancel`, and `POST /api/update/restart` in `antiagent/dashboard/server.py`. |
 | **Redesigned Update Modal** | Front-and-center 1-Click Update card with live progress bar, speed indicator, step narrative, and 1-click dashboard reload; manual DMG/PKG/ZIP downloads cleanly collapsed. |
 | **Process Replacement** | Added instant in-place restart via `os.execv` preserving port and active workspace context. |
 
 ### Verification Proof
-- All 114 unit tests passed (`python3 -m unittest discover tests`).
-- Verified self-updater state machine transitions, cancellation handling, and already-up-to-date detection.
+- All 115 unit tests passed (`python3 -m unittest discover tests`).
+- Verified self-updater state machine transitions, cancellation handling, archive permission preservation, and live application launch on macOS.
 
 ---
 

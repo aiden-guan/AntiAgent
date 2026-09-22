@@ -749,8 +749,26 @@ class InPlaceSelfUpdater:
             extract_dir.mkdir(parents=True, exist_ok=True)
 
             try:
-                with zipfile.ZipFile(archive_path, "r") as zf:
-                    zf.extractall(extract_dir)
+                extracted = False
+                if sys.platform == "darwin" and str(archive_path).lower().endswith(".zip"):
+                    res = subprocess.run(
+                        ["ditto", "-x", "-k", str(archive_path), str(extract_dir)],
+                        capture_output=True,
+                        text=True,
+                    )
+                    if res.returncode == 0:
+                        extracted = True
+
+                if not extracted:
+                    with zipfile.ZipFile(archive_path, "r") as zf:
+                        for member in zf.infolist():
+                            extracted_file = zf.extract(member, extract_dir)
+                            mode = (member.external_attr >> 16) & 0o777
+                            if mode:
+                                try:
+                                    os.chmod(extracted_file, mode)
+                                except Exception:
+                                    pass
             except Exception as e:
                 shutil.rmtree(temp_dir, ignore_errors=True)
                 with self._lock:
@@ -780,6 +798,14 @@ class InPlaceSelfUpdater:
                     if target_app.exists() and os.access(str(target_app), os.W_OK):
                         if extracted_app and extracted_app.is_dir():
                             self._log(f"📦 Updating native desktop app in-place at {target_app}...")
+                            # Ensure executable permission on binary before copy
+                            ext_bin = extracted_app / "Contents" / "MacOS" / "AntiAgent"
+                            if ext_bin.is_file():
+                                try:
+                                    ext_bin.chmod(0o755)
+                                except Exception:
+                                    pass
+
                             ditto_res = subprocess.run(
                                 ["ditto", str(extracted_app), str(target_app)],
                                 capture_output=True,
@@ -789,6 +815,43 @@ class InPlaceSelfUpdater:
                                 self._log(f"✅ Successfully updated {target_app} in-place.")
                             else:
                                 self._log(f"⚠️ ditto copy warning: {ditto_res.stderr}")
+
+                            # Guarantee executable permissions on native binary
+                            target_bin_dir = target_app / "Contents" / "MacOS"
+                            if target_bin_dir.is_dir():
+                                for f in target_bin_dir.iterdir():
+                                    if f.is_file():
+                                        try:
+                                            f.chmod(f.stat().st_mode | 0o755)
+                                        except Exception:
+                                            pass
+
+                            # Clean any leftover pycache inside bundle to avoid sealing errors
+                            for pycache in target_app.rglob("__pycache__"):
+                                shutil.rmtree(pycache, ignore_errors=True)
+
+                            # Clear quarantine xattr in case Gatekeeper flagged it
+                            try:
+                                subprocess.run(["xattr", "-cr", str(target_app)], capture_output=True)
+                            except Exception:
+                                pass
+
+                            # Ad-hoc codesign to validate bundle resources
+                            try:
+                                subprocess.run(
+                                    ["codesign", "--force", "--deep", "--sign", "-", str(target_app)],
+                                    capture_output=True,
+                                )
+                            except Exception:
+                                pass
+
+                            # Refresh macOS LaunchServices bundle registration
+                            lsregister = Path("/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister")
+                            if lsregister.is_file():
+                                try:
+                                    subprocess.run([str(lsregister), "-f", str(target_app)], capture_output=True)
+                                except Exception:
+                                    pass
 
             # B. Update Python package via pip in-place
             self._set_stage("applying", 90, "Updating Python package and rules...")

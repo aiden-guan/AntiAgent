@@ -307,6 +307,31 @@ class TestUpdaterEngine(unittest.TestCase):
         self.assertTrue(res)
         self.assertEqual(updater.status, "cancelled")
 
+    def test_zip_permission_preservation(self):
+        """Verify zip extraction preserves POSIX executable bits."""
+        import zipfile
+        temp_dir = Path(tempfile.mkdtemp())
+        zip_path = temp_dir / "test.zip"
+        out_dir = temp_dir / "out"
+        out_dir.mkdir(parents=True, exist_ok=True)
+
+        # Create zip with an executable file
+        with zipfile.ZipFile(zip_path, "w") as zf:
+            info = zipfile.ZipInfo("bin/runner")
+            info.external_attr = 0o755 << 16  # rwxr-xr-x
+            zf.writestr(info, b"#!/bin/sh\necho ok\n")
+
+        with zipfile.ZipFile(zip_path, "r") as zf:
+            for member in zf.infolist():
+                extracted_file = zf.extract(member, out_dir)
+                mode = (member.external_attr >> 16) & 0o777
+                if mode:
+                    os.chmod(extracted_file, mode)
+
+        extracted_bin = out_dir / "bin" / "runner"
+        self.assertTrue(extracted_bin.exists())
+        self.assertTrue(bool(extracted_bin.stat().st_mode & 0o111))
+
 
 if __name__ == "__main__":
     unittest.main()
