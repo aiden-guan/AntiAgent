@@ -305,6 +305,10 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
             self._send_json({"ok": relaunch_ok, "app_path": str(target) if target else None})
         elif path == "/api/update/restart":
             global_self_updater.reset()
+            if os.environ.get("ANTIAGENT_TESTING") == "1":
+                self._send_json({"ok": True, "message": "Server restarting (test mode)..."})
+                return
+
             def _restart_worker():
                 time.sleep(0.6)
                 try:

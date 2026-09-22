@@ -5,6 +5,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ---
 
+## [v0.1.8] — 2026-09-22
+
+### Summary
+Overhauled the 1-Click In-Place Self-Updater to eliminate confusing UI states, stuck update modals, and pip packaging errors during self-updates. In v0.1.7, an earlier successful update cached status in memory and permanently rendered a stale success banner while hiding the action button when a newer release became available. v0.1.8 adds semantic version comparison, automatic state reset, robust GitHub source-tarball fallback for pip upgrades, granular multi-component progress indicators, an expandable live log view, and error recovery with retry.
+
+### Architectural & Functional Highlights
+
+| Area / Component | Improvement |
+| :--- | :--- |
+| **Stale State Recovery** | Added `compareVersions()` in client-side JavaScript and automatic reset via `/api/update/self_update_reset` when a new GitHub release is detected, preventing older success or error states from masking new updates. |
+| **Source Tarball Pip Updates** | Fixed `pip install` errors on macOS where pip was invoked on `AntiAgent.zip` (which is a macOS `.app` bundle, not a Python package). Updater now fetches the release source tarball (`v{version}.tar.gz`) for pip installs while using `ditto` to update the native `/Applications/AntiAgent.app` bundle. |
+| **Multi-Component Tracking** | Enhanced `InPlaceSelfUpdater` and dashboard modal to track individual component statuses (`macOS Desktop App` and `Python Package`) independently with live badge indicators. |
+| **Live Diagnostics & Error UI** | Added a collapsible "View Logs" drawer for real-time update diagnostics, a dedicated error card with failure reason, retry action, and an explicit "✕ Dismiss" option. |
+| **App Relaunch & Test Safety** | Added `/api/update/relaunch_app` endpoint to trigger macOS app reopening, and hardened `/api/update/restart` with synchronous test guards to eliminate subprocess test interference. |
+| **Automated Verification** | Added comprehensive unit tests in `tests/test_updater.py` and `tests/test_dashboard.py` covering state resets, component status reporting, endpoint handling, and process restarts. |
+
+### Verification Proof
+- All 125 unit tests passed (`python3 -m unittest discover tests`) in ~2.2s.
+- Verified updater UI transitions across checking, downloading, extracting, applying, success, and error states.
+
+---
+
 ## [v0.1.7] — 2026-09-22
 
 ### Summary

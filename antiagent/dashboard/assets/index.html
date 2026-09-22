@@ -1166,7 +1166,7 @@
         </div>
         <div class="logo-title-group">
           <span class="logo-title">AntiAgent</span>
-          <span id="appVersionTag" class="version-tag" onclick="openUpdateModal()" style="cursor: pointer;" title="Click to check for updates">v0.1.7</span>
+          <span id="appVersionTag" class="version-tag" onclick="openUpdateModal()" style="cursor: pointer;" title="Click to check for updates">v0.1.8</span>
         </div>
       </div>
       <div class="header-badges">
@@ -1859,7 +1859,7 @@
               <span>Checking for updates...</span>
             </div>
             <div id="updateStatusSub" style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">
-              Current installed version: <strong id="updateCurrentVer" style="color: #ffffff;">v0.1.7</strong>
+              Current installed version: <strong id="updateCurrentVer" style="color: #ffffff;">v0.1.8</strong>
             </div>
           </div>
           <button id="updateRefreshBtn" class="btn btn-outline btn-sm" onclick="checkForUpdates(false)">
@@ -2691,7 +2691,7 @@
           </div>
         `;
 
-        const currentVer = currentConfig.version || '0.1.7';
+        const currentVer = currentConfig.version || '0.1.8';
         const hasUpdate = latestUpdateData && latestUpdateData.update_available;
         const updateText = hasUpdate ? `v${latestUpdateData.latest_version} available (Click to download in app)` : `v${currentVer} installed`;
         html += `
@@ -3076,7 +3076,7 @@
       const title = document.getElementById('updateStatusTitle');
       const sub = document.getElementById('updateStatusSub');
       const currentVerEl = document.getElementById('updateCurrentVer');
-      const curVer = (currentConfig && currentConfig.version) || '0.1.7';
+      const curVer = (currentConfig && currentConfig.version) || '0.1.8';
       if (currentVerEl) currentVerEl.textContent = 'v' + curVer;
 
       if (!silent && title) {
@@ -3448,7 +3448,7 @@
       const relaunchBtn = document.getElementById('oneClickRelaunchAppBtn');
       const logsContent = document.getElementById('oneClickLogsContent');
       const errMessage = document.getElementById('oneClickErrorMessage');
-      const curVer = (currentConfig && currentConfig.version) || '0.1.7';
+      const curVer = (currentConfig && currentConfig.version) || '0.1.8';
 
       if (st && st.logs) {
         lastSelfUpdateLogs = st.logs;

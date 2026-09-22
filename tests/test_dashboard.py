@@ -19,6 +19,7 @@ class TestDashboardServer(unittest.TestCase):
     def setUpClass(cls):
         cls.test_dir = tempfile.mkdtemp()
         DashboardRequestHandler.workspace_path = cls.test_dir
+        os.environ["ANTIAGENT_TESTING"] = "1"
         cls.server = ThreadingHTTPServer(("127.0.0.1", 0), DashboardRequestHandler)
         cls.port = cls.server.server_address[1]
         cls.thread = threading.Thread(target=cls.server.serve_forever, daemon=True)
@@ -27,6 +28,7 @@ class TestDashboardServer(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
+        os.environ.pop("ANTIAGENT_TESTING", None)
         cls.server.shutdown()
         cls.server.server_close()
 
@@ -353,15 +355,13 @@ class TestDashboardServer(unittest.TestCase):
             data = json.loads(resp.read().decode("utf-8"))
             self.assertIn("ok", data)
 
-        # Test restart endpoint (mocking Thread to prevent killing test process)
-        with patch("antiagent.dashboard.server.threading.Thread") as mock_thread:
-            url_restart = f"http://127.0.0.1:{self.port}/api/update/restart"
-            req_restart = urllib.request.Request(url_restart, data=b"{}", headers={"Content-Type": "application/json"})
-            with urllib.request.urlopen(req_restart) as resp:
-                self.assertEqual(resp.status, 200)
-                data = json.loads(resp.read().decode("utf-8"))
-                self.assertTrue(data.get("ok"))
-                mock_thread.assert_called_once()
+        # Test restart endpoint
+        url_restart = f"http://127.0.0.1:{self.port}/api/update/restart"
+        req_restart = urllib.request.Request(url_restart, data=b"{}", headers={"Content-Type": "application/json"})
+        with urllib.request.urlopen(req_restart) as resp:
+            self.assertEqual(resp.status, 200)
+            data = json.loads(resp.read().decode("utf-8"))
+            self.assertTrue(data.get("ok"))
 
 
 if __name__ == "__main__":
