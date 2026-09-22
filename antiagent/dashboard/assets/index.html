@@ -1122,17 +1122,185 @@
     }
 
     .release-notes-box {
-      background: #000000;
+      background: rgba(8, 9, 12, 0.85);
       border: 1px solid var(--card-border);
-      border-radius: 10px;
-      padding: 14px;
-      max-height: 180px;
+      border-radius: 12px;
+      padding: 16px 18px;
+      max-height: 280px;
       overflow-y: auto;
-      font-size: 12px;
+      font-size: 13px;
       line-height: 1.6;
       color: #d4d4d8;
-      white-space: pre-wrap;
+      font-family: var(--font);
+      box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5);
+    }
+
+    .release-notes-box::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .release-notes-box::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 4px;
+    }
+    .release-notes-box::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 4px;
+    }
+    .release-notes-box::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.25);
+    }
+
+    .release-notes-box h1,
+    .release-notes-box h2,
+    .release-notes-box h3,
+    .release-notes-box h4 {
+      color: #ffffff;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      margin-top: 16px;
+      margin-bottom: 8px;
+      line-height: 1.35;
+    }
+    .release-notes-box h1:first-child,
+    .release-notes-box h2:first-child,
+    .release-notes-box h3:first-child,
+    .release-notes-box h4:first-child {
+      margin-top: 0;
+    }
+    .release-notes-box h1 { font-size: 16px; }
+    .release-notes-box h2 { font-size: 15px; }
+    .release-notes-box h3 { font-size: 13.5px; }
+    .release-notes-box h4 { font-size: 12.5px; }
+
+    .release-notes-box p {
+      margin: 8px 0;
+      line-height: 1.6;
+      color: #d4d4d8;
+    }
+    .release-notes-box p:last-child {
+      margin-bottom: 0;
+    }
+
+    .release-notes-box ul,
+    .release-notes-box ol {
+      margin: 8px 0;
+      padding-left: 20px;
+      color: #d4d4d8;
+    }
+    .release-notes-box li {
+      margin-bottom: 5px;
+      line-height: 1.55;
+    }
+    .release-notes-box li:last-child {
+      margin-bottom: 0;
+    }
+
+    .release-notes-box .changelog-table-wrap {
+      overflow-x: auto;
+      margin: 12px 0;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(12, 13, 16, 0.6);
+    }
+    .release-notes-box table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      line-height: 1.5;
+      text-align: left;
+    }
+    .release-notes-box th {
+      background: rgba(255, 255, 255, 0.05);
+      color: #ffffff;
+      font-weight: 600;
+      padding: 8px 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      white-space: nowrap;
+    }
+    .release-notes-box td {
+      padding: 8px 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      color: #d4d4d8;
+      vertical-align: top;
+    }
+    .release-notes-box tr:last-child td {
+      border-bottom: none;
+    }
+    .release-notes-box tbody tr:hover {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .release-notes-box code {
       font-family: var(--font-mono);
+      font-size: 11.5px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 4px;
+      padding: 1.5px 5px;
+      color: #f4f4f5;
+      word-break: break-word;
+    }
+
+    .release-notes-box pre {
+      background: #050608;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      padding: 10px 14px;
+      margin: 10px 0;
+      overflow-x: auto;
+    }
+    .release-notes-box pre code {
+      background: transparent;
+      border: none;
+      padding: 0;
+      color: #e4e4e7;
+      font-size: 11.5px;
+      line-height: 1.5;
+      white-space: pre;
+    }
+
+    .release-notes-box blockquote {
+      margin: 10px 0;
+      padding: 8px 14px;
+      border-left: 3px solid rgba(255, 255, 255, 0.25);
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 0 8px 8px 0;
+      color: #a1a1aa;
+      font-size: 12px;
+    }
+    .release-notes-box blockquote p {
+      margin: 4px 0;
+      color: inherit;
+    }
+
+    .release-notes-box hr {
+      border: none;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      margin: 14px 0;
+    }
+
+    .release-notes-box a {
+      color: #93c5fd;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+      text-decoration-color: rgba(147, 197, 253, 0.4);
+      transition: color 0.15s, text-decoration-color 0.15s;
+    }
+    .release-notes-box a:hover {
+      color: #ffffff;
+      text-decoration-color: #ffffff;
+    }
+
+    .release-notes-box strong {
+      color: #ffffff;
+      font-weight: 600;
+    }
+    .release-notes-box del {
+      color: #71717a;
+    }
+    #releaseNotesExternalLink:hover {
+      color: #ffffff !important;
     }
 
     /* Micro-SVGs */
@@ -1166,7 +1334,7 @@
         </div>
         <div class="logo-title-group">
           <span class="logo-title">AntiAgent</span>
-          <span id="appVersionTag" class="version-tag" onclick="openUpdateModal()" style="cursor: pointer;" title="Click to check for updates">v0.1.8</span>
+          <span id="appVersionTag" class="version-tag" onclick="openUpdateModal()" style="cursor: pointer;" title="Click to check for updates">v0.1.9</span>
         </div>
       </div>
       <div class="header-badges">
@@ -1859,7 +2027,7 @@
               <span>Checking for updates...</span>
             </div>
             <div id="updateStatusSub" style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">
-              Current installed version: <strong id="updateCurrentVer" style="color: #ffffff;">v0.1.8</strong>
+              Current installed version: <strong id="updateCurrentVer" style="color: #ffffff;">v0.1.9</strong>
             </div>
           </div>
           <button id="updateRefreshBtn" class="btn btn-outline btn-sm" onclick="checkForUpdates(false)">
@@ -1911,7 +2079,7 @@
         <div id="oneClickSuccessArea" style="display: none; margin-top: 14px; background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 12px; padding: 16px;">
           <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;">
             <div style="display: flex; gap: 10px;">
-              <svg class="icon" viewBox="0 0 24 24" style="stroke: #22c55e; width: 20px; height: 20px; min-width: 20px; margin-top: 2px;"><polyline points="20 6 9 17 4 12"/></svg>
+              <svg id="oneClickSuccessIcon" class="icon" viewBox="0 0 24 24" style="stroke: #22c55e; width: 20px; height: 20px; min-width: 20px; margin-top: 2px;"><polyline points="20 6 9 17 4 12"/></svg>
               <div>
                 <div id="oneClickSuccessTitle" style="font-size: 13px; font-weight: 600; color: #ffffff;">Update Applied In-Place!</div>
                 <div id="oneClickSuccessDetails" style="font-size: 11px; color: var(--text-muted); margin-top: 3px; line-height: 1.45;">
@@ -1925,7 +2093,7 @@
           <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 12px; margin-top: 10px;">
             <button id="oneClickReloadBtn" class="btn btn-primary btn-sm" onclick="restartAndReloadDashboard()">
               <svg class="icon" viewBox="0 0 24 24" style="stroke: #050507;"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
-              <span>Restart &amp; Reload Dashboard</span>
+              <span id="oneClickReloadBtnText">Restart AntiAgent &amp; Apply Update</span>
             </button>
             <button id="oneClickRelaunchAppBtn" class="btn btn-outline btn-sm" onclick="relaunchDesktopApp()" style="display: none;">
               <svg class="icon" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
@@ -1935,6 +2103,7 @@
               View Logs
             </button>
           </div>
+          <div id="oneClickRestartNotice" style="display: none; margin-top: 10px; font-size: 11px; color: #a1a1aa; background: rgba(255,255,255,0.03); border: 1px dashed rgba(255,255,255,0.12); border-radius: 8px; padding: 8px 12px; line-height: 1.45;"></div>
           <div id="oneClickLogsArea" style="display: none; margin-top: 10px;">
             <pre id="oneClickLogsContent" style="background: #000000; border: 1px solid var(--card-border); border-radius: 8px; padding: 10px; font-size: 11px; font-family: var(--font-mono); max-height: 140px; overflow-y: auto; color: #e4e4e7; white-space: pre-wrap; word-break: break-all; margin: 0;"></pre>
           </div>
@@ -1961,9 +2130,16 @@
 
       <!-- Release Notes -->
       <div id="releaseNotesSection" style="margin-bottom: 18px; display: none;">
-        <label style="font-size: 10px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.14em; display: block; margin-bottom: 6px;">
-          What's New in <span id="releaseNotesTag">v...</span>:
-        </label>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <label style="font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 0; display: flex; align-items: center; gap: 6px;">
+            <svg class="icon" viewBox="0 0 24 24" style="width: 13px; height: 13px; stroke: var(--text-muted);"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+            <span>What's New in <span id="releaseNotesTag" style="color: #ffffff;">v...</span>:</span>
+          </label>
+          <a id="releaseNotesExternalLink" href="#" target="_blank" rel="noopener noreferrer" style="font-size: 11px; color: var(--text-muted); text-decoration: none; display: none; align-items: center; gap: 4px; transition: color 0.15s ease;">
+            <span>GitHub Release</span>
+            <svg class="icon" viewBox="0 0 24 24" style="width: 12px; height: 12px; stroke-width: 2;"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          </a>
+        </div>
         <div id="releaseNotesContent" class="release-notes-box"></div>
       </div>
 
@@ -2691,7 +2867,7 @@
           </div>
         `;
 
-        const currentVer = currentConfig.version || '0.1.8';
+        const currentVer = currentConfig.version || '0.1.9';
         const hasUpdate = latestUpdateData && latestUpdateData.update_available;
         const updateText = hasUpdate ? `v${latestUpdateData.latest_version} available (Click to download in app)` : `v${currentVer} installed`;
         html += `
@@ -3067,6 +3243,251 @@
       return 0;
     }
 
+    // Lightweight Safe Markdown Renderer for Release Notes
+    function sanitizeUrl(url) {
+      if (!url) return '#';
+      const clean = String(url).trim().replace(/&amp;/g, '&');
+      if (/^(?:https?:\/\/|mailto:|#)/i.test(clean)) {
+        return clean;
+      }
+      return '#';
+    }
+
+    function renderMarkdown(md) {
+      if (!md || typeof md !== 'string') return '';
+      const rawLines = md.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+
+      function parseInline(rawText) {
+        if (!rawText) return '';
+        let text = escapeHtml(rawText);
+        const tokens = [];
+
+        function saveToken(html) {
+          const idx = tokens.length;
+          tokens.push(html);
+          return '\x00TOK' + idx + '\x00';
+        }
+
+        // 1. Inline code (content is already HTML-escaped)
+        text = text.replace(/`([^`]+)`/g, (_, code) => {
+          return saveToken('<code>' + code + '</code>');
+        });
+
+        // 2. Markdown links: [text](url)
+        text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, linkText, url) => {
+          const safe = sanitizeUrl(url);
+          if (safe === '#' && !url.trim().startsWith('#')) {
+            return linkText;
+          }
+          return saveToken('<a href="' + escapeHtml(safe) + '" target="_blank" rel="noopener noreferrer">' + linkText + '</a>');
+        });
+
+        // 3. Autolink raw URLs
+        text = text.replace(/(^|[\s(])(https?:\/\/[^\s\)<>]+)/g, (_, prefix, rawUrl) => {
+          let trailing = '';
+          const m = rawUrl.match(/[.,!?:;]+$/);
+          if (m) {
+            trailing = m[0];
+            rawUrl = rawUrl.slice(0, -trailing.length);
+          }
+          const safe = sanitizeUrl(rawUrl);
+          const link = '<a href="' + escapeHtml(safe) + '" target="_blank" rel="noopener noreferrer">' + rawUrl + '</a>';
+          return prefix + saveToken(link) + trailing;
+        });
+
+        // 4. Safe <br /> support from escaped &lt;br&gt; or &lt;br/&gt;
+        text = text.replace(/&lt;br\s*\/?&gt;/gi, '<br />');
+
+        // 5. Bold & Italic
+        text = text.replace(/\*\*\*([^*]+)\*\*\*/g, '<strong><em>$1</em></strong>');
+        text = text.replace(/___([^_]+)___/g, '<strong><em>$1</em></strong>');
+
+        // 6. Bold
+        text = text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+        text = text.replace(/__([^_]+)__/g, '<strong>$1</strong>');
+
+        // 7. Italic
+        text = text.replace(/\*([^*\n]+)\*/g, '<em>$1</em>');
+        text = text.replace(/(^|[\s.,!?;:()\[\]])_([^_]+)_(?=$|[\s.,!?;:()\[\]])/g, '$1<em>$2</em>');
+
+        // 8. Strikethrough
+        text = text.replace(/~~([^~]+)~~/g, '<del>$1</del>');
+
+        // 9. Restore tokens
+        text = text.replace(/\x00TOK(\d+)\x00/g, (_, idx) => tokens[parseInt(idx, 10)] || '');
+
+        return text;
+      }
+
+      function isTableSep(line) {
+        if (!line || !line.includes('-')) return false;
+        let trimmed = line.trim();
+        if (trimmed.startsWith('|')) trimmed = trimmed.slice(1);
+        if (trimmed.endsWith('|')) trimmed = trimmed.slice(0, -1);
+        const parts = trimmed.split('|');
+        if (parts.length === 0) return false;
+        return parts.every(p => /^\s*:?-{2,}:?\s*$/.test(p));
+      }
+
+      function splitRow(line) {
+        let raw = line.trim();
+        if (raw.startsWith('|')) raw = raw.slice(1);
+        if (raw.endsWith('|')) raw = raw.slice(0, -1);
+        return raw.split('|').map(c => c.trim());
+      }
+
+      const out = [];
+      let i = 0;
+
+      while (i < rawLines.length) {
+        const rawLine = rawLines[i];
+        const trimmed = rawLine.trim();
+
+        if (!trimmed) {
+          i++;
+          continue;
+        }
+
+        // Fenced Code Block
+        if (trimmed.startsWith('```')) {
+          const lang = escapeHtml(trimmed.slice(3).trim());
+          const codeLines = [];
+          i++;
+          while (i < rawLines.length && !rawLines[i].trim().startsWith('```')) {
+            codeLines.push(rawLines[i]);
+            i++;
+          }
+          if (i < rawLines.length) i++;
+          out.push('<pre><code' + (lang ? ' class="language-' + lang + '"' : '') + '>' + escapeHtml(codeLines.join('\n')) + '</code></pre>');
+          continue;
+        }
+
+        // Markdown Table
+        if (trimmed.includes('|') && i + 1 < rawLines.length && isTableSep(rawLines[i + 1])) {
+          const headerCols = splitRow(trimmed);
+          const sepCols = splitRow(rawLines[i + 1]);
+          const aligns = sepCols.map(col => {
+            const c = col.trim();
+            const start = c.startsWith(':');
+            const end = c.endsWith(':');
+            if (start && end) return 'center';
+            if (end) return 'right';
+            return 'left';
+          });
+
+          let tbl = '<div class="changelog-table-wrap"><table><thead><tr>';
+          headerCols.forEach((h, colIdx) => {
+            const align = aligns[colIdx] || 'left';
+            tbl += '<th style="text-align: ' + align + ';">' + parseInline(h) + '</th>';
+          });
+          tbl += '</tr></thead><tbody>';
+
+          i += 2;
+          while (i < rawLines.length && rawLines[i].trim() && rawLines[i].includes('|')) {
+            const rowCols = splitRow(rawLines[i]);
+            tbl += '<tr>';
+            rowCols.forEach((cell, colIdx) => {
+              const align = aligns[colIdx] || 'left';
+              tbl += '<td style="text-align: ' + align + ';">' + parseInline(cell) + '</td>';
+            });
+            tbl += '</tr>';
+            i++;
+          }
+          tbl += '</tbody></table></div>';
+          out.push(tbl);
+          continue;
+        }
+
+        // Headings
+        const hMatch = trimmed.match(/^(#{1,6})\s+(.*)$/);
+        if (hMatch) {
+          const level = hMatch[1].length;
+          let text = hMatch[2].trim().replace(/\s+#+\s*$/, '');
+          out.push('<h' + level + '>' + parseInline(text) + '</h' + level + '>');
+          i++;
+          continue;
+        }
+
+        // Horizontal Rule
+        if (/^(?:---|\*\*\*|___)\s*$/.test(trimmed)) {
+          out.push('<hr />');
+          i++;
+          continue;
+        }
+
+        // Blockquote
+        if (trimmed.startsWith('>')) {
+          const bq = [];
+          while (i < rawLines.length && rawLines[i].trim().startsWith('>')) {
+            bq.push(rawLines[i].trim().replace(/^>\s?/, ''));
+            i++;
+          }
+          out.push('<blockquote>' + renderMarkdown(bq.join('\n')) + '</blockquote>');
+          continue;
+        }
+
+        // Unordered List
+        if (/^\s*[-*+]\s+/.test(rawLine)) {
+          let list = '<ul>';
+          while (i < rawLines.length && /^\s*[-*+]\s+/.test(rawLines[i])) {
+            const match = rawLines[i].match(/^(\s*)([-*+])\s+(.*)$/);
+            const indent = match[1].length;
+            let itemText = match[3];
+            const isNested = indent >= 2;
+            let checkbox = '';
+            if (/^\[([ xX])\]\s+/.test(itemText)) {
+              const checked = !itemText.startsWith('[ ]');
+              checkbox = '<input type="checkbox" disabled ' + (checked ? 'checked ' : '') + 'style="margin-right: 6px; vertical-align: middle; accent-color: #22c55e;">';
+              itemText = itemText.replace(/^\[([ xX])\]\s+/, '');
+            }
+            list += '<li' + (isNested ? ' style="margin-left: ' + Math.min(indent * 8, 32) + 'px;"' : '') + '>' + checkbox + parseInline(itemText) + '</li>';
+            i++;
+          }
+          list += '</ul>';
+          out.push(list);
+          continue;
+        }
+
+        // Ordered List
+        if (/^\s*\d+\.\s+/.test(rawLine)) {
+          let list = '<ol>';
+          while (i < rawLines.length && /^\s*\d+\.\s+/.test(rawLines[i])) {
+            const match = rawLines[i].match(/^(\s*)\d+\.\s+(.*)$/);
+            const indent = match[1].length;
+            const itemText = match[2];
+            const isNested = indent >= 2;
+            list += '<li' + (isNested ? ' style="margin-left: ' + Math.min(indent * 8, 32) + 'px;"' : '') + '>' + parseInline(itemText) + '</li>';
+            i++;
+          }
+          list += '</ol>';
+          out.push(list);
+          continue;
+        }
+
+        // Paragraph
+        const para = [];
+        while (
+          i < rawLines.length &&
+          rawLines[i].trim() &&
+          !rawLines[i].trim().startsWith('```') &&
+          !rawLines[i].trim().startsWith('>') &&
+          !/^(#{1,6})\s+/.test(rawLines[i].trim()) &&
+          !/^(?:---|\*\*\*|___)\s*$/.test(rawLines[i].trim()) &&
+          !/^\s*[-*+]\s+/.test(rawLines[i]) &&
+          !/^\s*\d+\.\s+/.test(rawLines[i]) &&
+          !(rawLines[i].includes('|') && i + 1 < rawLines.length && isTableSep(rawLines[i + 1]))
+        ) {
+          para.push(rawLines[i].trim());
+          i++;
+        }
+        if (para.length > 0) {
+          out.push('<p>' + parseInline(para.join(' ')) + '</p>');
+        }
+      }
+
+      return out.join('\n');
+    }
+
     // In-App Update Downloader Logic
     let latestUpdateData = null;
     let downloadPollInterval = null;
@@ -3076,7 +3497,7 @@
       const title = document.getElementById('updateStatusTitle');
       const sub = document.getElementById('updateStatusSub');
       const currentVerEl = document.getElementById('updateCurrentVer');
-      const curVer = (currentConfig && currentConfig.version) || '0.1.8';
+      const curVer = (currentConfig && currentConfig.version) || '0.1.9';
       if (currentVerEl) currentVerEl.textContent = 'v' + curVer;
 
       if (!silent && title) {
@@ -3118,10 +3539,19 @@
         const notesSection = document.getElementById('releaseNotesSection');
         const notesContent = document.getElementById('releaseNotesContent');
         const notesTag = document.getElementById('releaseNotesTag');
-        if (notesSection && notesContent && data.release_notes) {
+        const notesExtLink = document.getElementById('releaseNotesExternalLink');
+        if (notesSection && notesContent && data.release_notes && data.release_notes.trim()) {
           notesSection.style.display = 'block';
-          notesTag.textContent = 'v' + (data.latest_version || curVer);
-          notesContent.textContent = data.release_notes;
+          if (notesTag) notesTag.textContent = 'v' + (data.latest_version || curVer);
+          notesContent.innerHTML = renderMarkdown(data.release_notes);
+          if (notesExtLink) {
+            if (data.html_url) {
+              notesExtLink.href = data.html_url;
+              notesExtLink.style.display = 'inline-flex';
+            } else {
+              notesExtLink.style.display = 'none';
+            }
+          }
         } else if (notesSection) {
           notesSection.style.display = 'none';
         }
@@ -3448,7 +3878,12 @@
       const relaunchBtn = document.getElementById('oneClickRelaunchAppBtn');
       const logsContent = document.getElementById('oneClickLogsContent');
       const errMessage = document.getElementById('oneClickErrorMessage');
-      const curVer = (currentConfig && currentConfig.version) || '0.1.8';
+      const reloadBtn = document.getElementById('oneClickReloadBtn');
+      const reloadBtnLabel = document.getElementById('oneClickReloadBtnText');
+      const restartNotice = document.getElementById('oneClickRestartNotice');
+      const updateTitle = document.getElementById('updateStatusTitle');
+      const updateSub = document.getElementById('updateStatusSub');
+      const curVer = (currentConfig && currentConfig.version) || '0.1.9';
 
       if (st && st.logs) {
         lastSelfUpdateLogs = st.logs;
@@ -3505,36 +3940,54 @@
         if (errArea) errArea.style.display = 'none';
         if (succArea) succArea.style.display = 'block';
 
-        if (st.is_up_to_date) {
+        const targetVer = st.target_version || (latestUpdateData && latestUpdateData.latest_version) || curVer;
+        const isPendingRestart = st.restart_pending || (targetVer && compareVersions(curVer, targetVer) < 0);
+        const isUpToDate = st.is_up_to_date || (targetVer && compareVersions(curVer, targetVer) >= 0);
+
+        if (isUpToDate && !isPendingRestart) {
           if (successTitle) successTitle.textContent = 'AntiAgent is Up to Date';
-          if (successDetails) successDetails.textContent = `You are already running v${st.current_version || curVer}. No update needed.`;
+          if (successDetails) successDetails.textContent = `You are running v${curVer}. AntiAgent rules & guard engine are active.`;
           if (componentsList) componentsList.innerHTML = '';
-          const reloadBtn = document.getElementById('oneClickReloadBtn');
           if (reloadBtn) reloadBtn.style.display = 'none';
+          if (relaunchBtn) relaunchBtn.style.display = 'none';
+          if (restartNotice) restartNotice.style.display = 'none';
+          if (updateTitle) {
+            updateTitle.innerHTML = `<span style="color: #ffffff;">AntiAgent is Up to Date</span> <span class="status-badge badge-active" style="font-size: 10px; padding: 2px 8px; border-radius: 9999px;">v${escapeHtml(curVer)}</span>`;
+          }
+          if (updateSub) {
+            updateSub.textContent = `AntiAgent v${curVer} is the latest version available.`;
+          }
         } else {
-          const targetVer = st.target_version ? `v${st.target_version}` : 'Latest Version';
-          if (successTitle) successTitle.textContent = `Successfully updated to ${targetVer}!`;
-          if (successDetails) successDetails.textContent = 'Your local installation has been updated in-place. Choose an option below to activate:';
-          const reloadBtn = document.getElementById('oneClickReloadBtn');
-          if (reloadBtn) reloadBtn.style.display = 'inline-flex';
+          if (successTitle) successTitle.textContent = `v${targetVer} Installed — Restart Required`;
+          if (successDetails) {
+            successDetails.textContent = `AntiAgent v${targetVer} has been installed in-place. Restart AntiAgent to switch from v${curVer} to v${targetVer}:`;
+          }
+          if (reloadBtn) {
+            reloadBtn.style.display = 'inline-flex';
+            if (reloadBtnLabel) reloadBtnLabel.textContent = `Restart AntiAgent & Activate v${targetVer}`;
+          }
+          if (relaunchBtn) relaunchBtn.style.display = 'none';
+
+          if (updateTitle) {
+            updateTitle.innerHTML = `<span style="color: #ffffff;">Update Ready: v${escapeHtml(targetVer)}</span> <span class="status-badge" style="background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); font-size: 10px; padding: 2px 8px; border-radius: 9999px;">Restart Required</span>`;
+          }
+          if (updateSub) {
+            updateSub.textContent = `Files installed on disk. Restart AntiAgent to switch from v${curVer} to v${targetVer}.`;
+          }
 
           if (componentsList) {
             const comps = st.components_updated || {};
             let html = '';
             if (comps.desktop_app) {
-              html += '<div style="display: flex; align-items: center; gap: 6px;"><svg class="icon" viewBox="0 0 24 24" style="stroke: #22c55e; width: 14px; height: 14px;"><polyline points="20 6 9 17 4 12"/></svg><span>macOS Desktop App (/Applications/AntiAgent.app) updated</span></div>';
+              html += '<div style="display: flex; align-items: center; gap: 6px;"><svg class="icon" viewBox="0 0 24 24" style="stroke: #22c55e; width: 14px; height: 14px;"><polyline points="20 6 9 17 4 12"/></svg><span>macOS Desktop App updated in-place</span></div>';
             }
             if (comps.python_package) {
-              html += '<div style="display: flex; align-items: center; gap: 6px;"><svg class="icon" viewBox="0 0 24 24" style="stroke: #22c55e; width: 14px; height: 14px;"><polyline points="20 6 9 17 4 12"/></svg><span>Python package (antiagent) upgraded in-place</span></div>';
+              html += '<div style="display: flex; align-items: center; gap: 6px;"><svg class="icon" viewBox="0 0 24 24" style="stroke: #22c55e; width: 14px; height: 14px;"><polyline points="20 6 9 17 4 12"/></svg><span>Python package upgraded in-place</span></div>';
             }
             if (!html) {
               html = '<div style="display: flex; align-items: center; gap: 6px;"><svg class="icon" viewBox="0 0 24 24" style="stroke: #22c55e; width: 14px; height: 14px;"><polyline points="20 6 9 17 4 12"/></svg><span>AntiAgent rules & assets refreshed</span></div>';
             }
             componentsList.innerHTML = html;
-          }
-
-          if (relaunchBtn) {
-            relaunchBtn.style.display = st.desktop_app_installed ? 'inline-flex' : 'none';
           }
         }
       } else if (st.status === 'error' || st.status === 'cancelled') {
@@ -3590,16 +4043,7 @@
     }
 
     async function relaunchDesktopApp() {
-      const btn = document.getElementById('oneClickRelaunchAppBtn');
-      if (btn) btn.innerHTML = '<span>Relaunching...</span>';
-      try {
-        await fetch('/api/update/relaunch_app', { method: 'POST' });
-        setTimeout(() => {
-          window.location.reload();
-        }, 1500);
-      } catch (e) {
-        alert('Could not relaunch app automatically. Please reopen AntiAgent from /Applications.');
-      }
+      return restartAndReloadDashboard();
     }
 
     async function cancelOneClickUpdate() {
@@ -3613,15 +4057,58 @@
 
     async function restartAndReloadDashboard() {
       const reloadBtn = document.getElementById('oneClickReloadBtn');
-      if (reloadBtn) reloadBtn.innerHTML = '<span>Restarting...</span>';
+      const reloadBtnLabel = document.getElementById('oneClickReloadBtnText');
+      const notice = document.getElementById('oneClickRestartNotice');
+      if (reloadBtn) reloadBtn.disabled = true;
+      if (reloadBtnLabel) reloadBtnLabel.innerHTML = 'Restarting AntiAgent...';
+      if (notice) {
+        notice.style.display = 'block';
+        notice.textContent = 'Restarting background services and reconnecting to latest version...';
+      }
+
       try {
         await fetch('/api/update/restart', { method: 'POST' });
       } catch (e) {
-        // Expected if server is restarting
+        // Expected if server is terminating for restart
       }
-      setTimeout(() => {
-        window.location.reload();
-      }, 1400);
+
+      // Poll until the server is back up and responding
+      let attempts = 0;
+      const curVer = (currentConfig && currentConfig.version) || '0.1.9';
+      const pollTimer = setInterval(async () => {
+        attempts++;
+        try {
+          const res = await fetch('/api/status', { cache: 'no-store' });
+          if (res.ok) {
+            const data = await res.json();
+            if (data.version && compareVersions(data.version, curVer) > 0) {
+              clearInterval(pollTimer);
+              if (notice) notice.textContent = `Reconnected successfully running v${data.version}! Reloading...`;
+              setTimeout(() => {
+                window.location.reload();
+              }, 400);
+              return;
+            } else if (attempts >= 12) {
+              clearInterval(pollTimer);
+              window.location.reload();
+              return;
+            }
+          }
+        } catch (err) {
+          // Server is restarting
+        }
+
+        if (attempts >= 30) {
+          clearInterval(pollTimer);
+          if (notice) {
+            notice.innerHTML = 'Reconnection took longer than expected. If AntiAgent did not restart automatically, quit AntiAgent from <code>/Applications</code> or your dock and reopen it, then refresh this page.';
+          }
+          if (reloadBtn) {
+            reloadBtn.disabled = false;
+            if (reloadBtnLabel) reloadBtnLabel.textContent = 'Retry Restart';
+          }
+        }
+      }, 400);
     }
 
     // Pull Request & CI Monitor Logic

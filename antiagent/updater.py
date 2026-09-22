@@ -905,7 +905,21 @@ class InPlaceSelfUpdater:
                     pip_updated = True
                     self._log("✅ Python package successfully upgraded.")
                 else:
-                    self._log(f"ℹ️ Pip update output: {pip_res.stderr.strip() or pip_res.stdout.strip()}")
+                    # Retry with --break-system-packages (for PEP 668 environments)
+                    pip_cmd_bsp = pip_cmd + ["--break-system-packages"]
+                    pip_res_bsp = subprocess.run(pip_cmd_bsp, capture_output=True, text=True)
+                    if pip_res_bsp.returncode == 0:
+                        pip_updated = True
+                        self._log("✅ Python package successfully upgraded (with --break-system-packages).")
+                    else:
+                        # Retry with --user
+                        pip_cmd_user = pip_cmd + ["--user"]
+                        pip_res_user = subprocess.run(pip_cmd_user, capture_output=True, text=True)
+                        if pip_res_user.returncode == 0:
+                            pip_updated = True
+                            self._log("✅ Python package successfully upgraded (with --user).")
+                        else:
+                            self._log(f"ℹ️ Pip update output: {pip_res_bsp.stderr.strip() or pip_res.stderr.strip()}")
             except Exception as pe:
                 self._log(f"⚠️ Pip download/install exception: {str(pe)}")
 
@@ -954,10 +968,22 @@ class InPlaceSelfUpdater:
 
     def get_status(self) -> Dict[str, Any]:
         desktop_installed = False
+        desktop_running = False
         if sys.platform == "darwin":
             desktop_installed = Path("/Applications/AntiAgent.app").exists() or (Path.home() / "Applications" / "AntiAgent.app").exists()
+            try:
+                res = subprocess.run(["pgrep", "-x", "AntiAgent"], capture_output=True, text=True)
+                desktop_running = res.returncode == 0
+            except Exception:
+                pass
 
         with self._lock:
+            restart_pending = bool(
+                self.status == "success"
+                and self.target_version
+                and compare_versions(__version__, self.target_version) < 0
+            )
+
             return {
                 "status": self.status,
                 "progress": self.progress,
@@ -972,6 +998,8 @@ class InPlaceSelfUpdater:
                 "is_up_to_date": self.is_up_to_date,
                 "components_updated": dict(self.components_updated),
                 "desktop_app_installed": desktop_installed,
+                "desktop_app_running": desktop_running,
+                "restart_pending": restart_pending,
             }
 
 

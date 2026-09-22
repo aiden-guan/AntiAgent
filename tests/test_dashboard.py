@@ -362,6 +362,18 @@ class TestDashboardServer(unittest.TestCase):
             self.assertEqual(resp.status, 200)
             data = json.loads(resp.read().decode("utf-8"))
             self.assertTrue(data.get("ok"))
+            self.assertIn("desktop_relaunch", data)
+
+    def test_changelog_readability_assets(self):
+        """Verify that index.html contains the rich markdown parser and styled changelog elements."""
+        url = f"http://127.0.0.1:{self.port}/"
+        with urllib.request.urlopen(url) as resp:
+            self.assertEqual(resp.status, 200)
+            content = resp.read().decode("utf-8")
+            self.assertIn("renderMarkdown", content)
+            self.assertIn("release-notes-box", content)
+            self.assertIn("changelog-table-wrap", content)
+            self.assertIn("releaseNotesExternalLink", content)
 
 
 if __name__ == "__main__":

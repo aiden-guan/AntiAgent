@@ -326,6 +326,18 @@ class TestUpdaterEngine(unittest.TestCase):
         self.assertTrue(res)
         self.assertEqual(updater.status, "cancelled")
 
+    def test_in_place_self_updater_restart_pending(self):
+        updater = InPlaceSelfUpdater()
+        updater.status = "success"
+        updater.target_version = "99.0.0"
+        st = updater.get_status()
+        self.assertTrue(st["restart_pending"])
+
+        # When current version >= target_version, restart_pending should be False
+        updater.target_version = "0.0.1"
+        st2 = updater.get_status()
+        self.assertFalse(st2["restart_pending"])
+
     def test_zip_permission_preservation(self):
         """Verify zip extraction preserves POSIX executable bits."""
         import zipfile

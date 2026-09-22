@@ -5,6 +5,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ---
 
+## [v0.1.9] — 2026-09-22
+
+### Summary
+Enhanced the self-updater experience with rich markdown release notes rendering, unified desktop app relaunch and process restarts, resilient PEP 668 pip fallbacks, and intelligent pending-restart detection. Users now see formatted release changelogs with tables and links directly inside the dashboard update modal, and a single, intelligent restart action that safely relaunches the desktop application or restarts the CLI server while polling until the new version is live.
+
+### Architectural & Functional Highlights
+
+| Area / Component | Improvement |
+| :--- | :--- |
+| **Rich Markdown Release Notes** | Implemented client-side `renderMarkdown` in `antiagent/dashboard/assets/index.html` with full support for tables (`changelog-table-wrap`), blockquotes, code blocks, task lists, and safe autolinking, transforming raw GitHub release markdown into readable, themed documentation with an external GitHub release link. |
+| **Unified Desktop & Server Relaunch** | Replaced fragmented relaunch/restart controls with unified restart routing in `antiagent/dashboard/server.py`. Added `find_running_or_installed_desktop_app()` and `_relaunch_desktop_worker()` to gracefully quit and relaunch `AntiAgent.app` on macOS, with client-side polling on `/api/status` until the updated version responds before reloading. |
+| **PEP 668 Pip Fallback Resilience** | Added automatic multi-tier retry in `InPlaceSelfUpdater` (`antiagent/updater.py`) for Python package upgrades in externally managed environments, attempting standard pip, `--break-system-packages`, and `--user` install modes. |
+| **Pending Restart State Machine** | Added `restart_pending` and `desktop_app_running` flags to `InPlaceSelfUpdater.get_status()`, cleanly distinguishing between files installed on disk and active running versions with clear "v{version} Installed — Restart Required" badges. |
+| **Automated Verification** | Added unit tests in `tests/test_dashboard.py` and `tests/test_updater.py` covering restart endpoint responses, release notes rendering assets, and pending-restart state evaluation. |
+
+### Verification Proof
+- All 127 unit tests passed (`python3 -m unittest discover tests`) in ~2.5s.
+- Verified desktop app detection, relaunch worker script generation, release notes markdown parsing, and restart polling behavior.
+
+---
+
 ## [v0.1.8] — 2026-09-22
 
 ### Summary
