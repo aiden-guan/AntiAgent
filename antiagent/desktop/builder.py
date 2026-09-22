@@ -6,6 +6,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from antiagent import __version__
+
 # Ensure UTF-8 output streams on Windows to prevent charmap/CP1252 emoji encoding errors
 if sys.platform == "win32":
     if hasattr(sys.stdout, "reconfigure"):
@@ -19,7 +21,7 @@ if sys.platform == "win32":
         except Exception:
             pass
 
-INFO_PLIST_TEMPLATE = """<?xml version="1.0" encoding="UTF-8"?>
+INFO_PLIST_TEMPLATE = f"""<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
@@ -34,7 +36,7 @@ INFO_PLIST_TEMPLATE = """<?xml version="1.0" encoding="UTF-8"?>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
-    <string>0.1.3</string>
+    <string>{__version__}</string>
     <key>CFBundleVersion</key>
     <string>1</string>
     <key>LSMinimumSystemVersion</key>
