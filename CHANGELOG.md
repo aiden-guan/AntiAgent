@@ -5,6 +5,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ---
 
+## [v0.1.6] — 2026-09-22
+
+### Summary
+Introduced a seamless 1-Click In-Place Self-Updater (`InPlaceSelfUpdater`), eliminating manual DMG mounting, PKG installer prompts, and app bundle reinstallations. Enables background download streaming, in-place app bundle patching via `ditto`, pip environment synchronization, clean in-place process restart, and a redesigned update modal.
+
+### Architectural & Functional Highlights
+
+| Area / Component | Improvement |
+| :--- | :--- |
+| **In-Place Self-Updater** | Built `InPlaceSelfUpdater` engine (`antiagent/updater.py`) with thread-safe stage progression (`idle` -> `checking` -> `downloading` -> `extracting` -> `applying` -> `success` / `error`), download speed and percentage metrics, and cancellation support. |
+| **Zero-Reinstall macOS Patching** | Streamlines macOS bundle updates (`/Applications/AntiAgent.app` and `~/Applications/AntiAgent.app`) using native `ditto` synchronization, avoiding "file in use / open app" trash errors. |
+| **Dashboard API Endpoints** | Added `POST /api/update/self_update`, `GET /api/update/self_update_status`, `POST /api/update/self_update_cancel`, and `POST /api/update/restart` in `antiagent/dashboard/server.py`. |
+| **Redesigned Update Modal** | Front-and-center 1-Click Update card with live progress bar, speed indicator, step narrative, and 1-click dashboard reload; manual DMG/PKG/ZIP downloads cleanly collapsed. |
+| **Process Replacement** | Added instant in-place restart via `os.execv` preserving port and active workspace context. |
+
+### Verification Proof
+- All 114 unit tests passed (`python3 -m unittest discover tests`).
+- Verified self-updater state machine transitions, cancellation handling, and already-up-to-date detection.
+
+---
+
 ## [v0.1.5] — 2026-09-22
 
 ### Summary

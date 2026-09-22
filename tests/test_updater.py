@@ -12,6 +12,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from antiagent.updater import (
+    InPlaceSelfUpdater,
     PipUpgradeManager,
     UpdateDownloader,
     check_for_updates,
@@ -280,6 +281,31 @@ class TestUpdaterEngine(unittest.TestCase):
             st = upgrader.get_status()
             self.assertEqual(st["status"], "success")
             self.assertIn("Successfully installed", st["logs"])
+
+    def test_in_place_self_updater_already_up_to_date(self):
+        updater = InPlaceSelfUpdater()
+        mock_check = {
+            "ok": True,
+            "latest_version": "0.1.0",
+            "assets": [],
+        }
+        with patch("antiagent.updater.check_for_updates", return_value=mock_check):
+            started = updater.start_update(force=False)
+            self.assertTrue(started)
+            for _ in range(20):
+                if updater.status in ("success", "error"):
+                    break
+                time.sleep(0.05)
+            st = updater.get_status()
+            self.assertEqual(st["status"], "success")
+            self.assertIn("already up to date", st["step"])
+
+    def test_in_place_self_updater_cancel(self):
+        updater = InPlaceSelfUpdater()
+        updater.status = "downloading"
+        res = updater.cancel()
+        self.assertTrue(res)
+        self.assertEqual(updater.status, "cancelled")
 
 
 if __name__ == "__main__":

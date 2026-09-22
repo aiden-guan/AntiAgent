@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "antiagent"
-version = "0.1.5"
+version = "0.1.6"
 description = "Intelligent AI supervisor and 'Approved for Me' safety gatekeeper for Google Antigravity"
 readme = "README.md"
 authors = [

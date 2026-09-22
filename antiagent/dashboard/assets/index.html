@@ -975,7 +975,7 @@
         </div>
         <div class="logo-title-group">
           <span class="logo-title">AntiAgent</span>
-          <span id="appVersionTag" class="version-tag" onclick="openUpdateModal()" style="cursor: pointer;" title="Click to check for updates">v0.1.5</span>
+          <span id="appVersionTag" class="version-tag" onclick="openUpdateModal()" style="cursor: pointer;" title="Click to check for updates">v0.1.6</span>
         </div>
       </div>
       <div class="header-badges">
@@ -1533,13 +1533,71 @@
               <span>Checking for updates...</span>
             </div>
             <div id="updateStatusSub" style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">
-              Current installed version: <strong id="updateCurrentVer" style="color: #ffffff;">v0.1.5</strong>
+              Current installed version: <strong id="updateCurrentVer" style="color: #ffffff;">v0.1.6</strong>
             </div>
           </div>
           <button id="updateRefreshBtn" class="btn btn-outline btn-sm" onclick="checkForUpdates(false)">
             <svg class="icon" viewBox="0 0 24 24"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
             <span>Check Now</span>
           </button>
+        </div>
+      </div>
+
+      <!-- 1-Click Seamless In-Place Update Card -->
+      <div id="oneClickUpdateCard" style="background: rgba(12, 13, 18, 0.95); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 14px; padding: 20px; margin-bottom: 18px; box-shadow: 0 4px 20px rgba(0,0,0,0.5);">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 14px;">
+          <div>
+            <div id="oneClickTitle" style="font-size: 15px; font-weight: 700; color: #ffffff; display: flex; align-items: center; gap: 8px;">
+              <svg class="icon" viewBox="0 0 24 24" style="stroke: #ffffff;"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+              <span>1-Click Seamless In-Place Update</span>
+            </div>
+            <div id="oneClickSubtitle" style="font-size: 12px; color: var(--text-muted); margin-top: 4px; line-height: 1.45;">
+              Instantly downloads and applies updates directly in-place. No manual reinstalling, mounting DMGs, or installer wizards.
+            </div>
+          </div>
+          <span id="oneClickBadge" class="status-badge badge-active" style="display: none;">New Version</span>
+        </div>
+
+        <!-- Action Button -->
+        <div id="oneClickActionArea">
+          <button id="oneClickUpdateBtn" class="btn btn-primary" style="width: 100%; padding: 12px 18px; font-size: 13px; font-weight: 600;" onclick="triggerOneClickUpdate()">
+            <svg class="icon" viewBox="0 0 24 24" style="stroke: #050507;"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            <span id="oneClickBtnLabel">Update to Latest Version (1-Click)</span>
+          </button>
+        </div>
+
+        <!-- Progress Track -->
+        <div id="oneClickProgressArea" style="display: none; margin-top: 14px;">
+          <div style="display: flex; justify-content: space-between; font-size: 12px; font-weight: 600; margin-bottom: 6px;">
+            <span id="oneClickStageLabel" style="color: #ffffff;">Downloading update...</span>
+            <span id="oneClickPercent" style="font-family: var(--font-mono); color: #ffffff;">0%</span>
+          </div>
+          <div class="progress-track" style="height: 6px; background: rgba(255,255,255,0.08); border-radius: 999px; overflow: hidden;">
+            <div id="oneClickProgressBar" class="progress-fill" style="width: 0%; height: 100%; background: #ffffff; transition: width 0.3s ease;"></div>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
+            <span id="oneClickDetail" style="font-size: 11px; color: var(--text-muted); font-family: var(--font-mono);">Connecting...</span>
+            <button id="oneClickCancelBtn" class="btn btn-outline btn-sm" onclick="cancelOneClickUpdate()" style="font-size: 11px; padding: 2px 8px;">Cancel</button>
+          </div>
+        </div>
+
+        <!-- Success Area -->
+        <div id="oneClickSuccessArea" style="display: none; margin-top: 14px; background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 10px; padding: 14px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+            <div>
+              <div style="font-size: 13px; font-weight: 600; color: #ffffff; display: flex; align-items: center; gap: 6px;">
+                <svg class="icon" viewBox="0 0 24 24" style="stroke: #ffffff;"><polyline points="20 6 9 17 4 12"/></svg>
+                <span id="oneClickSuccessText">Update Applied In-Place!</span>
+              </div>
+              <div style="font-size: 11px; color: var(--text-muted); margin-top: 3px;">
+                Your local installation has been updated. Reload the dashboard to activate.
+              </div>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="restartAndReloadDashboard()">
+              <svg class="icon" viewBox="0 0 24 24" style="stroke: #050507;"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+              <span>Reload Dashboard</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -1551,88 +1609,98 @@
         <div id="releaseNotesContent" class="release-notes-box"></div>
       </div>
 
-      <!-- Download Card -->
-      <div id="downloadCard" style="background: rgba(8, 9, 12, 0.85); border: 1px solid var(--card-border); border-radius: 14px; padding: 18px; margin-bottom: 18px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 8px;">
-          <div>
-            <div style="font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 6px; color: #ffffff;">
-              <svg class="icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-              <span>Download Update Package</span>
+      <!-- Advanced / Manual Offline Installers Collapsible -->
+      <details id="manualInstallerSection" style="border: 1px solid var(--card-border-subtle); border-radius: 12px; padding: 12px 16px; background: rgba(8, 9, 12, 0.5); margin-top: 10px;">
+        <summary style="font-size: 12px; font-weight: 600; color: var(--text-muted); cursor: pointer; user-select: none; display: flex; align-items: center; justify-content: space-between;">
+          <span>Manual Offline Installers &amp; Pip Upgrade</span>
+          <span style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted);">Advanced Options ▼</span>
+        </summary>
+
+        <div style="margin-top: 14px;">
+          <!-- Download Card -->
+          <div id="downloadCard" style="background: rgba(8, 9, 12, 0.85); border: 1px solid var(--card-border); border-radius: 12px; padding: 16px; margin-bottom: 14px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+              <div>
+                <div style="font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 6px; color: #ffffff;">
+                  <svg class="icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                  <span>Download Standalone Package (DMG / PKG / ZIP)</span>
+                </div>
+                <div id="downloadCardSub" style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
+                  Download installer package directly for offline installation.
+                </div>
+              </div>
+              <div id="assetSelectContainer" style="display: flex; gap: 6px; align-items: center;">
+                <label style="font-size: 11px; color: var(--text-muted); margin-bottom: 0;">Package:</label>
+                <select id="assetSelect" class="form-control" style="width: auto; padding: 4px 8px; font-size: 12px;" onchange="onAssetSelectChanged()"></select>
+              </div>
             </div>
-            <div id="downloadCardSub" style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
-              Directly download and launch the installer for your OS.
+
+            <div id="downloadActionArea">
+              <button id="startDownloadBtn" class="btn btn-outline btn-sm" style="width: 100%; padding: 8px 14px; font-size: 12px;" onclick="triggerInAppDownload()">
+                <svg class="icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                <span>Download Package</span>
+              </button>
             </div>
-          </div>
-          <div id="assetSelectContainer" style="display: flex; gap: 6px; align-items: center;">
-            <label style="font-size: 11px; color: var(--text-muted); margin-bottom: 0;">Package:</label>
-            <select id="assetSelect" class="form-control" style="width: auto; padding: 4px 8px; font-size: 12px;" onchange="onAssetSelectChanged()"></select>
-          </div>
-        </div>
 
-        <div id="downloadActionArea">
-          <button id="startDownloadBtn" class="btn btn-primary" style="width: 100%; padding: 10px 16px; font-size: 13px;" onclick="triggerInAppDownload()">
-            <svg class="icon" viewBox="0 0 24 24" style="stroke: #050507;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            <span>Download &amp; Install Update</span>
-          </button>
-        </div>
-
-        <!-- Download Progress -->
-        <div id="downloadProgressArea" style="display: none; margin-top: 14px;">
-          <div style="display: flex; justify-content: space-between; font-size: 12px; font-weight: 600; margin-bottom: 4px;">
-            <span id="downloadProgressLabel">Downloading update...</span>
-            <span id="downloadProgressPercent">0%</span>
-          </div>
-          <div class="progress-track">
-            <div id="downloadProgressBar" class="progress-fill"></div>
-          </div>
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
-            <span id="downloadProgressDetail" style="font-size: 11px; color: var(--text-muted); font-family: var(--font-mono);">0 MB / 0 MB</span>
-            <button class="btn btn-outline btn-sm" onclick="cancelInAppDownload()" style="font-size: 11px; padding: 2px 8px;">Cancel</button>
-          </div>
-        </div>
-
-        <!-- Download Complete -->
-        <div id="downloadCompleteArea" style="display: none; margin-top: 14px; background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 10px; padding: 14px;">
-          <div style="font-size: 13px; font-weight: 600; color: #ffffff; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
-            <svg class="icon" viewBox="0 0 24 24" style="stroke: #4ade80;"><polyline points="20 6 9 17 4 12"/></svg>
-            <span>Update Downloaded Successfully</span>
-          </div>
-          <div id="downloadFilePath" style="font-size: 11px; color: var(--text-muted); font-family: var(--font-mono); margin-bottom: 12px; word-break: break-all;">
-            Saved to: ~/Downloads/AntiAgent.dmg
-          </div>
-          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-            <button class="btn btn-primary btn-sm" onclick="openDownloadedUpdate()">
-              <svg class="icon" viewBox="0 0 24 24" style="stroke: #050507;"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-              <span>Launch Installer</span>
-            </button>
-            <button class="btn btn-outline btn-sm" onclick="revealDownloadedUpdate()">
-              <svg class="icon" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-              <span>Show in Finder</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Pip Upgrade Card -->
-      <div style="background: rgba(8, 9, 12, 0.85); border: 1px solid var(--card-border); border-radius: 14px; padding: 16px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
-          <div>
-            <div style="font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 6px; color: #ffffff;">
-              <svg class="icon" viewBox="0 0 24 24"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
-              <span>Python Pip Package Upgrade</span>
+            <!-- Download Progress -->
+            <div id="downloadProgressArea" style="display: none; margin-top: 14px;">
+              <div style="display: flex; justify-content: space-between; font-size: 12px; font-weight: 600; margin-bottom: 4px;">
+                <span id="downloadProgressLabel">Downloading update...</span>
+                <span id="downloadProgressPercent">0%</span>
+              </div>
+              <div class="progress-track">
+                <div id="downloadProgressBar" class="progress-fill"></div>
+              </div>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
+                <span id="downloadProgressDetail" style="font-size: 11px; color: var(--text-muted); font-family: var(--font-mono);">0 MB / 0 MB</span>
+                <button class="btn btn-outline btn-sm" onclick="cancelInAppDownload()" style="font-size: 11px; padding: 2px 8px;">Cancel</button>
+              </div>
             </div>
-            <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
-              Executes <code>pip install --upgrade antiagent</code> in background.
+
+            <!-- Download Complete -->
+            <div id="downloadCompleteArea" style="display: none; margin-top: 14px; background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 10px; padding: 14px;">
+              <div style="font-size: 13px; font-weight: 600; color: #ffffff; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+                <svg class="icon" viewBox="0 0 24 24" style="stroke: #ffffff;"><polyline points="20 6 9 17 4 12"/></svg>
+                <span>Package Downloaded</span>
+              </div>
+              <div id="downloadFilePath" style="font-size: 11px; color: var(--text-muted); font-family: var(--font-mono); margin-bottom: 12px; word-break: break-all;">
+                Saved to: ~/Downloads/AntiAgent.dmg
+              </div>
+              <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <button class="btn btn-primary btn-sm" onclick="openDownloadedUpdate()">
+                  <svg class="icon" viewBox="0 0 24 24" style="stroke: #050507;"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                  <span>Launch Installer</span>
+                </button>
+                <button class="btn btn-outline btn-sm" onclick="revealDownloadedUpdate()">
+                  <svg class="icon" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                  <span>Show in Finder</span>
+                </button>
+              </div>
             </div>
           </div>
-          <button id="runPipUpgradeBtn" class="btn btn-outline btn-sm" onclick="triggerPipUpgrade()">
-            <span>Run pip upgrade</span>
-          </button>
+
+          <!-- Pip Upgrade Card -->
+          <div style="background: rgba(8, 9, 12, 0.85); border: 1px solid var(--card-border); border-radius: 12px; padding: 14px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+              <div>
+                <div style="font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 6px; color: #ffffff;">
+                  <svg class="icon" viewBox="0 0 24 24"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+                  <span>Terminal Pip Upgrade</span>
+                </div>
+                <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
+                  Executes <code>pip install --upgrade antiagent</code> directly in the background.
+                </div>
+              </div>
+              <button id="runPipUpgradeBtn" class="btn btn-outline btn-sm" onclick="triggerPipUpgrade()">
+                <span>Run pip upgrade</span>
+              </button>
+            </div>
+            <div id="pipLogArea" style="display: none; margin-top: 10px;">
+              <pre id="pipLogContent" style="background: #000; border: 1px solid var(--card-border); border-radius: 8px; padding: 10px; font-size: 11px; font-family: var(--font-mono); max-height: 120px; overflow-y: auto; color: #e4e4e7; white-space: pre-wrap;"></pre>
+            </div>
+          </div>
         </div>
-        <div id="pipLogArea" style="display: none; margin-top: 10px;">
-          <pre id="pipLogContent" style="background: #000; border: 1px solid var(--card-border); border-radius: 8px; padding: 10px; font-size: 11px; font-family: var(--font-mono); max-height: 120px; overflow-y: auto; color: #e4e4e7; white-space: pre-wrap;"></pre>
-        </div>
-      </div>
+      </details>
     </div>
   </div>
 
@@ -2261,7 +2329,7 @@
           </div>
         `;
 
-        const currentVer = currentConfig.version || '0.1.5';
+        const currentVer = currentConfig.version || '0.1.6';
         const hasUpdate = latestUpdateData && latestUpdateData.update_available;
         const updateText = hasUpdate ? `v${latestUpdateData.latest_version} available (Click to download in app)` : `v${currentVer} installed`;
         html += `
@@ -2406,7 +2474,7 @@
       const title = document.getElementById('updateStatusTitle');
       const sub = document.getElementById('updateStatusSub');
       const currentVerEl = document.getElementById('updateCurrentVer');
-      const curVer = (currentConfig && currentConfig.version) || '0.1.5';
+      const curVer = (currentConfig && currentConfig.version) || '0.1.6';
       if (currentVerEl) currentVerEl.textContent = 'v' + curVer;
 
       if (!silent && title) {
@@ -2482,6 +2550,35 @@
           onAssetSelectChanged();
         }
 
+        // Configure 1-Click In-Place Update Card
+        const oneClickBtn = document.getElementById('oneClickUpdateBtn');
+        const oneClickBtnLabel = document.getElementById('oneClickBtnLabel');
+        const oneClickBadge = document.getElementById('oneClickBadge');
+        const oneClickSubtitle = document.getElementById('oneClickSubtitle');
+        if (oneClickBtn && oneClickBtnLabel) {
+          if (data.update_available) {
+            oneClickBtnLabel.textContent = `Update to v${data.latest_version} (1-Click)`;
+            oneClickBtn.className = 'btn btn-primary';
+            oneClickBtn.onclick = () => triggerOneClickUpdate(false, data.latest_version);
+            if (oneClickBadge) {
+              oneClickBadge.style.display = 'inline-flex';
+              oneClickBadge.textContent = 'v' + data.latest_version + ' Available';
+            }
+            if (oneClickSubtitle) {
+              oneClickSubtitle.textContent = `Instantly downloads and applies v${data.latest_version} in-place with a single click. No manual reinstalling or mounting disk images.`;
+            }
+          } else {
+            oneClickBtnLabel.textContent = `Re-sync / Update In-Place (1-Click)`;
+            oneClickBtn.className = 'btn btn-outline btn-sm';
+            oneClickBtn.onclick = () => triggerOneClickUpdate(true, data.latest_version || curVer);
+            if (oneClickBadge) oneClickBadge.style.display = 'none';
+            if (oneClickSubtitle) {
+              oneClickSubtitle.textContent = `AntiAgent v${curVer} is currently up to date. You can re-sync or force an in-place update at any time.`;
+            }
+          }
+        }
+
+        await pollSelfUpdateStatus();
         await pollDownloadStatus();
 
       } catch (err) {
@@ -2674,6 +2771,142 @@
       } catch (err) {
         console.warn('Pip status poll error:', err);
       }
+    }
+
+    let selfUpdatePollInterval = null;
+
+    async function triggerOneClickUpdate(force = false, version = null) {
+      const actionArea = document.getElementById('oneClickActionArea');
+      const progArea = document.getElementById('oneClickProgressArea');
+      const succArea = document.getElementById('oneClickSuccessArea');
+      const stageLabel = document.getElementById('oneClickStageLabel');
+      const pctText = document.getElementById('oneClickPercent');
+      const bar = document.getElementById('oneClickProgressBar');
+      const detail = document.getElementById('oneClickDetail');
+
+      if (actionArea) actionArea.style.display = 'none';
+      if (progArea) progArea.style.display = 'block';
+      if (succArea) succArea.style.display = 'none';
+
+      if (stageLabel) stageLabel.textContent = 'Initializing in-place update...';
+      if (pctText) pctText.textContent = '5%';
+      if (bar) bar.style.width = '5%';
+      if (detail) detail.textContent = 'Connecting to release service...';
+
+      try {
+        const res = await fetch('/api/update/self_update', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ force, version })
+        });
+        const data = await res.json();
+        if (data.ok || (data.status && data.status.status !== 'error')) {
+          startSelfUpdatePolling();
+        } else {
+          alert('Update failed to initiate: ' + (data.status?.error || data.error || 'Unknown error'));
+          if (actionArea) actionArea.style.display = 'block';
+          if (progArea) progArea.style.display = 'none';
+        }
+      } catch (err) {
+        alert('Failed to connect to update service: ' + err.message);
+        if (actionArea) actionArea.style.display = 'block';
+        if (progArea) progArea.style.display = 'none';
+      }
+    }
+
+    function startSelfUpdatePolling() {
+      if (selfUpdatePollInterval) clearInterval(selfUpdatePollInterval);
+      selfUpdatePollInterval = setInterval(pollSelfUpdateStatus, 400);
+    }
+
+    async function pollSelfUpdateStatus() {
+      try {
+        const res = await fetch('/api/update/self_update_status');
+        const st = await res.json();
+        updateSelfUpdateUI(st);
+      } catch (err) {
+        console.warn('Self-update poll error:', err);
+      }
+    }
+
+    function updateSelfUpdateUI(st) {
+      const actionArea = document.getElementById('oneClickActionArea');
+      const progArea = document.getElementById('oneClickProgressArea');
+      const succArea = document.getElementById('oneClickSuccessArea');
+      const stageLabel = document.getElementById('oneClickStageLabel');
+      const pctText = document.getElementById('oneClickPercent');
+      const bar = document.getElementById('oneClickProgressBar');
+      const detail = document.getElementById('oneClickDetail');
+      const successText = document.getElementById('oneClickSuccessText');
+
+      if (!st || st.status === 'idle') {
+        if (actionArea) actionArea.style.display = 'block';
+        if (progArea) progArea.style.display = 'none';
+        if (succArea) succArea.style.display = 'none';
+        return;
+      }
+
+      if (st.status === 'checking' || st.status === 'downloading' || st.status === 'extracting' || st.status === 'applying') {
+        if (actionArea) actionArea.style.display = 'none';
+        if (progArea) progArea.style.display = 'block';
+        if (succArea) succArea.style.display = 'none';
+
+        const pct = st.progress || 10;
+        if (bar) bar.style.width = pct + '%';
+        if (pctText) pctText.textContent = pct + '%';
+        if (stageLabel) stageLabel.textContent = st.step || 'Applying update in-place...';
+
+        if (st.downloaded_bytes && st.total_bytes) {
+          const mbDone = (st.downloaded_bytes / (1024 * 1024)).toFixed(1);
+          const mbTotal = (st.total_bytes / (1024 * 1024)).toFixed(1);
+          const speedMb = (st.speed_bps / (1024 * 1024)).toFixed(1);
+          if (detail) detail.textContent = `${mbDone} MB / ${mbTotal} MB (${speedMb} MB/s)`;
+        } else {
+          if (detail) detail.textContent = st.step || 'Processing...';
+        }
+      } else if (st.status === 'success') {
+        if (selfUpdatePollInterval) {
+          clearInterval(selfUpdatePollInterval);
+          selfUpdatePollInterval = null;
+        }
+        if (actionArea) actionArea.style.display = 'none';
+        if (progArea) progArea.style.display = 'none';
+        if (succArea) succArea.style.display = 'block';
+        if (successText) successText.textContent = st.step || 'Update Applied In-Place!';
+      } else if (st.status === 'error' || st.status === 'cancelled') {
+        if (selfUpdatePollInterval) {
+          clearInterval(selfUpdatePollInterval);
+          selfUpdatePollInterval = null;
+        }
+        if (actionArea) actionArea.style.display = 'block';
+        if (progArea) progArea.style.display = 'none';
+        if (succArea) succArea.style.display = 'none';
+        if (st.status === 'error') {
+          alert('Update Error: ' + (st.error || 'Failed to apply update.'));
+        }
+      }
+    }
+
+    async function cancelOneClickUpdate() {
+      try {
+        await fetch('/api/update/self_update_cancel', { method: 'POST' });
+        pollSelfUpdateStatus();
+      } catch (err) {
+        console.warn('Cancel error:', err);
+      }
+    }
+
+    async function restartAndReloadDashboard() {
+      const successBtn = document.querySelector('#oneClickSuccessArea button');
+      if (successBtn) successBtn.innerHTML = '<span>Restarting...</span>';
+      try {
+        await fetch('/api/update/restart', { method: 'POST' });
+      } catch (e) {
+        // Expected if server is restarting
+      }
+      setTimeout(() => {
+        window.location.reload();
+      }, 1200);
     }
 
     // Pull Request & CI Monitor Logic

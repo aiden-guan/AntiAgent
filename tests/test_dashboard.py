@@ -317,7 +317,27 @@ class TestDashboardServer(unittest.TestCase):
                 data = json.loads(resp.read().decode("utf-8"))
                 self.assertTrue(data["ok"])
 
+    def test_api_update_self_update_endpoints(self):
+        from unittest.mock import patch
+        # Test status endpoint
+        url_status = f"http://127.0.0.1:{self.port}/api/update/self_update_status"
+        with urllib.request.urlopen(url_status) as resp:
+            self.assertEqual(resp.status, 200)
+            data = json.loads(resp.read().decode("utf-8"))
+            self.assertIn("status", data)
+
+        # Test trigger endpoint
+        with patch("antiagent.dashboard.server.global_self_updater.start_update", return_value=True):
+            url_trigger = f"http://127.0.0.1:{self.port}/api/update/self_update"
+            payload = json.dumps({"force": True}).encode("utf-8")
+            req = urllib.request.Request(url_trigger, data=payload, headers={"Content-Type": "application/json"})
+            with urllib.request.urlopen(req) as resp:
+                self.assertEqual(resp.status, 200)
+                data = json.loads(resp.read().decode("utf-8"))
+                self.assertTrue(data["ok"])
+
 
 if __name__ == "__main__":
     unittest.main()
+
 

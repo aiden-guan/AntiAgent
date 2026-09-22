@@ -37,6 +37,7 @@ from antiagent.updater import (
     check_for_updates,
     global_downloader,
     global_pip_upgrader,
+    global_self_updater,
     is_safe_download_url,
     open_downloaded_file,
     reveal_in_file_manager,
@@ -139,6 +140,8 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
             self._send_json(res)
         elif path == "/api/update/status":
             self._send_json(global_downloader.get_status())
+        elif path == "/api/update/self_update_status":
+            self._send_json(global_self_updater.get_status())
         elif path == "/api/update/pip_status":
             self._send_json(global_pip_upgrader.get_status())
         elif path == "/api/pr/status":
@@ -274,6 +277,24 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
         elif path == "/api/update/pip":
             started = global_pip_upgrader.start_upgrade()
             self._send_json({"ok": started, "status": global_pip_upgrader.get_status()})
+        elif path == "/api/update/self_update":
+            force = body.get("force", False)
+            version = body.get("version")
+            started = global_self_updater.start_update(force=force, version=version)
+            self._send_json({"ok": started, "status": global_self_updater.get_status()})
+        elif path == "/api/update/self_update_cancel":
+            cancelled = global_self_updater.cancel()
+            self._send_json({"ok": cancelled, "status": global_self_updater.get_status()})
+        elif path == "/api/update/restart":
+            def _restart_worker():
+                time.sleep(0.5)
+                try:
+                    os.execv(sys.executable, [sys.executable] + sys.argv)
+                except Exception:
+                    sys.exit(0)
+
+            threading.Thread(target=_restart_worker, daemon=True).start()
+            self._send_json({"ok": True, "message": "Server restarting..."})
         elif path == "/api/pr/monitor":
             pr_id = body.get("pr")
             cfg = load_config(self.workspace_path)
