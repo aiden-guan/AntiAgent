@@ -10,6 +10,7 @@ from antiagent.constants import (
     DECISION_DENY,
     HARD_DENY_PATTERNS,
     SAFE_COMMAND_PREFIXES,
+    SAFE_GH_SUBCOMMANDS,
 )
 
 
@@ -83,6 +84,10 @@ class CommandGuard:
         if self._is_safe_test_command(cleaned):
             return DECISION_ALLOW, "Auto-approved: routine dev test suite run verified."
 
+        # 9. Check if command is creating a pull request
+        if re.search(r"^\s*gh\s+pr\s+create\b", cleaned):
+            return DECISION_ALLOW, "Auto-approved: pull request creation (gh pr create)."
+
         # Otherwise, requires LLM review or profile-based fallback
         return None
 
@@ -140,6 +145,26 @@ class CommandGuard:
                         continue
                     else:
                         return False
+
+            # Check gh (GitHub CLI) commands
+            if first_base == "gh":
+                gh_args = [t.lower() for t in tokens[1:] if not t.startswith("-")]
+                if gh_args:
+                    two_tok = f"{gh_args[0]} {gh_args[1]}" if len(gh_args) >= 2 else ""
+                    one_tok = gh_args[0]
+                    if two_tok in SAFE_GH_SUBCOMMANDS or one_tok in SAFE_GH_SUBCOMMANDS:
+                        continue
+                return False
+
+            # Check antiagent status/doctor/test/audit/pr inspection commands
+            if first_base == "antiagent":
+                aa_args = [t.lower() for t in tokens[1:] if not t.startswith("-")]
+                if aa_args:
+                    if aa_args[0] in ("status", "doctor", "test", "audit", "status"):
+                        continue
+                    if aa_args[0] == "pr" and len(aa_args) >= 2 and aa_args[1] in ("status", "list", "failures", "autofix"):
+                        continue
+                return False
 
             if first_base not in SAFE_COMMAND_PREFIXES:
                 return False

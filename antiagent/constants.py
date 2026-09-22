@@ -125,6 +125,23 @@ SAFE_GIT_SUBCOMMANDS = {
     "config --list",
 }
 
+# Safe GitHub CLI (gh) subcommands (strictly read-only)
+SAFE_GH_SUBCOMMANDS = {
+    "pr view",
+    "pr status",
+    "pr checks",
+    "pr list",
+    "pr diff",
+    "issue list",
+    "issue view",
+    "issue status",
+    "run list",
+    "run view",
+    "auth status",
+    "repo view",
+    "status",
+}
+
 # Dangerous git subcommands that can destroy uncommitted work or rewrite remote history
 RISKY_GIT_OPERATIONS = [
     r"git\s+push\s+.*(-f|--force)",

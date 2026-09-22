@@ -24,6 +24,15 @@ from antiagent.constants import (
     PROFILE_PARANOID,
 )
 from antiagent.engine.evaluator import AntiAgentEvaluator
+from antiagent.engine.pr_monitor import (
+    check_gh_cli_status,
+    get_pr_checks,
+    get_pr_details,
+    get_pr_failure_logs,
+    global_pr_manager,
+    list_pull_requests,
+    merge_pr,
+)
 from antiagent.updater import (
     check_for_updates,
     global_downloader,
@@ -132,6 +141,30 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
             self._send_json(global_downloader.get_status())
         elif path == "/api/update/pip_status":
             self._send_json(global_pip_upgrader.get_status())
+        elif path == "/api/pr/status":
+            query = parse_qs(parsed_url.query)
+            pr_id = query.get("pr", [None])[0]
+            res = get_pr_checks(pr_identifier=pr_id, workspace_dir=self.workspace_path)
+            self._send_json(res)
+        elif path == "/api/pr/details":
+            query = parse_qs(parsed_url.query)
+            pr_id = query.get("pr", [None])[0]
+            res = get_pr_details(pr_identifier=pr_id, workspace_dir=self.workspace_path)
+            self._send_json(res)
+        elif path == "/api/pr/failures":
+            query = parse_qs(parsed_url.query)
+            pr_id = query.get("pr", [None])[0]
+            res = get_pr_failure_logs(pr_identifier=pr_id, workspace_dir=self.workspace_path)
+            self._send_json(res)
+        elif path == "/api/pr/list":
+            query = parse_qs(parsed_url.query)
+            limit = int(query.get("limit", ["15"])[0])
+            res = list_pull_requests(workspace_dir=self.workspace_path, limit=limit)
+            self._send_json(res)
+        elif path == "/api/pr/active_monitors":
+            self._send_json({"ok": True, "monitors": global_pr_manager.list_monitors()})
+        elif path == "/api/pr/gh_status":
+            self._send_json(check_gh_cli_status())
         else:
             self.send_response(404)
             self.end_headers()
@@ -241,6 +274,56 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
         elif path == "/api/update/pip":
             started = global_pip_upgrader.start_upgrade()
             self._send_json({"ok": started, "status": global_pip_upgrader.get_status()})
+        elif path == "/api/pr/monitor":
+            pr_id = body.get("pr")
+            cfg = load_config(self.workspace_path)
+            interval = body.get("interval") or cfg.pr_monitor_interval
+            auto_merge = body.get("auto_merge") if "auto_merge" in body else cfg.pr_monitor_auto_merge
+            monitor = global_pr_manager.start_monitor(
+                pr_identifier=pr_id,
+                workspace_dir=self.workspace_path,
+                interval=interval,
+                auto_merge=auto_merge,
+            )
+            self._send_json({
+                "ok": True,
+                "is_running": monitor.is_running,
+                "pr_identifier": monitor.pr_identifier,
+                "interval": monitor.interval,
+                "auto_merge": monitor.auto_merge,
+            })
+        elif path == "/api/pr/stop_monitor":
+            pr_id = body.get("pr")
+            stopped = global_pr_manager.stop_monitor(pr_identifier=pr_id, workspace_dir=self.workspace_path)
+            self._send_json({"ok": stopped})
+        elif path == "/api/pr/merge":
+            pr_id = body.get("pr")
+            auto = body.get("auto", False)
+            method = body.get("method", "squash")
+            res = merge_pr(pr_identifier=pr_id, workspace_dir=self.workspace_path, auto=auto, method=method)
+            self._send_json(res)
+        elif path == "/api/pr/config":
+            cfg = load_config(self.workspace_path)
+            if "auto_pr_monitor" in body:
+                cfg.auto_pr_monitor = bool(body["auto_pr_monitor"])
+            if "pr_monitor_auto_merge" in body:
+                cfg.pr_monitor_auto_merge = bool(body["pr_monitor_auto_merge"])
+            if "pr_monitor_interval" in body:
+                try:
+                    cfg.pr_monitor_interval = max(3, int(body["pr_monitor_interval"]))
+                except (ValueError, TypeError):
+                    pass
+            scope = body.get("scope", "global")
+            if scope == "global":
+                save_global_config(cfg)
+            else:
+                save_workspace_config(cfg, self.workspace_path)
+            self._send_json({
+                "ok": True,
+                "auto_pr_monitor": cfg.auto_pr_monitor,
+                "pr_monitor_auto_merge": cfg.pr_monitor_auto_merge,
+                "pr_monitor_interval": cfg.pr_monitor_interval,
+            })
         else:
             self.send_response(404)
             self.end_headers()
@@ -301,6 +384,10 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
             "auto_approve_dev_commands": cfg.auto_approve_dev_commands,
             "auto_review": cfg.auto_review,
             "audit_enabled": cfg.audit_enabled,
+            "auto_pr_monitor": cfg.auto_pr_monitor,
+            "pr_monitor_auto_merge": cfg.pr_monitor_auto_merge,
+            "pr_monitor_interval": cfg.pr_monitor_interval,
+            "pr_monitor_auto_fix": cfg.pr_monitor_auto_fix,
             "custom_allow_patterns": cfg.custom_allow_patterns,
             "custom_deny_patterns": cfg.custom_deny_patterns,
             "audit_log_path": cfg.audit_log_path,
@@ -344,6 +431,17 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
             cfg.auto_review = bool(body["auto_review"])
         if "audit_enabled" in body:
             cfg.audit_enabled = bool(body["audit_enabled"])
+        if "auto_pr_monitor" in body:
+            cfg.auto_pr_monitor = bool(body["auto_pr_monitor"])
+        if "pr_monitor_auto_merge" in body:
+            cfg.pr_monitor_auto_merge = bool(body["pr_monitor_auto_merge"])
+        if "pr_monitor_interval" in body:
+            try:
+                cfg.pr_monitor_interval = max(3, int(body["pr_monitor_interval"]))
+            except (ValueError, TypeError):
+                pass
+        if "pr_monitor_auto_fix" in body:
+            cfg.pr_monitor_auto_fix = bool(body["pr_monitor_auto_fix"])
         if "custom_allow_patterns" in body:
             patterns = body["custom_allow_patterns"]
             if isinstance(patterns, str):

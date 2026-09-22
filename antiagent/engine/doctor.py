@@ -108,6 +108,10 @@ def get_doctor_report(workspace_path: str = ".") -> Dict[str, Any]:
         },
     }
 
+    # 8. GitHub CLI & Auto-PR Monitoring
+    from antiagent.engine.pr_monitor import check_gh_cli_status
+    gh_info = check_gh_cli_status()
+
     return {
         "workspace_path": str(ws_resolved),
         "python": python_info,
@@ -134,4 +138,5 @@ def get_doctor_report(workspace_path: str = ".") -> Dict[str, Any]:
             "url": "http://127.0.0.1:4242",
         },
         "modes": mode_recommendations,
+        "github_cli": gh_info,
     }

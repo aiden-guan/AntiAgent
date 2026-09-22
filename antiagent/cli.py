@@ -162,6 +162,8 @@ def check_status(workspace_path: str = ".") -> None:
     print(f"  LLM Provider:     {cfg.provider.upper() if cfg.provider else 'OFFLINE'}")
     print(f"  Model:            {cfg.model or '(default)'}")
     print(f"  Auto-approve Read:{'Yes' if cfg.auto_approve_reads else 'No'}")
+    print(f"  Auto-PR Monitor:  {'Enabled' if cfg.auto_pr_monitor else 'Disabled'}")
+    print(f"  PR Auto-Merge:    {'Enabled' if cfg.pr_monitor_auto_merge else 'Disabled'}")
     print(f"  Audit Log:        {cfg.audit_log_path}")
 
 
@@ -306,6 +308,18 @@ def configure_cli(args: argparse.Namespace) -> None:
         cfg.model = args.set_model
         changed = True
 
+    if getattr(args, "set_auto_pr_monitor", None) is not None:
+        cfg.auto_pr_monitor = args.set_auto_pr_monitor.lower() in ("true", "1", "yes", "on")
+        changed = True
+
+    if getattr(args, "set_pr_auto_merge", None) is not None:
+        cfg.pr_monitor_auto_merge = args.set_pr_auto_merge.lower() in ("true", "1", "yes", "on")
+        changed = True
+
+    if getattr(args, "set_pr_interval", None) is not None:
+        cfg.pr_monitor_interval = max(3, args.set_pr_interval)
+        changed = True
+
     if changed:
         if args.global_config:
             path = save_global_config(cfg)
@@ -314,7 +328,7 @@ def configure_cli(args: argparse.Namespace) -> None:
             path = save_workspace_config(cfg, ".")
             print(f"✅ Workspace configuration updated at {path}")
     else:
-        print("No changes specified. Use --set-profile, --set-provider, or --set-model.")
+        print("No changes specified. Use --set-profile, --set-provider, --set-model, --set-auto-pr-monitor, or --set-pr-auto-merge.")
 
 
 def run_doctor(workspace_path: str = ".") -> None:
@@ -382,8 +396,218 @@ def run_doctor(workspace_path: str = ".") -> None:
     else:
         print("🛡️  AntiAgent Daemon: Idle. Run: antiagent app or antiagent dashboard")
 
+    # 8. GitHub CLI & Auto-PR Monitoring
+    gh = report.get("github_cli", {})
+    if gh.get("installed") and gh.get("authenticated"):
+        print(f"\n🐙 GitHub CLI: ACTIVE (v{gh.get('version')}, @{gh.get('user')}) [OK]")
+        print("   Auto-PR monitoring, live CI checks tracking, and auto-merge ready.")
+    elif gh.get("installed"):
+        print(f"\n🐙 GitHub CLI: Installed (v{gh.get('version')}) but NOT authenticated.")
+        print("   Run 'gh auth login' to enable Claude Code-style Auto-PR monitoring.")
+    else:
+        print("\n🐙 GitHub CLI: Not installed in PATH.")
+        print("   Install 'gh' (https://cli.github.com) to enable Auto-PR monitoring.")
+
     print("=" * 65)
     print("✨ Doctor diagnostics completed.\n")
+
+
+def handle_pr_cli(args: argparse.Namespace) -> None:
+    """Handle pull request inspection, monitoring, and auto-fixing."""
+    from antiagent.engine.pr_monitor import (
+        get_pr_checks,
+        get_pr_details,
+        get_pr_failure_logs,
+        list_pull_requests,
+        merge_pr,
+        PRMonitor,
+    )
+
+    workspace = getattr(args, "workspace", ".")
+    pr_id = getattr(args, "pr", None)
+    sub = getattr(args, "pr_command", None)
+
+    if sub == "list":
+        res = list_pull_requests(workspace_dir=workspace)
+        if not res.get("ok"):
+            print(f"❌ {res.get('error', 'Failed to list pull requests')}")
+            return
+        prs = res.get("pull_requests", [])
+        if not prs:
+            print("ℹ️ No open pull requests found.")
+            return
+        print(f"🐙 Open Pull Requests ({len(prs)}):")
+        print("-" * 70)
+        for p in prs:
+            author = p.get("author", {})
+            auth_login = author.get("login", "") if isinstance(author, dict) else str(author)
+            print(f"  #{p.get('number')}  {p.get('title')} ({p.get('headRefName')}) by @{auth_login}")
+            print(f"      URL: {p.get('url')}")
+        print("-" * 70)
+        return
+
+    if sub == "autofix":
+        print("🔍 Inspecting CI check failures and extracting logs...")
+        res = get_pr_failure_logs(pr_identifier=pr_id, workspace_dir=workspace)
+        if not res.get("ok"):
+            print(f"❌ {res.get('error', 'Failed to query failure logs')}")
+            return
+        if not res.get("has_failures"):
+            print(f"✅ Pull Request #{res.get('pr_number')}: No failed checks found.")
+            return
+
+        print(f"\n🚨 Failed Checks on PR #{res.get('pr_number')} ({res.get('pr_title')}):")
+        print("=" * 70)
+        for c in res.get("failed_checks", []):
+            print(f"❌ {c.get('name')} [{c.get('conclusion')}]")
+            if c.get("url"):
+                print(f"   Details: {c.get('url')}")
+
+        logs = res.get("failure_logs", [])
+        if logs:
+            print("\n📋 Extracted Failure Log Excerpts:")
+            print("-" * 70)
+            for l in logs:
+                print(f"--- Run ID: {l.get('run_id')} ---")
+                print(l.get("log"))
+                print("-" * 70)
+        else:
+            print("\nℹ️ No direct step failure logs returned by GitHub CLI.")
+        print("\n💡 Tip: Feed these logs to Antigravity to analyze and auto-generate the fix patch.\n")
+        return
+
+    if sub == "monitor":
+        cfg = load_config(workspace)
+        interval = getattr(args, "interval", None) or cfg.pr_monitor_interval
+        auto_merge = getattr(args, "auto_merge", False) or cfg.pr_monitor_auto_merge
+        timeout_mins = getattr(args, "timeout", 30)
+
+        # Initial probe
+        details = get_pr_details(pr_identifier=pr_id, workspace_dir=workspace)
+        if not details.get("ok"):
+            print(f"❌ {details.get('error', 'Failed to inspect pull request')}")
+            return
+
+        print(f"\n🐙 AntiAgent PR Monitor (Claude Code style)")
+        print(f"   Target: #{details.get('number')} - {details.get('title')}")
+        print(f"   Branch: {details.get('headRefName')} -> {details.get('baseRefName')}")
+        print(f"   URL:    {details.get('url')}")
+        print(f"   Polling every {interval}s | Auto-Merge: {'ON' if auto_merge else 'OFF'}")
+        print("=" * 65)
+
+        monitor = PRMonitor(
+            pr_identifier=pr_id,
+            workspace_dir=workspace,
+            interval=interval,
+            auto_merge=auto_merge,
+            timeout_seconds=timeout_mins * 60,
+        )
+
+        spinner = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+        spin_idx = 0
+
+        while True:
+            st = monitor.poll_once()
+            if not st.get("ok"):
+                print(f"\n⚠️  {st.get('error')}")
+                time.sleep(interval)
+                continue
+
+            summary = st.get("summary", {})
+            total = summary.get("total", 0)
+            passed = summary.get("passed", 0)
+            failed = summary.get("failed", 0)
+            pending = summary.get("pending", 0)
+            overall = st.get("overall_status")
+
+            now_str = time.strftime("%H:%M:%S")
+            sym = spinner[spin_idx % len(spinner)]
+            spin_idx += 1
+
+            if overall == "SUCCESS":
+                print(f"\r[{now_str}] ✅ All {total} checks passed! (SUCCESS)" + " " * 20)
+                print("=" * 65)
+                print(f"🎉 Pull Request #{st.get('number')} is green!")
+                if auto_merge:
+                    print("🔀 Auto-merging pull request...")
+                    m_res = merge_pr(pr_identifier=pr_id, workspace_dir=workspace, auto=False, method="squash")
+                    if m_res.get("ok"):
+                        print(f"✨ {m_res.get('message', 'PR successfully merged!')}")
+                    else:
+                        print(f"⚠️  Merge note: {m_res.get('error')}")
+                else:
+                    print("💡 Run 'antiagent pr monitor --auto-merge' or 'gh pr merge' to merge.")
+                break
+
+            elif overall == "FAILURE":
+                print(f"\r[{now_str}] ❌ Checks failed: {failed} failed, {passed} passed, {pending} pending" + " " * 15)
+                print("=" * 65)
+                print(f"🚨 CI checks failed on PR #{st.get('number')}!")
+                for c in st.get("checks", []):
+                    if c.get("conclusion") in ("FAILURE", "TIMED_OUT", "CANCELLED"):
+                        print(f"   ❌ {c.get('name')} [{c.get('conclusion')}] -> {c.get('url')}")
+                print("\n💡 Run 'antiagent pr autofix' to extract failure logs for automated fixing.")
+                break
+
+            elif overall == "NO_CHECKS":
+                print(f"\r[{now_str}] ⚪ No CI checks registered yet for this PR." + " " * 20, end="", flush=True)
+            else:
+                print(f"\r[{now_str}] {sym} Checks in progress: {passed}/{total} passed, {pending} pending..." + " " * 10, end="", flush=True)
+
+            try:
+                time.sleep(interval)
+            except KeyboardInterrupt:
+                print("\n\n⏹️  PR monitoring paused by user.")
+                break
+
+        print("")
+        return
+
+    # Default / 'status'
+    res = get_pr_checks(pr_identifier=pr_id, workspace_dir=workspace)
+    if not res.get("ok"):
+        print(f"ℹ️ {res.get('error', 'No pull request found.')}")
+        return
+
+    summary = res.get("summary", {})
+    total = summary.get("total", 0)
+    passed = summary.get("passed", 0)
+    failed = summary.get("failed", 0)
+    pending = summary.get("pending", 0)
+    overall = res.get("overall_status")
+
+    badge = {
+        "SUCCESS": "🟢 PASSING",
+        "FAILURE": "🔴 FAILING",
+        "PENDING": "🟡 RUNNING",
+        "NO_CHECKS": "⚪ NO CHECKS",
+    }.get(overall, overall)
+
+    print(f"\n🐙 Pull Request #{res.get('number')}: {res.get('title')}")
+    print("=" * 65)
+    print(f"🔗 URL:            {res.get('url')}")
+    print(f"🌿 Branch:         {res.get('branch')} -> {res.get('base_branch')}")
+    print(f"🚦 State:          {res.get('state')} | Mergeable: {res.get('mergeable')} | Review: {res.get('review_decision')}")
+    print(f"📊 CI Rollup:      {badge} ({passed}/{total} passed, {failed} failed, {pending} pending)")
+    print("-" * 65)
+
+    checks = res.get("checks", [])
+    if checks:
+        print("Checks Breakdown:")
+        for c in checks:
+            conc = c.get("conclusion")
+            icon = "✅" if conc == "SUCCESS" else ("❌" if conc in ("FAILURE", "CANCELLED", "TIMED_OUT") else "⏳")
+            url_suffix = f" -> {c.get('url')}" if c.get("url") else ""
+            print(f"  {icon} {c.get('name'):<32} [{conc:<7}] {c.get('type')}{url_suffix}")
+    else:
+        print("  No individual check runs reported.")
+
+    print("=" * 65)
+    if overall == "FAILURE":
+        print("💡 Tip: Run 'antiagent pr autofix' to extract logs of failing checks.")
+    elif overall == "PENDING":
+        print("💡 Tip: Run 'antiagent pr monitor' to watch checks until completion.")
+    print("")
 
 
 def handle_update_cli(args: argparse.Namespace) -> None:
@@ -537,7 +761,36 @@ def main() -> None:
     config_parser.add_argument("--set-profile", choices=[PROFILE_BALANCED, PROFILE_PARANOID, PROFILE_AUTONOMOUS])
     config_parser.add_argument("--set-provider", help="Provider: native, gemini, openai, ollama, offline")
     config_parser.add_argument("--set-model", help="Model name (e.g. gemini-2.5-flash, gpt-4o-mini)")
+    config_parser.add_argument("--set-auto-pr-monitor", help="Enable/disable auto-PR monitoring on PR creation (true/false)")
+    config_parser.add_argument("--set-pr-auto-merge", help="Enable/disable auto-merge when CI checks turn green (true/false)")
+    config_parser.add_argument("--set-pr-interval", type=int, help="Poll interval for PR checks in seconds")
     config_parser.add_argument("--global", dest="global_config", action="store_true", help="Apply to global config")
+
+    # pr (Pull Request & CI monitor)
+    pr_parser = subparsers.add_parser("pr", help="Pull request and CI/CD monitoring (Claude Code style)")
+    pr_subparsers = pr_parser.add_subparsers(dest="pr_command", help="PR subcommands")
+
+    # pr status
+    pr_status_parser = pr_subparsers.add_parser("status", help="Show CI status, checks rollup, and mergeability for PR")
+    pr_status_parser.add_argument("--pr", help="Pull request number, branch, or URL (default: current branch)")
+    pr_status_parser.add_argument("--workspace", default=".", help="Workspace path")
+
+    # pr monitor
+    pr_monitor_parser = pr_subparsers.add_parser("monitor", help="Live watch PR until CI checks pass/fail with auto-merge option")
+    pr_monitor_parser.add_argument("--pr", help="Pull request number, branch, or URL (default: current branch)")
+    pr_monitor_parser.add_argument("--auto-merge", action="store_true", help="Automatically merge PR once all checks pass")
+    pr_monitor_parser.add_argument("--interval", type=int, help="Poll interval in seconds (default: 15)")
+    pr_monitor_parser.add_argument("--timeout", type=int, default=30, help="Monitoring timeout in minutes (default: 30)")
+    pr_monitor_parser.add_argument("--workspace", default=".", help="Workspace path")
+
+    # pr autofix
+    pr_autofix_parser = pr_subparsers.add_parser("autofix", help="Inspect failed CI checks and extract error logs for auto-fixing")
+    pr_autofix_parser.add_argument("--pr", help="Pull request number, branch, or URL (default: current branch)")
+    pr_autofix_parser.add_argument("--workspace", default=".", help="Workspace path")
+
+    # pr list
+    pr_list_parser = pr_subparsers.add_parser("list", help="List open pull requests in the repository")
+    pr_list_parser.add_argument("--workspace", default=".", help="Workspace path")
 
     # dashboard
     dashboard_parser = subparsers.add_parser("dashboard", help="Launch interactive visual web dashboard")
@@ -589,6 +842,8 @@ def main() -> None:
         view_audit(limit=args.limit, workspace_path=args.workspace)
     elif args.command == "config":
         configure_cli(args)
+    elif args.command == "pr":
+        handle_pr_cli(args)
     elif args.command == "dashboard":
         from antiagent.dashboard.server import run_dashboard
         run_dashboard(

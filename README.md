@@ -177,6 +177,37 @@ antiagent doctor
 
 ---
 
+---
+
+## 🐙 Auto-PR & CI Monitoring (Claude Code Style)
+
+AntiAgent features integrated pull request and CI/CD monitoring modeled after Claude Code's background tracking and auto-fix capabilities.
+
+- **Real-Time CI Watcher**: Monitors open PRs and tracks GitHub Actions check runs (tests, linting, build) with live progress.
+- **Automated Failure Diagnostics (`autofix`)**: When CI checks fail, AntiAgent extracts the exact failure logs from the failed workflow steps so you or Antigravity can immediately diagnose and resolve errors.
+- **Auto-Merge on Green**: Optionally auto-merges (or arms GitHub auto-merge) as soon as all required checks turn green.
+- **Zero-Friction GitHub Inspection**: Standard inspection commands (`gh pr status`, `gh pr checks`, `gh pr view`, `gh pr list`) are pre-approved without prompts.
+
+```bash
+# Inspect current branch's PR status and check runs
+antiagent pr status
+
+# Live watch CI checks until completion (with optional auto-merge)
+antiagent pr monitor --auto-merge
+
+# Inspect failed checks and extract error logs for instant debugging
+antiagent pr autofix
+
+# List open pull requests
+antiagent pr list
+
+# Enable auto-PR monitoring by default in your configuration
+antiagent config --set-auto-pr-monitor true
+antiagent config --set-pr-auto-merge true
+```
+
+---
+
 ## ⚙️ Configuration & Safety Profiles
 
 AntiAgent supports three distinct safety profiles:
@@ -197,11 +228,17 @@ antiagent config --set-profile balanced
 
 # Set AI supervisor provider (native, gemini, openai, ollama, or offline)
 antiagent config --set-provider gemini --set-model gemini-2.5-flash
+
+# Toggle Auto-PR monitoring & auto-merge
+antiagent config --set-auto-pr-monitor true --set-pr-auto-merge false
 ```
 
 Supported Environment Variables:
 - `ANTIAGENT_PROFILE`: `balanced` | `paranoid` | `autonomous`
 - `ANTIAGENT_PROVIDER`: `native` | `gemini` | `openai` | `ollama` | `offline`
+- `ANTIAGENT_AUTO_PR_MONITOR`: `true` | `false`
+- `ANTIAGENT_PR_AUTO_MERGE`: `true` | `false`
+- `ANTIAGENT_PR_INTERVAL`: Polling interval in seconds (default: 15)
 - `GEMINI_API_KEY`: Google Gemini API key (defaults to ultra-fast `gemini-2.5-flash`)
 - `OPENAI_API_KEY`: OpenAI API key (defaults to `gpt-4o-mini`)
 
@@ -237,6 +274,10 @@ Sample output:
 
 | Command | Description |
 | :--- | :--- |
+| `antiagent pr status` | Inspect current branch's PR status and CI check runs |
+| `antiagent pr monitor [--auto-merge]` | Live watch PR until checks pass/fail (Claude Code style) |
+| `antiagent pr autofix` | Extract failed CI check logs for prompt/agent remediation |
+| `antiagent pr list` | List open pull requests for current repository |
 | `antiagent app` | Launch the native desktop application (macOS & Windows) |
 | `antiagent dashboard` | Launch the interactive local web dashboard |
 | `antiagent doctor` | Run comprehensive health check on Antigravity & hooks |

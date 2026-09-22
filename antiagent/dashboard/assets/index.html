@@ -638,6 +638,26 @@
             <span class="toggle-slider"></span>
           </label>
         </div>
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-label">Auto-PR Monitoring (Claude Code style)</div>
+            <div class="toggle-sublabel">Track CI check status and catch build/test failures on active PRs</div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="toggleAutoPrMonitor" onchange="saveToggle('auto_pr_monitor', this.checked)">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-label">Auto-Merge on Green CI</div>
+            <div class="toggle-sublabel">Automatically merge pull request once all required CI checks turn green</div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="togglePrAutoMerge" onchange="saveToggle('pr_monitor_auto_merge', this.checked)">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
       </div>
       <div class="card">
         <div class="card-title">
@@ -653,6 +673,24 @@
           <textarea id="customDenyInput" class="form-control" rows="3" placeholder="drop\s+database&#10;halt_system"></textarea>
         </div>
         <button class="btn btn-outline" style="width: 100%;" onclick="saveCustomPatterns()">Save Custom Regex Rules</button>
+      </div>
+    </div>
+    <!-- Pull Request & CI Monitor Card -->
+    <div class="card" style="margin-top: 20px;" id="prMonitorCard">
+      <div class="card-title">
+        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+          <span>🐙 Pull Request & CI Monitor</span>
+          <span id="prStatusBadge" class="status-badge badge-inactive" style="font-size: 11px;">Checking...</span>
+        </div>
+        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+          <button class="btn btn-outline btn-sm" onclick="fetchPRStatus()">🔄 Refresh</button>
+          <button id="prWatchBtn" class="btn btn-primary btn-sm" onclick="toggleBackgroundPRMonitor()">👁️ Monitor PR</button>
+          <button id="prAutofixBtn" class="btn btn-outline btn-sm" style="display: none; color: var(--danger); border-color: rgba(248, 81, 73, 0.4);" onclick="openFailureLogsModal()">⚡ Failure Logs</button>
+          <button id="prMergeBtn" class="btn btn-sm" style="display: none; background: #8957e5; color: white; border: none;" onclick="mergeActivePR()">🔀 Merge PR</button>
+        </div>
+      </div>
+      <div id="prInfoContainer" style="margin-top: 8px;">
+        <div style="font-size: 13px; color: var(--text-muted); padding: 8px 0;">Loading pull request data...</div>
       </div>
     </div>
     <div class="card" style="margin-top: 20px;">
@@ -1002,6 +1040,28 @@
       </div>
     </div>
   </div>
+  <!-- CI Failure Logs Modal -->
+  <div id="failureLogsModal" class="modal-overlay" style="display: none;">
+    <div class="modal-card" style="max-width: 800px; width: 90%;">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 20px;">🚨</span>
+          <h3 style="font-size: 16px; font-weight: 700;">CI Failure Logs & Diagnostics</h3>
+        </div>
+        <button class="modal-close" onclick="closeFailureLogsModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px;">
+          Captured step failure logs from GitHub Actions. Feed this to Antigravity to generate a targeted patch or fix:
+        </p>
+        <pre id="failureLogsContent" style="background: #0d1117; border: 1px solid var(--card-border); border-radius: 8px; padding: 14px; font-family: monospace; font-size: 12px; color: #ff7b72; max-height: 420px; overflow-y: auto; white-space: pre-wrap; word-break: break-all;"></pre>
+      </div>
+      <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center;">
+        <button class="btn btn-outline btn-sm" onclick="copyFailureLogs()">📋 Copy Logs</button>
+        <button class="btn btn-primary btn-sm" onclick="closeFailureLogsModal()">Close</button>
+      </div>
+    </div>
+  </div>
   <script>
     function escapeHtml(str) {
       if (str === null || str === undefined) return '';
@@ -1133,8 +1193,15 @@
         document.getElementById('toggleApproveReads').checked = !!data.auto_approve_reads;
         document.getElementById('toggleApproveDev').checked = !!data.auto_approve_dev_commands;
         document.getElementById('toggleAuditEnabled').checked = !!data.audit_enabled;
+        if (document.getElementById('toggleAutoPrMonitor')) {
+          document.getElementById('toggleAutoPrMonitor').checked = !!data.auto_pr_monitor;
+        }
+        if (document.getElementById('togglePrAutoMerge')) {
+          document.getElementById('togglePrAutoMerge').checked = !!data.pr_monitor_auto_merge;
+        }
         document.getElementById('customAllowInput').value = (data.custom_allow_patterns || []).join('\n');
         document.getElementById('customDenyInput').value = (data.custom_deny_patterns || []).join('\n');
+        fetchPRStatus();
       } catch (err) {
         console.error('Failed to fetch status:', err);
       }
@@ -1869,6 +1936,228 @@
         }
       } catch (err) {
         console.warn('Pip status poll error:', err);
+      }
+    }
+
+    // --- Pull Request & CI Monitor (Claude Code Style) ---
+    let currentPRData = null;
+    let prPollInterval = null;
+    let isPRMonitoringActive = false;
+
+    async function fetchPRStatus() {
+      const container = document.getElementById('prInfoContainer');
+      const badge = document.getElementById('prStatusBadge');
+      const autofixBtn = document.getElementById('prAutofixBtn');
+      const mergeBtn = document.getElementById('prMergeBtn');
+      const watchBtn = document.getElementById('prWatchBtn');
+
+      try {
+        const res = await fetch('/api/pr/status');
+        const data = await res.json();
+        currentPRData = data;
+
+        if (!data.ok || data.no_pr) {
+          badge.className = 'status-badge badge-inactive';
+          badge.textContent = 'No Active PR';
+          autofixBtn.style.display = 'none';
+          mergeBtn.style.display = 'none';
+          watchBtn.textContent = '👁️ Monitor PR';
+          container.innerHTML = `
+            <div style="background: rgba(22, 27, 34, 0.5); border: 1px dashed var(--card-border); border-radius: 8px; padding: 18px; text-align: center;">
+              <div style="font-size: 24px; margin-bottom: 6px;">🐙</div>
+              <div style="font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 4px;">No Open Pull Request on Current Branch</div>
+              <div style="font-size: 12px; color: var(--text-muted); max-width: 500px; margin: 0 auto;">
+                Create a pull request using <code>gh pr create</code> or Antigravity's tools. AntiAgent will automatically detect and monitor your CI/CD checks in real time.
+              </div>
+            </div>
+          `;
+          return;
+        }
+
+        renderPRStatus(data);
+      } catch (err) {
+        console.warn('Failed to fetch PR status:', err);
+      }
+    }
+
+    function renderPRStatus(data) {
+      const container = document.getElementById('prInfoContainer');
+      const badge = document.getElementById('prStatusBadge');
+      const autofixBtn = document.getElementById('prAutofixBtn');
+      const mergeBtn = document.getElementById('prMergeBtn');
+
+      const overall = data.overall_status || 'UNKNOWN';
+      const summary = data.summary || { total: 0, passed: 0, failed: 0, pending: 0 };
+
+      if (overall === 'SUCCESS') {
+        badge.className = 'status-badge badge-active';
+        badge.textContent = '✅ CI Passed';
+        autofixBtn.style.display = 'none';
+        mergeBtn.style.display = 'inline-flex';
+      } else if (overall === 'FAILURE') {
+        badge.className = 'status-badge';
+        badge.style.background = 'var(--danger-bg)';
+        badge.style.color = 'var(--danger)';
+        badge.style.border = '1px solid rgba(248, 81, 73, 0.3)';
+        badge.textContent = `❌ ${summary.failed} Checks Failed`;
+        autofixBtn.style.display = 'inline-flex';
+        mergeBtn.style.display = 'none';
+      } else if (overall === 'PENDING') {
+        badge.className = 'status-badge badge-inactive';
+        badge.textContent = `⏳ Running (${summary.passed}/${summary.total})`;
+        autofixBtn.style.display = 'none';
+        mergeBtn.style.display = 'none';
+      } else {
+        badge.className = 'status-badge badge-inactive';
+        badge.textContent = '⚪ No Checks';
+        autofixBtn.style.display = 'none';
+        mergeBtn.style.display = 'none';
+      }
+
+      let checksHtml = '';
+      const checks = data.checks || [];
+      if (checks.length === 0) {
+        checksHtml = '<div style="font-size: 12px; color: var(--text-muted); padding: 8px 0;">No CI check runs registered yet.</div>';
+      } else {
+        checksHtml = '<div style="display: flex; flex-direction: column; gap: 6px; margin-top: 10px;">';
+        checks.forEach(c => {
+          const conc = c.conclusion || 'PENDING';
+          let icon = '⏳';
+          let bg = 'rgba(210, 153, 34, 0.1)';
+          let color = 'var(--warning)';
+          if (conc === 'SUCCESS') {
+            icon = '✅';
+            bg = 'rgba(63, 185, 80, 0.1)';
+            color = 'var(--success)';
+          } else if (conc === 'FAILURE' || conc === 'CANCELLED' || conc === 'TIMED_OUT') {
+            icon = '❌';
+            bg = 'rgba(248, 81, 73, 0.1)';
+            color = 'var(--danger)';
+          } else if (conc === 'SKIPPED') {
+            icon = '⚪';
+            bg = 'rgba(139, 148, 158, 0.1)';
+            color = 'var(--text-muted)';
+          }
+
+          const linkPart = c.url ? `<a href="${escapeHtml(c.url)}" target="_blank" style="font-size: 11px; color: var(--primary); text-decoration: none;">View Log ↗</a>` : '';
+
+          checksHtml += `
+            <div style="display: flex; justify-content: space-between; align-items: center; background: #0d1117; border: 1px solid var(--card-border); border-radius: 6px; padding: 8px 12px; font-size: 12px;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span>${icon}</span>
+                <span style="font-weight: 600; color: var(--text);">${escapeHtml(c.name)}</span>
+                ${c.workflow ? `<span style="font-size: 11px; color: var(--text-muted);">(${escapeHtml(c.workflow)})</span>` : ''}
+              </div>
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: 600; background: ${bg}; color: ${color};">${escapeHtml(conc)}</span>
+                ${linkPart}
+              </div>
+            </div>
+          `;
+        });
+        checksHtml += '</div>';
+      }
+
+      container.innerHTML = `
+        <div style="background: #161b22; border: 1px solid var(--card-border); border-radius: 8px; padding: 14px; margin-bottom: 12px;">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap;">
+            <div>
+              <div style="font-size: 14px; font-weight: 700; color: var(--text);">
+                <a href="${escapeHtml(data.url)}" target="_blank" style="color: var(--text); text-decoration: none;">#${data.number}: ${escapeHtml(data.title)} ↗</a>
+              </div>
+              <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">
+                Branch: <code style="color: var(--primary);">${escapeHtml(data.branch)}</code> &rarr; <code>${escapeHtml(data.base_branch)}</code>
+                &bull; State: <span style="font-weight: 600;">${escapeHtml(data.state)}</span>
+                &bull; Review: <span>${escapeHtml(data.review_decision)}</span>
+                &bull; Mergeable: <span>${escapeHtml(data.mergeable)}</span>
+              </div>
+            </div>
+            <div style="display: flex; gap: 6px; align-items: center;">
+              <span style="font-size: 11px; padding: 2px 8px; border-radius: 10px; background: rgba(63, 185, 80, 0.15); color: var(--success); font-weight: 600;">${summary.passed} Passed</span>
+              <span style="font-size: 11px; padding: 2px 8px; border-radius: 10px; background: rgba(248, 81, 73, 0.15); color: var(--danger); font-weight: 600;">${summary.failed} Failed</span>
+              <span style="font-size: 11px; padding: 2px 8px; border-radius: 10px; background: rgba(210, 153, 34, 0.15); color: var(--warning); font-weight: 600;">${summary.pending} Pending</span>
+            </div>
+          </div>
+          ${currentConfig.pr_monitor_auto_merge ? `
+            <div style="margin-top: 10px; font-size: 11px; color: #8957e5; background: rgba(137, 87, 229, 0.1); border: 1px solid rgba(137, 87, 229, 0.3); border-radius: 6px; padding: 6px 10px;">
+              ⚡ <strong>Auto-Merge Armed</strong>: AntiAgent will autonomously squash-merge this PR once all required CI checks turn green.
+            </div>
+          ` : ''}
+        </div>
+        ${checksHtml}
+      `;
+    }
+
+    async function toggleBackgroundPRMonitor() {
+      const watchBtn = document.getElementById('prWatchBtn');
+      if (isPRMonitoringActive) {
+        await fetch('/api/pr/stop_monitor', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+        if (prPollInterval) clearInterval(prPollInterval);
+        isPRMonitoringActive = false;
+        watchBtn.textContent = '👁️ Monitor PR';
+        watchBtn.className = 'btn btn-primary btn-sm';
+      } else {
+        await fetch('/api/pr/monitor', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+        isPRMonitoringActive = true;
+        watchBtn.textContent = '⏹️ Stop Monitoring';
+        watchBtn.className = 'btn btn-danger btn-sm';
+        if (prPollInterval) clearInterval(prPollInterval);
+        prPollInterval = setInterval(fetchPRStatus, 4000);
+        fetchPRStatus();
+      }
+    }
+
+    async function openFailureLogsModal() {
+      const modal = document.getElementById('failureLogsModal');
+      const content = document.getElementById('failureLogsContent');
+      content.textContent = 'Fetching failure diagnostics and logs...';
+      modal.style.display = 'flex';
+
+      try {
+        const res = await fetch('/api/pr/failures');
+        const data = await res.json();
+        if (data.ok && data.failure_logs && data.failure_logs.length > 0) {
+          let text = '';
+          data.failure_logs.forEach(l => {
+            text += `=== Workflow Run ID: ${l.run_id} ===\n${l.log}\n\n`;
+          });
+          content.textContent = text.trim();
+        } else {
+          content.textContent = 'No detailed logs returned for failing checks.\nPlease check the check run links directly on GitHub.';
+        }
+      } catch (err) {
+        content.textContent = 'Error fetching logs: ' + err.message;
+      }
+    }
+
+    function closeFailureLogsModal() {
+      document.getElementById('failureLogsModal').style.display = 'none';
+    }
+
+    function copyFailureLogs() {
+      const text = document.getElementById('failureLogsContent').textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        alert('Failure logs copied to clipboard!');
+      });
+    }
+
+    async function mergeActivePR() {
+      if (!confirm('Are you sure you want to merge this pull request now?')) return;
+      try {
+        const res = await fetch('/api/pr/merge', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ auto: false, method: 'squash' })
+        });
+        const data = await res.json();
+        if (data.ok) {
+          alert(data.message || 'Pull request merged successfully!');
+          fetchPRStatus();
+        } else {
+          alert('Merge error: ' + (data.error || 'Failed to merge'));
+        }
+      } catch (err) {
+        alert('Merge request failed: ' + err.message);
       }
     }
 

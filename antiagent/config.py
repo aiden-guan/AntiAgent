@@ -53,6 +53,12 @@ class AntiAgentConfig:
     # Onboarding completion status
     onboarding_completed: bool = False
 
+    # Auto-PR monitoring (Claude Code style background CI checks tracking)
+    auto_pr_monitor: bool = False
+    pr_monitor_auto_merge: bool = False
+    pr_monitor_interval: int = 15
+    pr_monitor_auto_fix: bool = False
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert config to dictionary."""
         return asdict(self)
@@ -151,6 +157,18 @@ def load_config(workspace_dir: Optional[str] = None) -> AntiAgentConfig:
 
     if os.getenv("ANTIAGENT_AUTO_APPROVE_READS"):
         cfg.auto_approve_reads = os.getenv("ANTIAGENT_AUTO_APPROVE_READS").lower() in ("true", "1", "yes")
+
+    if os.getenv("ANTIAGENT_AUTO_PR_MONITOR"):
+        cfg.auto_pr_monitor = os.getenv("ANTIAGENT_AUTO_PR_MONITOR").lower() in ("true", "1", "yes")
+
+    if os.getenv("ANTIAGENT_PR_AUTO_MERGE"):
+        cfg.pr_monitor_auto_merge = os.getenv("ANTIAGENT_PR_AUTO_MERGE").lower() in ("true", "1", "yes")
+
+    if os.getenv("ANTIAGENT_PR_INTERVAL"):
+        try:
+            cfg.pr_monitor_interval = max(3, int(os.getenv("ANTIAGENT_PR_INTERVAL")))
+        except ValueError:
+            pass
 
     return cfg
 
