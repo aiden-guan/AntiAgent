@@ -584,6 +584,23 @@ class InPlaceSelfUpdater:
         self.total_bytes = 0
         self.speed_bps = 0.0
         self.logs: List[str] = []
+        self.is_up_to_date = False
+        self.components_updated: Dict[str, bool] = {"desktop_app": False, "python_package": False}
+
+    def reset(self) -> None:
+        """Reset updater status and clear state back to idle."""
+        with self._lock:
+            self.status = "idle"
+            self.progress = 0
+            self.step_message = ""
+            self.error_message = ""
+            self.target_version = ""
+            self.downloaded_bytes = 0
+            self.total_bytes = 0
+            self.speed_bps = 0.0
+            self.logs = []
+            self.is_up_to_date = False
+            self.components_updated = {"desktop_app": False, "python_package": False}
 
     def start_update(self, force: bool = False, version: Optional[str] = None) -> bool:
         with self._lock:
@@ -599,6 +616,8 @@ class InPlaceSelfUpdater:
             self.total_bytes = 0
             self.speed_bps = 0.0
             self.logs = [f"🚀 Initializing 1-click update for AntiAgent...\n"]
+            self.is_up_to_date = False
+            self.components_updated = {"desktop_app": False, "python_package": False}
             self._cancel_event.clear()
 
             self._thread = threading.Thread(
@@ -656,6 +675,8 @@ class InPlaceSelfUpdater:
 
             # Check if update is needed
             if not force and compare_versions(latest_ver, __version__) <= 0:
+                with self._lock:
+                    self.is_up_to_date = True
                 self._set_stage("success", 100, f"AntiAgent is already up to date (v{__version__}).")
                 return
 
@@ -778,6 +799,8 @@ class InPlaceSelfUpdater:
 
             # 5. Apply update in-place
             self._set_stage("applying", 80, "Applying update in-place...")
+            app_updated = False
+            pip_updated = False
 
             # A. Update macOS .app bundle if installed in /Applications or ~/Applications
             if sys.platform == "darwin":
@@ -812,6 +835,7 @@ class InPlaceSelfUpdater:
                                 text=True,
                             )
                             if ditto_res.returncode == 0:
+                                app_updated = True
                                 self._log(f"✅ Successfully updated {target_app} in-place.")
                             else:
                                 self._log(f"⚠️ ditto copy warning: {ditto_res.stderr}")
@@ -855,19 +879,45 @@ class InPlaceSelfUpdater:
 
             # B. Update Python package via pip in-place
             self._set_stage("applying", 90, "Updating Python package and rules...")
-            self._log(f"📦 Installing updated package: {download_url}")
-            pip_cmd = [
-                sys.executable or "python3",
-                "-m", "pip", "install",
-                "--upgrade",
-                "--no-deps",
-                str(archive_path),
-            ]
-            pip_res = subprocess.run(pip_cmd, capture_output=True, text=True)
-            if pip_res.returncode == 0:
-                self._log("✅ Python package successfully upgraded.")
-            else:
-                self._log(f"ℹ️ Pip update output: {pip_res.stderr or pip_res.stdout}")
+            tarball_url = f"https://github.com/{GITHUB_REPO}/archive/refs/tags/v{latest_ver}.tar.gz"
+            tarball_path = temp_dir / f"antiagent-{latest_ver}.tar.gz"
+            self._log(f"📦 Downloading release source tarball for Python package upgrade: {tarball_url}")
+
+            try:
+                tar_req = urllib.request.Request(
+                    tarball_url,
+                    headers={"User-Agent": f"AntiAgent/{__version__} (InPlaceUpdater)"},
+                )
+                with safe_urlopen(tar_req, timeout=20.0) as tar_resp:
+                    with open(tarball_path, "wb") as f_tar:
+                        shutil.copyfileobj(tar_resp, f_tar)
+
+                self._log(f"📦 Upgrading Python package using pip: {tarball_path.name}")
+                pip_cmd = [
+                    sys.executable or "python3",
+                    "-m", "pip", "install",
+                    "--upgrade",
+                    "--no-deps",
+                    str(tarball_path),
+                ]
+                pip_res = subprocess.run(pip_cmd, capture_output=True, text=True)
+                if pip_res.returncode == 0:
+                    pip_updated = True
+                    self._log("✅ Python package successfully upgraded.")
+                else:
+                    self._log(f"ℹ️ Pip update output: {pip_res.stderr.strip() or pip_res.stdout.strip()}")
+            except Exception as pe:
+                self._log(f"⚠️ Pip download/install exception: {str(pe)}")
+
+            with self._lock:
+                self.components_updated = {
+                    "desktop_app": app_updated,
+                    "python_package": pip_updated,
+                }
+
+            # If on Windows and package extracted, consider app updated
+            if sys.platform == "win32" and (extract_dir / "AntiAgent").exists():
+                app_updated = True
 
             # Clean up temp
             try:
@@ -875,11 +925,25 @@ class InPlaceSelfUpdater:
             except Exception:
                 pass
 
+            if not app_updated and not pip_updated:
+                with self._lock:
+                    self.status = "error"
+                    self.error_message = "Failed to update desktop application or Python package."
+                self._log("❌ Update failed: neither desktop app nor python package could be updated.")
+                return
+
             # Update finished successfully!
+            summary_items = []
+            if app_updated:
+                summary_items.append("macOS Desktop App" if sys.platform == "darwin" else "Windows Desktop Package")
+            if pip_updated:
+                summary_items.append("Python package")
+            summary_str = " and ".join(summary_items) if summary_items else "AntiAgent"
+
             self._set_stage(
                 "success",
                 100,
-                f"Successfully updated to v{latest_ver}! Click below to reload.",
+                f"Successfully updated {summary_str} to v{latest_ver}! Click below to reload.",
             )
 
         except Exception as e:
@@ -889,17 +953,25 @@ class InPlaceSelfUpdater:
             self._log(f"❌ Update exception: {str(e)}")
 
     def get_status(self) -> Dict[str, Any]:
+        desktop_installed = False
+        if sys.platform == "darwin":
+            desktop_installed = Path("/Applications/AntiAgent.app").exists() or (Path.home() / "Applications" / "AntiAgent.app").exists()
+
         with self._lock:
             return {
                 "status": self.status,
                 "progress": self.progress,
                 "step": self.step_message,
                 "target_version": self.target_version,
+                "current_version": __version__,
                 "downloaded_bytes": self.downloaded_bytes,
                 "total_bytes": self.total_bytes,
                 "speed_bps": round(self.speed_bps, 1),
                 "error": self.error_message,
-                "logs": "".join(self.logs[-20:]),
+                "logs": "".join(self.logs[-30:]),
+                "is_up_to_date": self.is_up_to_date,
+                "components_updated": dict(self.components_updated),
+                "desktop_app_installed": desktop_installed,
             }
 
 

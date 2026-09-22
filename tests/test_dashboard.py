@@ -19,8 +19,8 @@ class TestDashboardServer(unittest.TestCase):
     def setUpClass(cls):
         cls.test_dir = tempfile.mkdtemp()
         DashboardRequestHandler.workspace_path = cls.test_dir
-        cls.port = 42429
-        cls.server = ThreadingHTTPServer(("127.0.0.1", cls.port), DashboardRequestHandler)
+        cls.server = ThreadingHTTPServer(("127.0.0.1", 0), DashboardRequestHandler)
+        cls.port = cls.server.server_address[1]
         cls.thread = threading.Thread(target=cls.server.serve_forever, daemon=True)
         cls.thread.start()
         time.sleep(0.1)
@@ -335,6 +335,33 @@ class TestDashboardServer(unittest.TestCase):
                 self.assertEqual(resp.status, 200)
                 data = json.loads(resp.read().decode("utf-8"))
                 self.assertTrue(data["ok"])
+
+        # Test reset endpoint
+        url_reset = f"http://127.0.0.1:{self.port}/api/update/self_update_reset"
+        req_reset = urllib.request.Request(url_reset, data=b"{}", headers={"Content-Type": "application/json"})
+        with urllib.request.urlopen(req_reset) as resp:
+            self.assertEqual(resp.status, 200)
+            data = json.loads(resp.read().decode("utf-8"))
+            self.assertTrue(data["ok"])
+            self.assertEqual(data["status"]["status"], "idle")
+
+        # Test relaunch endpoint
+        url_relaunch = f"http://127.0.0.1:{self.port}/api/update/relaunch_app"
+        req_relaunch = urllib.request.Request(url_relaunch, data=b"{}", headers={"Content-Type": "application/json"})
+        with urllib.request.urlopen(req_relaunch) as resp:
+            self.assertEqual(resp.status, 200)
+            data = json.loads(resp.read().decode("utf-8"))
+            self.assertIn("ok", data)
+
+        # Test restart endpoint (mocking Thread to prevent killing test process)
+        with patch("antiagent.dashboard.server.threading.Thread") as mock_thread:
+            url_restart = f"http://127.0.0.1:{self.port}/api/update/restart"
+            req_restart = urllib.request.Request(url_restart, data=b"{}", headers={"Content-Type": "application/json"})
+            with urllib.request.urlopen(req_restart) as resp:
+                self.assertEqual(resp.status, 200)
+                data = json.loads(resp.read().decode("utf-8"))
+                self.assertTrue(data.get("ok"))
+                mock_thread.assert_called_once()
 
 
 if __name__ == "__main__":

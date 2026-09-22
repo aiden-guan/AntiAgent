@@ -1908,21 +1908,53 @@
         </div>
 
         <!-- Success Area -->
-        <div id="oneClickSuccessArea" style="display: none; margin-top: 14px; background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 10px; padding: 14px;">
-          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-            <div>
-              <div style="font-size: 13px; font-weight: 600; color: #ffffff; display: flex; align-items: center; gap: 6px;">
-                <svg class="icon" viewBox="0 0 24 24" style="stroke: #ffffff;"><polyline points="20 6 9 17 4 12"/></svg>
-                <span id="oneClickSuccessText">Update Applied In-Place!</span>
-              </div>
-              <div style="font-size: 11px; color: var(--text-muted); margin-top: 3px;">
-                Your local installation has been updated. Reload the dashboard to activate.
+        <div id="oneClickSuccessArea" style="display: none; margin-top: 14px; background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 12px; padding: 16px;">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;">
+            <div style="display: flex; gap: 10px;">
+              <svg class="icon" viewBox="0 0 24 24" style="stroke: #22c55e; width: 20px; height: 20px; min-width: 20px; margin-top: 2px;"><polyline points="20 6 9 17 4 12"/></svg>
+              <div>
+                <div id="oneClickSuccessTitle" style="font-size: 13px; font-weight: 600; color: #ffffff;">Update Applied In-Place!</div>
+                <div id="oneClickSuccessDetails" style="font-size: 11px; color: var(--text-muted); margin-top: 3px; line-height: 1.45;">
+                  Your local installation has been updated.
+                </div>
+                <div id="oneClickComponentsList" style="margin-top: 6px; font-size: 11px; font-family: var(--font-mono); color: #a1a1aa; display: flex; flex-direction: column; gap: 2px;"></div>
               </div>
             </div>
-            <button class="btn btn-primary btn-sm" onclick="restartAndReloadDashboard()">
+            <button class="btn btn-outline btn-sm" onclick="dismissOneClickSuccess()" title="Dismiss banner" style="padding: 2px 8px; font-size: 11px;">✕</button>
+          </div>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 12px; margin-top: 10px;">
+            <button id="oneClickReloadBtn" class="btn btn-primary btn-sm" onclick="restartAndReloadDashboard()">
               <svg class="icon" viewBox="0 0 24 24" style="stroke: #050507;"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
-              <span>Reload Dashboard</span>
+              <span>Restart &amp; Reload Dashboard</span>
             </button>
+            <button id="oneClickRelaunchAppBtn" class="btn btn-outline btn-sm" onclick="relaunchDesktopApp()" style="display: none;">
+              <svg class="icon" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              <span>Relaunch Desktop App</span>
+            </button>
+            <button id="oneClickLogsToggleBtn" class="btn btn-outline btn-sm" onclick="toggleOneClickLogs()" style="margin-left: auto; font-size: 11px;">
+              View Logs
+            </button>
+          </div>
+          <div id="oneClickLogsArea" style="display: none; margin-top: 10px;">
+            <pre id="oneClickLogsContent" style="background: #000000; border: 1px solid var(--card-border); border-radius: 8px; padding: 10px; font-size: 11px; font-family: var(--font-mono); max-height: 140px; overflow-y: auto; color: #e4e4e7; white-space: pre-wrap; word-break: break-all; margin: 0;"></pre>
+          </div>
+        </div>
+
+        <!-- Error Area -->
+        <div id="oneClickErrorArea" style="display: none; margin-top: 14px; background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 12px; padding: 14px;">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;">
+            <div>
+              <div style="font-size: 13px; font-weight: 600; color: #f87171; display: flex; align-items: center; gap: 6px;">
+                <svg class="icon" viewBox="0 0 24 24" style="stroke: #f87171;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                <span>Update Issue Detected</span>
+              </div>
+              <div id="oneClickErrorMessage" style="font-size: 12px; color: #fca5a5; margin-top: 4px; line-height: 1.4;"></div>
+            </div>
+            <button class="btn btn-outline btn-sm" onclick="dismissOneClickError()" style="padding: 2px 8px; font-size: 11px;">✕</button>
+          </div>
+          <div style="display: flex; gap: 8px; margin-top: 10px;">
+            <button class="btn btn-outline btn-sm" onclick="triggerOneClickUpdate(true)" style="font-size: 11px;">Retry Update</button>
+            <button class="btn btn-outline btn-sm" onclick="toggleOneClickLogs()" style="font-size: 11px;">View Diagnostic Logs</button>
           </div>
         </div>
       </div>
@@ -3013,6 +3045,28 @@
       await loadSidebarAudit();
     }
 
+    // Semantic Version Comparison Utility
+    function parseVersionSegments(ver) {
+      if (!ver) return [0, 0, 0];
+      const clean = String(ver).trim().replace(/^[vV]/, '').split('-')[0].split('+')[0];
+      const segments = clean.split('.').map(s => {
+        const m = s.match(/\d+/);
+        return m ? parseInt(m[0], 10) : 0;
+      });
+      while (segments.length < 3) segments.push(0);
+      return segments;
+    }
+
+    function compareVersions(v1, v2) {
+      const p1 = parseVersionSegments(v1);
+      const p2 = parseVersionSegments(v2);
+      for (let i = 0; i < 3; i++) {
+        if (p1[i] > p2[i]) return 1;
+        if (p1[i] < p2[i]) return -1;
+      }
+      return 0;
+    }
+
     // In-App Update Downloader Logic
     let latestUpdateData = null;
     let downloadPollInterval = null;
@@ -3377,27 +3431,56 @@
       }
     }
 
+    let lastSelfUpdateLogs = '';
+
     function updateSelfUpdateUI(st) {
       const actionArea = document.getElementById('oneClickActionArea');
       const progArea = document.getElementById('oneClickProgressArea');
       const succArea = document.getElementById('oneClickSuccessArea');
+      const errArea = document.getElementById('oneClickErrorArea');
       const stageLabel = document.getElementById('oneClickStageLabel');
       const pctText = document.getElementById('oneClickPercent');
       const bar = document.getElementById('oneClickProgressBar');
       const detail = document.getElementById('oneClickDetail');
-      const successText = document.getElementById('oneClickSuccessText');
+      const successTitle = document.getElementById('oneClickSuccessTitle');
+      const successDetails = document.getElementById('oneClickSuccessDetails');
+      const componentsList = document.getElementById('oneClickComponentsList');
+      const relaunchBtn = document.getElementById('oneClickRelaunchAppBtn');
+      const logsContent = document.getElementById('oneClickLogsContent');
+      const errMessage = document.getElementById('oneClickErrorMessage');
+      const curVer = (currentConfig && currentConfig.version) || '0.1.7';
+
+      if (st && st.logs) {
+        lastSelfUpdateLogs = st.logs;
+        if (logsContent) logsContent.textContent = st.logs;
+      }
 
       if (!st || st.status === 'idle') {
         if (actionArea) actionArea.style.display = 'block';
         if (progArea) progArea.style.display = 'none';
         if (succArea) succArea.style.display = 'none';
+        if (errArea) errArea.style.display = 'none';
         return;
+      }
+
+      // Stale success guard: if a newer version is available on GitHub than what this update status recorded,
+      // clear the stale success so the user can update to the latest version immediately.
+      if (st.status === 'success' && latestUpdateData && latestUpdateData.update_available) {
+        if (!st.target_version || compareVersions(latestUpdateData.latest_version, st.target_version) > 0) {
+          fetch('/api/update/self_update_reset', { method: 'POST' }).catch(() => {});
+          if (actionArea) actionArea.style.display = 'block';
+          if (progArea) progArea.style.display = 'none';
+          if (succArea) succArea.style.display = 'none';
+          if (errArea) errArea.style.display = 'none';
+          return;
+        }
       }
 
       if (st.status === 'checking' || st.status === 'downloading' || st.status === 'extracting' || st.status === 'applying') {
         if (actionArea) actionArea.style.display = 'none';
         if (progArea) progArea.style.display = 'block';
         if (succArea) succArea.style.display = 'none';
+        if (errArea) errArea.style.display = 'none';
 
         const pct = st.progress || 10;
         if (bar) bar.style.width = pct + '%';
@@ -3419,19 +3502,103 @@
         }
         if (actionArea) actionArea.style.display = 'none';
         if (progArea) progArea.style.display = 'none';
+        if (errArea) errArea.style.display = 'none';
         if (succArea) succArea.style.display = 'block';
-        if (successText) successText.textContent = st.step || 'Update Applied In-Place!';
+
+        if (st.is_up_to_date) {
+          if (successTitle) successTitle.textContent = 'AntiAgent is Up to Date';
+          if (successDetails) successDetails.textContent = `You are already running v${st.current_version || curVer}. No update needed.`;
+          if (componentsList) componentsList.innerHTML = '';
+          const reloadBtn = document.getElementById('oneClickReloadBtn');
+          if (reloadBtn) reloadBtn.style.display = 'none';
+        } else {
+          const targetVer = st.target_version ? `v${st.target_version}` : 'Latest Version';
+          if (successTitle) successTitle.textContent = `Successfully updated to ${targetVer}!`;
+          if (successDetails) successDetails.textContent = 'Your local installation has been updated in-place. Choose an option below to activate:';
+          const reloadBtn = document.getElementById('oneClickReloadBtn');
+          if (reloadBtn) reloadBtn.style.display = 'inline-flex';
+
+          if (componentsList) {
+            const comps = st.components_updated || {};
+            let html = '';
+            if (comps.desktop_app) {
+              html += '<div style="display: flex; align-items: center; gap: 6px;"><svg class="icon" viewBox="0 0 24 24" style="stroke: #22c55e; width: 14px; height: 14px;"><polyline points="20 6 9 17 4 12"/></svg><span>macOS Desktop App (/Applications/AntiAgent.app) updated</span></div>';
+            }
+            if (comps.python_package) {
+              html += '<div style="display: flex; align-items: center; gap: 6px;"><svg class="icon" viewBox="0 0 24 24" style="stroke: #22c55e; width: 14px; height: 14px;"><polyline points="20 6 9 17 4 12"/></svg><span>Python package (antiagent) upgraded in-place</span></div>';
+            }
+            if (!html) {
+              html = '<div style="display: flex; align-items: center; gap: 6px;"><svg class="icon" viewBox="0 0 24 24" style="stroke: #22c55e; width: 14px; height: 14px;"><polyline points="20 6 9 17 4 12"/></svg><span>AntiAgent rules & assets refreshed</span></div>';
+            }
+            componentsList.innerHTML = html;
+          }
+
+          if (relaunchBtn) {
+            relaunchBtn.style.display = st.desktop_app_installed ? 'inline-flex' : 'none';
+          }
+        }
       } else if (st.status === 'error' || st.status === 'cancelled') {
         if (selfUpdatePollInterval) {
           clearInterval(selfUpdatePollInterval);
           selfUpdatePollInterval = null;
         }
-        if (actionArea) actionArea.style.display = 'block';
         if (progArea) progArea.style.display = 'none';
         if (succArea) succArea.style.display = 'none';
+
         if (st.status === 'error') {
-          alert('Update Error: ' + (st.error || 'Failed to apply update.'));
+          if (actionArea) actionArea.style.display = 'none';
+          if (errArea) errArea.style.display = 'block';
+          if (errMessage) errMessage.textContent = st.error || 'Update failed to complete.';
+        } else {
+          if (actionArea) actionArea.style.display = 'block';
+          if (errArea) errArea.style.display = 'none';
         }
+      }
+    }
+
+    function toggleOneClickLogs() {
+      const logsArea = document.getElementById('oneClickLogsArea');
+      const toggleBtn = document.getElementById('oneClickLogsToggleBtn');
+      if (!logsArea) return;
+      if (logsArea.style.display === 'none' || !logsArea.style.display) {
+        logsArea.style.display = 'block';
+        if (toggleBtn) toggleBtn.textContent = 'Hide Logs';
+      } else {
+        logsArea.style.display = 'none';
+        if (toggleBtn) toggleBtn.textContent = 'View Logs';
+      }
+    }
+
+    async function dismissOneClickSuccess() {
+      try {
+        await fetch('/api/update/self_update_reset', { method: 'POST' });
+      } catch (e) {}
+      const succArea = document.getElementById('oneClickSuccessArea');
+      const actionArea = document.getElementById('oneClickActionArea');
+      if (succArea) succArea.style.display = 'none';
+      if (actionArea) actionArea.style.display = 'block';
+    }
+
+    async function dismissOneClickError() {
+      try {
+        await fetch('/api/update/self_update_reset', { method: 'POST' });
+      } catch (e) {}
+      const errArea = document.getElementById('oneClickErrorArea');
+      const actionArea = document.getElementById('oneClickActionArea');
+      if (errArea) errArea.style.display = 'none';
+      if (actionArea) actionArea.style.display = 'block';
+    }
+
+    async function relaunchDesktopApp() {
+      const btn = document.getElementById('oneClickRelaunchAppBtn');
+      if (btn) btn.innerHTML = '<span>Relaunching...</span>';
+      try {
+        await fetch('/api/update/relaunch_app', { method: 'POST' });
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
+      } catch (e) {
+        alert('Could not relaunch app automatically. Please reopen AntiAgent from /Applications.');
       }
     }
 
@@ -3445,8 +3612,8 @@
     }
 
     async function restartAndReloadDashboard() {
-      const successBtn = document.querySelector('#oneClickSuccessArea button');
-      if (successBtn) successBtn.innerHTML = '<span>Restarting...</span>';
+      const reloadBtn = document.getElementById('oneClickReloadBtn');
+      if (reloadBtn) reloadBtn.innerHTML = '<span>Restarting...</span>';
       try {
         await fetch('/api/update/restart', { method: 'POST' });
       } catch (e) {
@@ -3454,7 +3621,7 @@
       }
       setTimeout(() => {
         window.location.reload();
-      }, 1200);
+      }, 1400);
     }
 
     // Pull Request & CI Monitor Logic

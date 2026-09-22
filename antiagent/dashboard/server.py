@@ -4,6 +4,8 @@ import json
 import os
 import subprocess
 import sys
+import threading
+import time
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -286,13 +288,34 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
         elif path == "/api/update/self_update_cancel":
             cancelled = global_self_updater.cancel()
             self._send_json({"ok": cancelled, "status": global_self_updater.get_status()})
-        elif path == "/api/update/restart":
-            def _restart_worker():
-                time.sleep(0.5)
+        elif path == "/api/update/self_update_reset":
+            global_self_updater.reset()
+            self._send_json({"ok": True, "status": global_self_updater.get_status()})
+        elif path == "/api/update/relaunch_app":
+            relaunch_ok = False
+            mac_app = Path("/Applications/AntiAgent.app")
+            user_app = Path.home() / "Applications" / "AntiAgent.app"
+            target = mac_app if mac_app.exists() else (user_app if user_app.exists() else None)
+            if sys.platform == "darwin" and target:
                 try:
-                    os.execv(sys.executable, [sys.executable] + sys.argv)
+                    subprocess.Popen(["open", "-n", str(target)])
+                    relaunch_ok = True
+                except Exception as e:
+                    pass
+            self._send_json({"ok": relaunch_ok, "app_path": str(target) if target else None})
+        elif path == "/api/update/restart":
+            global_self_updater.reset()
+            def _restart_worker():
+                time.sleep(0.6)
+                try:
+                    argv = list(sys.argv)
+                    if argv and not argv[0].endswith(".py") and "antiagent" not in argv[0]:
+                        cmd = [sys.executable, "-m", "antiagent", "dashboard"] + argv[1:]
+                    else:
+                        cmd = [sys.executable] + argv
+                    os.execv(sys.executable, cmd)
                 except Exception:
-                    sys.exit(0)
+                    os._exit(0)
 
             threading.Thread(target=_restart_worker, daemon=True).start()
             self._send_json({"ok": True, "message": "Server restarting..."})

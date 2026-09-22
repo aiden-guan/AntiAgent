@@ -299,6 +299,25 @@ class TestUpdaterEngine(unittest.TestCase):
             st = updater.get_status()
             self.assertEqual(st["status"], "success")
             self.assertIn("already up to date", st["step"])
+            self.assertTrue(st["is_up_to_date"])
+
+    def test_in_place_self_updater_reset(self):
+        updater = InPlaceSelfUpdater()
+        updater.status = "success"
+        updater.step_message = "Successfully updated to v0.1.6!"
+        updater.progress = 100
+        updater.target_version = "0.1.6"
+        updater.logs = ["log 1", "log 2"]
+        updater.is_up_to_date = True
+
+        updater.reset()
+        st = updater.get_status()
+        self.assertEqual(st["status"], "idle")
+        self.assertEqual(st["progress"], 0)
+        self.assertEqual(st["step"], "")
+        self.assertEqual(st["target_version"], "")
+        self.assertEqual(st["logs"], "")
+        self.assertFalse(st["is_up_to_date"])
 
     def test_in_place_self_updater_cancel(self):
         updater = InPlaceSelfUpdater()
