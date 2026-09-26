@@ -43,6 +43,52 @@ class TestCLI(unittest.TestCase):
             self.assertTrue(cmd.startswith('"C:\\Program Files\\Python312\\python.exe"'))
             self.assertIn("-m antiagent.hook", cmd)
 
+    def test_get_hook_command_uses_launcher_when_not_pip_installed(self):
+        """Bundle installs (PYTHONPATH-only) must not register a bare `-m antiagent.hook`."""
+        import os
+        import subprocess
+        import sys
+        from unittest.mock import patch
+        from antiagent import cli
+
+        with patch.object(cli, "_is_importable_without_pythonpath", return_value=False), patch.object(
+            cli, "get_global_config_dir", return_value=Path(self.test_dir)
+        ):
+            cmd = cli.get_hook_command()
+
+        launcher = Path(self.test_dir) / "hook_launcher.py"
+        self.assertTrue(launcher.is_file())
+        self.assertNotIn("-m antiagent.hook", cmd)
+        self.assertIn(str(launcher), cmd)
+
+        # The launcher must run the hook with no PYTHONPATH and an unrelated cwd.
+        env = {k: v for k, v in os.environ.items() if k != "PYTHONPATH"}
+        result = subprocess.run(
+            [sys.executable, str(launcher)],
+            input="",
+            env=env,
+            cwd=tempfile.gettempdir(),
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(result.stdout)["decision"], "ask")
+
+    def test_is_importable_without_pythonpath_detects_missing_package(self):
+        import sys
+        from unittest.mock import patch
+        from antiagent import cli
+
+        root = Path(cli.__file__).resolve().parent.parent
+        with patch("subprocess.run") as run:
+            run.return_value.returncode = 1
+            run.return_value.stdout = ""
+            self.assertFalse(cli._is_importable_without_pythonpath(sys.executable, root))
+            run.return_value.returncode = 0
+            run.return_value.stdout = str(root)
+            self.assertTrue(cli._is_importable_without_pythonpath(sys.executable, root))
+
     def test_cli_update_check(self):
         import argparse
         from unittest.mock import patch
