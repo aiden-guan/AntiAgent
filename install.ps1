@@ -39,11 +39,22 @@ if (-not (Test-Path $installDir)) {
 
 # 3. Install AntiAgent via pip
 Write-Host "⬇️ Installing AntiAgent package..." -ForegroundColor Cyan
+# pip writes warnings to stderr; under "Stop", Windows PowerShell 5.1 turns that into
+# a terminating error and aborts the installer before the hook is registered.
+$ErrorActionPreference = "Continue"
 & $pythonCmd -m pip install --upgrade antiagent 2>$null
 if ($LASTEXITCODE -ne 0) {
-    # Fallback to installing directly from git repository
+    # Fallback to the GitHub source archive (does not require git to be installed)
     Write-Host "ℹ️ Installing from GitHub repository..." -ForegroundColor Yellow
-    & $pythonCmd -m pip install "git+https://github.com/aiden-guan/AntiAgent.git"
+    & $pythonCmd -m pip install --upgrade "https://github.com/aiden-guan/AntiAgent/archive/refs/heads/main.zip"
+}
+& $pythonCmd -c "import antiagent" 2>$null
+$importOk = ($LASTEXITCODE -eq 0)
+$ErrorActionPreference = "Stop"
+if (-not $importOk) {
+    Write-Host "❌ AntiAgent could not be installed into Python $pyVer ($pythonCmd)." -ForegroundColor Red
+    Write-Host "   Try manually: $pythonCmd -m pip install git+https://github.com/aiden-guan/AntiAgent.git" -ForegroundColor Yellow
+    exit 1
 }
 
 # 4. Register Global Protection Hook in Antigravity
