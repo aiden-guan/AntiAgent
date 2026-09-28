@@ -882,14 +882,32 @@ def run_dashboard(
 ) -> None:
     """Launch the AntiAgent local dashboard server."""
     DashboardRequestHandler.workspace_path = workspace_path
-    server = ThreadingHTTPServer((host, port), DashboardRequestHandler)
     url = f"http://{host}:{port}"
+    try:
+        server = ThreadingHTTPServer((host, port), DashboardRequestHandler)
+    except OSError as e:
+        if "Address already in use" in str(e) or getattr(e, "errno", None) in (48, 98):
+            print(f"🛡️  AntiAgent Dashboard is already running at: {url}")
+            if open_browser:
+                try:
+                    if sys.platform == "darwin":
+                        subprocess.run(["open", url], check=False)
+                    else:
+                        webbrowser.open(url)
+                except Exception:
+                    pass
+            return
+        raise
+
     print(f"🛡️  AntiAgent Dashboard running at: {url}")
     print("   Press Ctrl+C to stop the dashboard.")
 
     if open_browser:
         try:
-            webbrowser.open(url)
+            if sys.platform == "darwin":
+                subprocess.run(["open", url], check=False)
+            else:
+                webbrowser.open(url)
         except Exception:
             pass
 
