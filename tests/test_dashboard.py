@@ -479,6 +479,27 @@ class TestDashboardServer(unittest.TestCase):
             data = json.loads(resp.read().decode("utf-8"))
             self.assertTrue(data["ok"])
 
+    def test_api_open_url(self):
+        from unittest.mock import patch
+        url = f"http://127.0.0.1:{self.port}/api/open-url"
+
+        # Valid HTTPS URL
+        payload = json.dumps({"url": "https://github.com/aiden-guan/AntiAgent/releases"}).encode("utf-8")
+        req = urllib.request.Request(url, data=payload, headers={"Content-Type": "application/json"})
+        with patch("antiagent.dashboard.server.webbrowser.open") as mock_open:
+            with urllib.request.urlopen(req) as resp:
+                self.assertEqual(resp.status, 200)
+                data = json.loads(resp.read().decode("utf-8"))
+                self.assertTrue(data["ok"])
+                mock_open.assert_called_once_with("https://github.com/aiden-guan/AntiAgent/releases")
+
+        # Invalid scheme
+        bad_payload = json.dumps({"url": "javascript:alert(1)"}).encode("utf-8")
+        bad_req = urllib.request.Request(url, data=bad_payload, headers={"Content-Type": "application/json"})
+        with self.assertRaises(urllib.error.HTTPError) as ctx:
+            urllib.request.urlopen(bad_req)
+        self.assertEqual(ctx.exception.code, 400)
+
 
 if __name__ == "__main__":
     unittest.main()

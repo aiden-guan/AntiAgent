@@ -339,6 +339,8 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
             self._send_json({"ok": True, "onboarding_completed": cfg.onboarding_completed})
         elif path == "/api/choose_folder":
             self._handle_api_choose_folder()
+        elif path == "/api/open-url":
+            self._handle_api_open_url(body)
         elif path == "/api/update/download":
             url = body.get("download_url")
             filename = body.get("filename")
@@ -707,6 +709,23 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
                 self._send_json({"ok": True, "workspace_path": str(p)})
             else:
                 self._send_json({"ok": False, "cancelled": True})
+        except Exception as e:
+            self._send_json({"ok": False, "error": str(e)}, status=500)
+
+    def _handle_api_open_url(self, body: Dict[str, Any]) -> None:
+        raw_url = (body.get("url") or "").strip()
+        if not raw_url:
+            self._send_json({"ok": False, "error": "Missing URL"}, status=400)
+            return
+
+        parsed = urlparse(raw_url)
+        if parsed.scheme.lower() not in ("http", "https", "mailto"):
+            self._send_json({"ok": False, "error": "Invalid URL scheme"}, status=400)
+            return
+
+        try:
+            webbrowser.open(raw_url)
+            self._send_json({"ok": True, "url": raw_url})
         except Exception as e:
             self._send_json({"ok": False, "error": str(e)}, status=500)
 

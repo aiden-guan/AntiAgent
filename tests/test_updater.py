@@ -127,6 +127,12 @@ class TestUpdaterEngine(unittest.TestCase):
             self.assertFalse(info["ok"])
             self.assertFalse(info["update_available"])
             self.assertIn("rate limit", info["error"].lower())
+            self.assertIn("repo_url", info)
+
+    def test_get_local_release_notes(self):
+        from antiagent.updater import get_local_release_notes
+        notes = get_local_release_notes("0.2.0")
+        self.assertIn("Remote Sessions via SSH", notes)
 
     def test_downloader_lifecycle_and_completion(self):
         temp_dir = Path(tempfile.mkdtemp())

@@ -165,6 +165,27 @@ def select_recommended_asset(assets: List[Dict[str, Any]]) -> Optional[Dict[str,
     return assets[0]
 
 
+def get_local_release_notes(version: str = __version__) -> str:
+    """Extract release notes for version from CHANGELOG.md if available."""
+    try:
+        candidates = [
+            Path(__file__).parent.parent / "CHANGELOG.md",
+            Path(__file__).parent / "CHANGELOG.md",
+            Path.cwd() / "CHANGELOG.md",
+        ]
+        for p in candidates:
+            if p.is_file():
+                content = p.read_text(encoding="utf-8")
+                # Look for section ## [vX.Y.Z] or ## [X.Y.Z]
+                pattern = rf"##\s+\[v?{re.escape(version)}\][^\n]*\n([\s\S]*?)(?=\n##\s+\[|\Z)"
+                match = re.search(pattern, content)
+                if match:
+                    return match.group(1).strip()
+    except Exception:
+        pass
+    return ""
+
+
 def check_for_updates(current_version: str = __version__, repo: str = GITHUB_REPO) -> Dict[str, Any]:
     """Check GitHub releases API for newer AntiAgent versions."""
     api_url = f"https://api.github.com/repos/{repo}/releases/latest"
@@ -196,16 +217,20 @@ def check_for_updates(current_version: str = __version__, repo: str = GITHUB_REP
             })
 
         recommended = select_recommended_asset(assets_list)
+        release_notes = data.get("body") or ""
+        if not release_notes.strip():
+            release_notes = get_local_release_notes(latest_version or current_version)
 
         return {
             "ok": True,
             "update_available": update_available,
             "current_version": current_version,
             "latest_version": latest_version,
-            "release_name": data.get("name") or raw_tag,
-            "release_notes": data.get("body") or "",
+            "release_name": data.get("name") or (f"v{latest_version}" if latest_version else raw_tag),
+            "release_notes": release_notes,
             "published_at": data.get("published_at") or "",
             "html_url": data.get("html_url") or f"https://github.com/{repo}/releases/latest",
+            "repo_url": f"https://github.com/{repo}",
             "assets": assets_list,
             "recommended_asset": recommended,
         }
@@ -220,9 +245,12 @@ def check_for_updates(current_version: str = __version__, repo: str = GITHUB_REP
             "ok": False,
             "update_available": False,
             "current_version": current_version,
-            "latest_version": None,
+            "latest_version": current_version,
             "error": msg,
+            "release_name": f"AntiAgent v{current_version}",
+            "release_notes": get_local_release_notes(current_version),
             "html_url": f"https://github.com/{repo}/releases/latest",
+            "repo_url": f"https://github.com/{repo}",
             "assets": [],
             "recommended_asset": None,
         }
@@ -231,9 +259,12 @@ def check_for_updates(current_version: str = __version__, repo: str = GITHUB_REP
             "ok": False,
             "update_available": False,
             "current_version": current_version,
-            "latest_version": None,
+            "latest_version": current_version,
             "error": f"Failed to check for updates: {str(e)}",
+            "release_name": f"AntiAgent v{current_version}",
+            "release_notes": get_local_release_notes(current_version),
             "html_url": f"https://github.com/{repo}/releases/latest",
+            "repo_url": f"https://github.com/{repo}",
             "assets": [],
             "recommended_asset": None,
         }

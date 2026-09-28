@@ -1299,7 +1299,8 @@
     .release-notes-box del {
       color: #71717a;
     }
-    #releaseNotesExternalLink:hover {
+    #releaseNotesExternalLink:hover,
+    #repoExternalLink:hover {
       color: #ffffff !important;
     }
 
@@ -1334,7 +1335,7 @@
         </div>
         <div class="logo-title-group">
           <span class="logo-title">AntiAgent</span>
-          <span id="appVersionTag" class="version-tag" onclick="openUpdateModal()" style="cursor: pointer;" title="Click to check for updates">v0.2.0</span>
+          <span id="appVersionTag" class="version-tag" onclick="openUpdateModal()" style="cursor: pointer;" title="Click to check for updates">v0.2.1</span>
         </div>
       </div>
       <div class="header-badges">
@@ -2061,7 +2062,7 @@
               <span>Checking for updates...</span>
             </div>
             <div id="updateStatusSub" style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">
-              Current installed version: <strong id="updateCurrentVer" style="color: #ffffff;">v0.2.0</strong>
+              Current installed version: <strong id="updateCurrentVer" style="color: #ffffff;">v0.2.1</strong>
             </div>
           </div>
           <button id="updateRefreshBtn" class="btn btn-outline btn-sm" onclick="checkForUpdates(false)">
@@ -2164,15 +2165,23 @@
 
       <!-- Release Notes -->
       <div id="releaseNotesSection" style="margin-bottom: 18px; display: none;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-          <label style="font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 0; display: flex; align-items: center; gap: 6px;">
-            <svg class="icon" viewBox="0 0 24 24" style="width: 13px; height: 13px; stroke: var(--text-muted);"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-            <span>What's New in <span id="releaseNotesTag" style="color: #ffffff;">v...</span>:</span>
-          </label>
-          <a id="releaseNotesExternalLink" href="#" target="_blank" rel="noopener noreferrer" style="font-size: 11px; color: var(--text-muted); text-decoration: none; display: none; align-items: center; gap: 4px; transition: color 0.15s ease;">
-            <span>GitHub Release</span>
-            <svg class="icon" viewBox="0 0 24 24" style="width: 12px; height: 12px; stroke-width: 2;"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-          </a>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
+          <div style="font-size: 11px; font-weight: 600; display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+            <svg class="icon" viewBox="0 0 24 24" style="width: 13px; height: 13px; stroke: var(--text-muted); min-width: 13px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+            <span id="releaseNotesSectionLabel" style="color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em;">Recent Release Notes:</span>
+            <span id="releaseNotesTag" style="color: #ffffff; font-weight: 600;">v0.2.1</span>
+            <span id="releaseNotesName" style="color: #a1a1aa; font-weight: 400;"></span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <a id="releaseNotesExternalLink" href="https://github.com/aiden-guan/AntiAgent/releases/latest" target="_blank" rel="noopener noreferrer" style="font-size: 11px; color: var(--text-muted); text-decoration: none; display: inline-flex; align-items: center; gap: 4px; transition: color 0.15s ease;" title="View official GitHub Release page">
+              <span>GitHub Release</span>
+              <svg class="icon" viewBox="0 0 24 24" style="width: 12px; height: 12px; stroke-width: 2;"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            </a>
+            <a id="repoExternalLink" href="https://github.com/aiden-guan/AntiAgent" target="_blank" rel="noopener noreferrer" style="font-size: 11px; color: var(--text-muted); text-decoration: none; display: inline-flex; align-items: center; gap: 4px; transition: color 0.15s ease;" title="Open AntiAgent repository on GitHub">
+              <span>GitHub Repo</span>
+              <svg class="icon" viewBox="0 0 24 24" style="width: 12px; height: 12px; stroke-width: 2;"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            </a>
+          </div>
         </div>
         <div id="releaseNotesContent" class="release-notes-box"></div>
       </div>
@@ -2534,6 +2543,49 @@
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
     }
+
+    function openExternalUrl(url, event) {
+      if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+      if (!url || url === '#' || url.startsWith('javascript:')) return false;
+
+      // 1. Try standard browser window.open
+      try {
+        window.open(url, '_blank', 'noopener,noreferrer');
+      } catch (err) {
+        console.warn('window.open failed:', err);
+      }
+
+      // 2. Also call backend /api/open-url to open in default system browser
+      fetch('/api/open-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: url })
+      }).catch(err => {
+        console.warn('POST /api/open-url failed:', err);
+      });
+
+      return false;
+    }
+
+    // Intercept clicks on external links and open them in user's default browser
+    document.addEventListener('click', function(e) {
+      const a = e.target.closest('a');
+      if (!a) return;
+      const href = a.getAttribute('href');
+      if (!href || href.startsWith('#') || href.startsWith('javascript:')) return;
+
+      if (href.startsWith('http://') || href.startsWith('https://') || href.startsWith('mailto:')) {
+        const isCurrentOrigin = href.startsWith(window.location.origin);
+        if (!isCurrentOrigin || a.target === '_blank') {
+          e.preventDefault();
+          e.stopPropagation();
+          openExternalUrl(href);
+        }
+      }
+    }, true);
 
     let currentConfig = {};
     function openModal(id) { document.getElementById(id).style.display = 'flex'; }
@@ -3037,7 +3089,7 @@
           </div>
         `;
 
-        const currentVer = currentConfig.version || '0.2.0';
+        const currentVer = currentConfig.version || '0.2.1';
         const hasUpdate = latestUpdateData && latestUpdateData.update_available;
         const updateText = hasUpdate ? `v${latestUpdateData.latest_version} available (Click to download in app)` : `v${currentVer} installed`;
         html += `
@@ -3667,7 +3719,7 @@
       const title = document.getElementById('updateStatusTitle');
       const sub = document.getElementById('updateStatusSub');
       const currentVerEl = document.getElementById('updateCurrentVer');
-      const curVer = (currentConfig && currentConfig.version) || '0.2.0';
+      const curVer = (currentConfig && currentConfig.version) || '0.2.1';
       if (currentVerEl) currentVerEl.textContent = 'v' + curVer;
 
       if (!silent && title) {
@@ -3709,18 +3761,37 @@
         const notesSection = document.getElementById('releaseNotesSection');
         const notesContent = document.getElementById('releaseNotesContent');
         const notesTag = document.getElementById('releaseNotesTag');
+        const notesName = document.getElementById('releaseNotesName');
+        const notesSectionLabel = document.getElementById('releaseNotesSectionLabel');
         const notesExtLink = document.getElementById('releaseNotesExternalLink');
+        const repoExtLink = document.getElementById('repoExternalLink');
+
         if (notesSection && notesContent && data.release_notes && data.release_notes.trim()) {
           notesSection.style.display = 'block';
-          if (notesTag) notesTag.textContent = 'v' + (data.latest_version || curVer);
-          notesContent.innerHTML = renderMarkdown(data.release_notes);
-          if (notesExtLink) {
-            if (data.html_url) {
-              notesExtLink.href = data.html_url;
-              notesExtLink.style.display = 'inline-flex';
-            } else {
-              notesExtLink.style.display = 'none';
+          const displayedVer = data.latest_version || curVer;
+          if (notesTag) notesTag.textContent = 'v' + displayedVer;
+
+          if (notesSectionLabel) {
+            notesSectionLabel.textContent = data.update_available ? "What's New in Update:" : "Recent Release Notes:";
+          }
+
+          if (notesName) {
+            let cleanName = '';
+            if (data.release_name) {
+              cleanName = data.release_name.replace(new RegExp('^v?' + displayedVer.replace(/\./g, '\\.') + '[:\\s—–-]*', 'i'), '').trim();
             }
+            notesName.textContent = cleanName ? '— ' + cleanName : '';
+          }
+
+          notesContent.innerHTML = renderMarkdown(data.release_notes);
+
+          if (notesExtLink) {
+            notesExtLink.href = data.html_url || `https://github.com/aiden-guan/AntiAgent/releases/tag/v${displayedVer}`;
+            notesExtLink.style.display = 'inline-flex';
+          }
+          if (repoExtLink) {
+            repoExtLink.href = data.repo_url || 'https://github.com/aiden-guan/AntiAgent';
+            repoExtLink.style.display = 'inline-flex';
           }
         } else if (notesSection) {
           notesSection.style.display = 'none';
@@ -3788,6 +3859,16 @@
         if (!silent && title) {
           title.innerHTML = `<span>Could not connect to update service</span>`;
           if (sub) sub.innerHTML = escapeHtml(err.message);
+        }
+        const notesExtLink = document.getElementById('releaseNotesExternalLink');
+        if (notesExtLink) {
+          notesExtLink.href = 'https://github.com/aiden-guan/AntiAgent/releases/latest';
+          notesExtLink.style.display = 'inline-flex';
+        }
+        const repoExtLink = document.getElementById('repoExternalLink');
+        if (repoExtLink) {
+          repoExtLink.href = 'https://github.com/aiden-guan/AntiAgent';
+          repoExtLink.style.display = 'inline-flex';
         }
       }
     }
@@ -3976,11 +4057,14 @@
     }
 
     let selfUpdatePollInterval = null;
+    let sessionSelfUpdateActive = false;
 
     async function triggerOneClickUpdate(force = false, version = null) {
+      sessionSelfUpdateActive = true;
       const actionArea = document.getElementById('oneClickActionArea');
       const progArea = document.getElementById('oneClickProgressArea');
       const succArea = document.getElementById('oneClickSuccessArea');
+      const errArea = document.getElementById('oneClickErrorArea');
       const stageLabel = document.getElementById('oneClickStageLabel');
       const pctText = document.getElementById('oneClickPercent');
       const bar = document.getElementById('oneClickProgressBar');
@@ -3989,6 +4073,7 @@
       if (actionArea) actionArea.style.display = 'none';
       if (progArea) progArea.style.display = 'block';
       if (succArea) succArea.style.display = 'none';
+      if (errArea) errArea.style.display = 'none';
 
       if (stageLabel) stageLabel.textContent = 'Initializing in-place update...';
       if (pctText) pctText.textContent = '5%';
@@ -4005,11 +4090,13 @@
         if (data.ok || (data.status && data.status.status !== 'error')) {
           startSelfUpdatePolling();
         } else {
+          sessionSelfUpdateActive = false;
           alert('Update failed to initiate: ' + (data.status?.error || data.error || 'Unknown error'));
           if (actionArea) actionArea.style.display = 'block';
           if (progArea) progArea.style.display = 'none';
         }
       } catch (err) {
+        sessionSelfUpdateActive = false;
         alert('Failed to connect to update service: ' + err.message);
         if (actionArea) actionArea.style.display = 'block';
         if (progArea) progArea.style.display = 'none';
@@ -4053,7 +4140,7 @@
       const restartNotice = document.getElementById('oneClickRestartNotice');
       const updateTitle = document.getElementById('updateStatusTitle');
       const updateSub = document.getElementById('updateStatusSub');
-      const curVer = (currentConfig && currentConfig.version) || '0.2.0';
+      const curVer = (currentConfig && currentConfig.version) || '0.2.1';
 
       if (st && st.logs) {
         lastSelfUpdateLogs = st.logs;
@@ -4105,29 +4192,16 @@
           clearInterval(selfUpdatePollInterval);
           selfUpdatePollInterval = null;
         }
-        if (actionArea) actionArea.style.display = 'none';
-        if (progArea) progArea.style.display = 'none';
-        if (errArea) errArea.style.display = 'none';
-        if (succArea) succArea.style.display = 'block';
 
         const targetVer = st.target_version || (latestUpdateData && latestUpdateData.latest_version) || curVer;
         const isPendingRestart = st.restart_pending || (targetVer && compareVersions(curVer, targetVer) < 0);
-        const isUpToDate = st.is_up_to_date || (targetVer && compareVersions(curVer, targetVer) >= 0);
 
-        if (isUpToDate && !isPendingRestart) {
-          if (successTitle) successTitle.textContent = 'AntiAgent is Up to Date';
-          if (successDetails) successDetails.textContent = `You are running v${curVer}. AntiAgent rules & guard engine are active.`;
-          if (componentsList) componentsList.innerHTML = '';
-          if (reloadBtn) reloadBtn.style.display = 'none';
-          if (relaunchBtn) relaunchBtn.style.display = 'none';
-          if (restartNotice) restartNotice.style.display = 'none';
-          if (updateTitle) {
-            updateTitle.innerHTML = `<span style="color: #ffffff;">AntiAgent is Up to Date</span> <span class="status-badge badge-active" style="font-size: 10px; padding: 2px 8px; border-radius: 9999px;">v${escapeHtml(curVer)}</span>`;
-          }
-          if (updateSub) {
-            updateSub.textContent = `AntiAgent v${curVer} is the latest version available.`;
-          }
-        } else {
+        if (isPendingRestart) {
+          if (actionArea) actionArea.style.display = 'none';
+          if (progArea) progArea.style.display = 'none';
+          if (errArea) errArea.style.display = 'none';
+          if (succArea) succArea.style.display = 'block';
+
           if (successTitle) successTitle.textContent = `v${targetVer} Installed — Restart Required`;
           if (successDetails) {
             successDetails.textContent = `AntiAgent v${targetVer} has been installed in-place. Restart AntiAgent to switch from v${curVer} to v${targetVer}:`;
@@ -4158,6 +4232,31 @@
               html = '<div style="display: flex; align-items: center; gap: 6px;"><svg class="icon" viewBox="0 0 24 24" style="stroke: #22c55e; width: 14px; height: 14px;"><polyline points="20 6 9 17 4 12"/></svg><span>AntiAgent rules & assets refreshed</span></div>';
             }
             componentsList.innerHTML = html;
+          }
+        } else {
+          // Already up to date (no restart pending)
+          // Keep action area visible so user can re-sync or force update at any time
+          if (actionArea) actionArea.style.display = 'block';
+          if (progArea) progArea.style.display = 'none';
+          if (errArea) errArea.style.display = 'none';
+
+          if (sessionSelfUpdateActive) {
+            if (succArea) succArea.style.display = 'block';
+            if (successTitle) successTitle.textContent = 'AntiAgent is Up to Date';
+            if (successDetails) successDetails.textContent = `You are running v${curVer}. AntiAgent rules & guard engine are active.`;
+            if (componentsList) componentsList.innerHTML = '';
+            if (reloadBtn) reloadBtn.style.display = 'none';
+            if (relaunchBtn) relaunchBtn.style.display = 'none';
+            if (restartNotice) restartNotice.style.display = 'none';
+          } else {
+            if (succArea) succArea.style.display = 'none';
+          }
+
+          if (updateTitle && (!latestUpdateData || !latestUpdateData.update_available)) {
+            updateTitle.innerHTML = `<span style="color: #ffffff;">AntiAgent is Up to Date</span> <span class="status-badge badge-active" style="font-size: 10px; padding: 2px 8px; border-radius: 9999px;">v${escapeHtml(curVer)}</span>`;
+          }
+          if (updateSub && (!latestUpdateData || !latestUpdateData.update_available)) {
+            updateSub.textContent = `AntiAgent v${curVer} is the latest version available.`;
           }
         }
       } else if (st.status === 'error' || st.status === 'cancelled') {
@@ -4193,6 +4292,7 @@
     }
 
     async function dismissOneClickSuccess() {
+      sessionSelfUpdateActive = false;
       try {
         await fetch('/api/update/self_update_reset', { method: 'POST' });
       } catch (e) {}
@@ -4244,7 +4344,7 @@
 
       // Poll until the server is back up and responding
       let attempts = 0;
-      const curVer = (currentConfig && currentConfig.version) || '0.2.0';
+      const curVer = (currentConfig && currentConfig.version) || '0.2.1';
       const pollTimer = setInterval(async () => {
         attempts++;
         try {

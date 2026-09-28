@@ -3,6 +3,27 @@
 All notable changes to the **AntiAgent** project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.2.1] — 2026-09-28
+
+### Summary
+Resolved desktop app link delegation issues and refreshed the in-app update experience. Clicking GitHub release or repo links now reliably opens in the user's default external browser (Safari, Chrome, Arc) rather than being dropped by WebKit, and the release notes header now cleanly formats release titles and version tags. Also eliminated sticky stale success states in the 1-click in-place updater so users can re-sync or force an update at any time, and added local changelog fallbacks for rate-limited update checks.
+
+### Architectural & Functional Highlights
+
+| Area / Component | Improvement |
+| :--- | :--- |
+| **Desktop WebKit Delegation (`main.swift`)** | Implemented `WKUIDelegate` (`createWebViewWith`) and `WKNavigationDelegate` (`decidePolicyFor`) in macOS native app to intercept external URL navigations and route them to `NSWorkspace.shared.open(url)`. |
+| **Cross-Platform Open-URL API (`server.py`)** | Added `POST /api/open-url` endpoint validating `http`, `https`, and `mailto` schemes and calling `webbrowser.open(url)` as a universal fallback across desktop and web modes. |
+| **Update Modal Polish (`index.html`)** | Removed forced uppercase styling on version labels, dynamically differentiated between pending updates and recent release notes, added direct GitHub Repository link alongside GitHub Release link, and added click-interception for all external links. |
+| **1-Click Updater State Fix (`index.html`)** | Fixed issue where a previous successful update permanently hid the in-place update action button. The re-sync / force update button remains visible and accessible when running the latest version. |
+| **Changelog Fallback (`updater.py`)** | Added `get_local_release_notes()` to automatically parse bundled `CHANGELOG.md` when GitHub releases API is offline or rate-limited. |
+
+### Verification Proof
+- All 171 unit tests passed (`python3 -m unittest discover tests`) with 0 failures and 0 errors.
+- Verified `/api/open-url` endpoint, `get_local_release_notes()` extraction, and macOS Swift compilation.
+
+---
+
 ## [v0.2.0] — 2026-09-28
 
 ### Summary
