@@ -1334,10 +1334,15 @@
         </div>
         <div class="logo-title-group">
           <span class="logo-title">AntiAgent</span>
-          <span id="appVersionTag" class="version-tag" onclick="openUpdateModal()" style="cursor: pointer;" title="Click to check for updates">v0.1.9</span>
+          <span id="appVersionTag" class="version-tag" onclick="openUpdateModal()" style="cursor: pointer;" title="Click to check for updates">v0.2.0</span>
         </div>
       </div>
       <div class="header-badges">
+        <button id="remotesHeaderBtn" class="btn btn-outline btn-sm" onclick="scrollToRemoteSessions()" title="View and manage Remote Sessions over SSH">
+          <svg class="icon" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+          <span>Remote Sessions</span>
+          <span id="remotesHeaderBadge" class="status-badge badge-inactive" style="font-size: 10px; padding: 1px 7px; margin-left: 2px;">0</span>
+        </button>
         <button id="sidebarToggleBtn" class="btn btn-outline btn-sm" onclick="toggleActivitySidebar()" title="Toggle Activity &amp; Tool Calls Sidebar (Cmd+B)">
           <svg class="icon" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
           <span>Activity Sidebar</span>
@@ -1626,6 +1631,35 @@
       </div>
       <div id="prInfoContainer" style="margin-top: 8px;">
         <div style="font-size: 13px; color: var(--text-muted); padding: 8px 0;">Loading pull request data...</div>
+      </div>
+    </div>
+
+    <!-- Remote Sessions (via SSH) Card -->
+    <div class="card" style="margin-top: 20px;" id="remoteSessionsCard">
+      <div class="card-title">
+        <div class="card-title-left">
+          <svg class="card-title-icon" viewBox="0 0 24 24">
+            <rect x="2" y="2" width="20" height="8" rx="2" ry="2"/>
+            <rect x="2" y="14" width="20" height="8" rx="2" ry="2"/>
+            <line x1="6" y1="6" x2="6.01" y2="6"/>
+            <line x1="6" y1="18" x2="6.01" y2="18"/>
+          </svg>
+          <span>Remote Sessions</span>
+          <span id="remotesCardBadge" class="status-badge badge-active" style="font-size: 11px; padding: 2px 8px;">0 Machines</span>
+        </div>
+        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+          <button class="btn btn-outline btn-sm" onclick="fetchRemotes(true)" title="Probe and refresh all remote machines">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+            <span>Refresh</span>
+          </button>
+          <button class="btn btn-primary btn-sm" onclick="openAddMachineModal()">
+            <svg class="icon" viewBox="0 0 24 24" style="stroke: #050507;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            <span>Add Machine</span>
+          </button>
+        </div>
+      </div>
+      <div id="remotesContainer" style="margin-top: 8px;">
+        <div style="font-size: 13px; color: var(--text-muted); padding: 8px 0;">Loading remote machines...</div>
       </div>
     </div>
 
@@ -2027,7 +2061,7 @@
               <span>Checking for updates...</span>
             </div>
             <div id="updateStatusSub" style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">
-              Current installed version: <strong id="updateCurrentVer" style="color: #ffffff;">v0.1.9</strong>
+              Current installed version: <strong id="updateCurrentVer" style="color: #ffffff;">v0.2.0</strong>
             </div>
           </div>
           <button id="updateRefreshBtn" class="btn btn-outline btn-sm" onclick="checkForUpdates(false)">
@@ -2260,6 +2294,141 @@
           <span>Copy Logs</span>
         </button>
         <button class="btn btn-primary btn-sm" onclick="closeFailureLogsModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7. Configure / Add Remote Machine Modal -->
+  <div id="addRemoteModal" class="modal-overlay" style="display: none;">
+    <div class="modal-card modal-card-lg" style="max-width: 620px; width: 90%;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid var(--card-border); padding-bottom: 12px;">
+        <div style="font-size: 16px; font-weight: 700; color: #ffffff; display: flex; align-items: center; gap: 8px;">
+          <svg class="icon" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+          <span id="addRemoteModalTitle">Configure Remote Machine</span>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="closeModal('addRemoteModal')">✕</button>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+        <div class="form-group">
+          <label>Display Name *</label>
+          <input type="text" id="remoteInputName" class="form-control" placeholder="e.g. mac-mini, devbox">
+        </div>
+        <div class="form-group">
+          <label>SSH Host / Config Alias *</label>
+          <input type="text" id="remoteInputSshHost" class="form-control" placeholder="e.g. mac-mini or 192.168.1.50">
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
+        <div class="form-group">
+          <label>SSH User (optional)</label>
+          <input type="text" id="remoteInputUser" class="form-control" placeholder="e.g. ubuntu, aiden">
+        </div>
+        <div class="form-group">
+          <label>SSH Port</label>
+          <input type="number" id="remoteInputPort" class="form-control" placeholder="22">
+        </div>
+        <div class="form-group">
+          <label>Remote OS</label>
+          <select id="remoteInputOs" class="form-control">
+            <option value="auto">Auto-detect</option>
+            <option value="posix">macOS / Linux</option>
+            <option value="windows">Windows (OpenSSH)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Identity File Path (optional)</label>
+        <input type="text" id="remoteInputIdentityFile" class="form-control" placeholder="~/.ssh/id_ed25519 (path only, never private key content)">
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+        <div class="form-group">
+          <label>Default Remote Workspace</label>
+          <input type="text" id="remoteInputWorkspace" class="form-control" placeholder="e.g. ~/Developer/PigeonBox">
+        </div>
+        <div class="form-group">
+          <label>Antigravity Daemon Nickname</label>
+          <input type="text" id="remoteInputAgyName" class="form-control" placeholder="e.g. Aiden Mac Mini">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Custom agy Path Override (optional)</label>
+        <input type="text" id="remoteInputAgyPath" class="form-control" placeholder="Leave empty for auto-discovery (PATH, ~/.local/bin/agy, etc.)">
+      </div>
+
+      <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 6px; padding: 10px 12px; font-size: 11px; color: var(--emerald); display: flex; align-items: center; gap: 8px; margin: 8px 0;">
+        <svg class="icon" style="width: 16px; height: 16px; flex-shrink: 0;" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        <span><strong>Zero Secret Storage:</strong> AntiAgent uses your existing OpenSSH client &amp; ssh-agent and never stores passwords or private keys.</span>
+      </div>
+
+      <div id="remoteTestFeedback" style="display: none; font-size: 12px; padding: 8px 12px; border-radius: 6px; margin-bottom: 12px;"></div>
+
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 14px;">
+        <button type="button" class="btn btn-outline btn-sm" id="btnTestRemoteConn" onclick="testRemoteFormConnection()">
+          <svg class="icon" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          <span>Test Connection</span>
+        </button>
+        <div style="display: flex; gap: 8px;">
+          <button type="button" class="btn btn-outline btn-sm" onclick="closeModal('addRemoteModal')">Cancel</button>
+          <button type="button" class="btn btn-primary btn-sm" onclick="saveRemoteMachine()">Save Machine</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 8. Connect to Remote Session Modal -->
+  <div id="remoteConnectModal" class="modal-overlay" style="display: none;">
+    <div class="modal-card" style="max-width: 560px; width: 90%;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid var(--card-border); padding-bottom: 12px;">
+        <div style="font-size: 16px; font-weight: 700; color: #ffffff; display: flex; align-items: center; gap: 8px;">
+          <svg class="icon" viewBox="0 0 24 24"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+          <span>Connect to Antigravity Session</span>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="closeModal('remoteConnectModal')">✕</button>
+      </div>
+
+      <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px;">
+        To attach to an interactive terminal session with full PTY support, arrow keys, and Ctrl+C, run this command in your terminal:
+      </p>
+
+      <div class="terminal-cmd-box" style="background: rgba(0, 0, 0, 0.5); border: 1px solid var(--card-border); border-radius: 8px; padding: 12px 14px; display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 14px;">
+        <code id="remoteConnectCmdText" style="font-family: var(--font-mono); font-size: 13px; color: #34d399; word-break: break-all;">antiagent remote connect devbox</code>
+        <button class="btn btn-outline btn-sm" onclick="copyConnectCmd()" title="Copy command to clipboard">
+          <span id="copyConnectCmdBtnText">Copy</span>
+        </button>
+      </div>
+
+      <div style="font-size: 12px; color: var(--text-muted); line-height: 1.5; margin-bottom: 16px;">
+        💡 <strong>How it works:</strong> AntiAgent invokes OpenSSH with pseudo-terminal (PTY) allocation and automatically navigates to your configured workspace, launching <code>agy --remote-control</code>.
+      </div>
+
+      <div style="display: flex; justify-content: flex-end;">
+        <button class="btn btn-primary btn-sm" onclick="closeModal('remoteConnectModal')">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 9. Remote Machine Doctor Modal -->
+  <div id="remoteDoctorModal" class="modal-overlay" style="display: none;">
+    <div class="modal-card modal-card-lg" style="max-width: 680px; width: 90%;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid var(--card-border); padding-bottom: 12px;">
+        <div style="font-size: 16px; font-weight: 700; color: #ffffff; display: flex; align-items: center; gap: 8px;">
+          <svg class="icon" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          <span id="remoteDoctorTitle">Remote Machine Diagnostics</span>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="closeModal('remoteDoctorModal')">✕</button>
+      </div>
+
+      <div id="remoteDoctorContent" style="font-size: 13px;">
+        <div style="color: var(--text-muted); padding: 16px 0; text-align: center;">Running deep diagnostics...</div>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; margin-top: 16px;">
+        <button class="btn btn-outline btn-sm" onclick="closeModal('remoteDoctorModal')">Close</button>
       </div>
     </div>
   </div>
@@ -2507,6 +2676,7 @@
         document.getElementById('customAllowInput').value = (data.custom_allow_patterns || []).join('\n');
         document.getElementById('customDenyInput').value = (data.custom_deny_patterns || []).join('\n');
         fetchPRStatus();
+        fetchRemotes();
       } catch (err) {
         console.error('Failed to fetch status:', err);
       }
@@ -2867,7 +3037,7 @@
           </div>
         `;
 
-        const currentVer = currentConfig.version || '0.1.9';
+        const currentVer = currentConfig.version || '0.2.0';
         const hasUpdate = latestUpdateData && latestUpdateData.update_available;
         const updateText = hasUpdate ? `v${latestUpdateData.latest_version} available (Click to download in app)` : `v${currentVer} installed`;
         html += `
@@ -3497,7 +3667,7 @@
       const title = document.getElementById('updateStatusTitle');
       const sub = document.getElementById('updateStatusSub');
       const currentVerEl = document.getElementById('updateCurrentVer');
-      const curVer = (currentConfig && currentConfig.version) || '0.1.9';
+      const curVer = (currentConfig && currentConfig.version) || '0.2.0';
       if (currentVerEl) currentVerEl.textContent = 'v' + curVer;
 
       if (!silent && title) {
@@ -3883,7 +4053,7 @@
       const restartNotice = document.getElementById('oneClickRestartNotice');
       const updateTitle = document.getElementById('updateStatusTitle');
       const updateSub = document.getElementById('updateStatusSub');
-      const curVer = (currentConfig && currentConfig.version) || '0.1.9';
+      const curVer = (currentConfig && currentConfig.version) || '0.2.0';
 
       if (st && st.logs) {
         lastSelfUpdateLogs = st.logs;
@@ -4074,7 +4244,7 @@
 
       // Poll until the server is back up and responding
       let attempts = 0;
-      const curVer = (currentConfig && currentConfig.version) || '0.1.9';
+      const curVer = (currentConfig && currentConfig.version) || '0.2.0';
       const pollTimer = setInterval(async () => {
         attempts++;
         try {
@@ -4324,6 +4494,544 @@
         }
       } catch (err) {
         alert('Merge request failed: ' + err.message);
+      }
+    }
+
+    // --- Remote Sessions (via SSH) Management ---
+    let currentRemotes = [];
+
+    function scrollToRemoteSessions() {
+      const card = document.getElementById('remoteSessionsCard');
+      if (card) {
+        card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+
+    async function fetchRemotes(forceProbe = false) {
+      try {
+        const badge = document.getElementById('remotesCardBadge');
+        if (forceProbe && badge) {
+          badge.textContent = 'Probing...';
+        }
+        const res = await fetch('/api/remotes' + (forceProbe ? '?probe=true' : ''));
+        const data = await res.json();
+        currentRemotes = data.hosts || data.machines || [];
+        if (badge) {
+          const count = currentRemotes.length;
+          badge.textContent = count + (count === 1 ? ' Machine' : ' Machines');
+        }
+        renderRemoteMachines(currentRemotes);
+      } catch (err) {
+        console.error('Failed to fetch remote machines:', err);
+      }
+    }
+
+    function renderRemoteMachines(machines) {
+      const container = document.getElementById('remotesContainer');
+      if (!container) return;
+
+      if (!machines || machines.length === 0) {
+        container.innerHTML = `
+          <div style="background: rgba(255, 255, 255, 0.02); border: 1px dashed var(--card-border); border-radius: 8px; padding: 24px 20px; text-align: center;">
+            <div style="font-size: 14px; font-weight: 600; color: #ffffff; margin-bottom: 6px;">No Remote Machines Configured</div>
+            <p style="font-size: 12px; color: var(--text-muted); max-width: 480px; margin: 0 auto 16px; line-height: 1.5;">
+              AntiAgent uses your existing OpenSSH configuration and never stores SSH passwords or private keys. Connect remote servers, laptops, or dev boxes over SSH.
+            </p>
+            <button class="btn btn-primary btn-sm" onclick="openAddMachineModal()">
+              <svg class="icon" viewBox="0 0 24 24" style="stroke: #050507;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              <span>Add Machine</span>
+            </button>
+          </div>
+        `;
+        return;
+      }
+
+      let html = '<div style="display: flex; flex-direction: column; gap: 14px;">';
+      machines.forEach(m => {
+        const probe = m.probe || {};
+        const isOnline = !!probe.ssh_connected;
+        const latency = probe.latency_ms;
+        const rc = probe.remote_control || {};
+        const agy = probe.antigravity || {};
+        const aa = probe.antiagent || {};
+        const daemonRunning = !!rc.running;
+        const authRequired = agy.installed && agy.authenticated === false;
+        const hookActive = !!aa.global_hook_active;
+        const isProtected = aa.protection_status === 'Protected' || hookActive;
+        const probeError = probe.error;
+
+        let statusPip = 'pip-inactive';
+        let statusBadgeClass = 'badge-inactive';
+        let statusText = 'OFFLINE';
+
+        if (isOnline) {
+          if (authRequired) {
+            statusPip = 'pip-amber';
+            statusBadgeClass = 'badge-warning';
+            statusText = 'AUTH REQUIRED';
+          } else if (daemonRunning) {
+            statusPip = 'pip-emerald';
+            statusBadgeClass = 'badge-active';
+            statusText = 'ONLINE · RUNNING';
+          } else {
+            statusPip = 'pip-emerald';
+            statusBadgeClass = 'badge-active';
+            statusText = 'ONLINE';
+          }
+        } else if (probeError) {
+          statusPip = 'pip-rose';
+          statusBadgeClass = 'badge-danger';
+          statusText = 'UNREACHABLE';
+        }
+
+        const sshTarget = (m.user ? escapeHtml(m.user) + '@' : '') + escapeHtml(m.ssh_host) + (m.port && m.port !== 22 ? ':' + m.port : '');
+        const osLabel = probe.remote_os && probe.remote_os !== 'unknown' ? probe.remote_os : (m.remote_os || 'auto');
+        const workspacePath = m.workspace || m.default_workspace;
+        const workspaceDisplay = workspacePath ? escapeHtml(workspacePath) : '<span style="color: var(--text-muted);">Default (~)</span>';
+        const agyNameDisplay = escapeHtml(rc.instance_name || m.antigravity_name || m.name);
+        const lastSeen = probe.timestamp ? new Date(probe.timestamp).toLocaleTimeString() : 'Never';
+        const controlUrl = rc.url || 'https://antigravity.google.com/';
+
+        html += `
+          <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--card-border); border-radius: 8px; padding: 14px 16px; transition: border-color 0.2s;">
+            <!-- Header Row -->
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 10px;">
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <span class="pip ${statusPip}" title="${statusText}"></span>
+                <span style="font-weight: 700; font-size: 15px; color: #ffffff;">${escapeHtml(m.name)}</span>
+                <code style="font-family: var(--font-mono); font-size: 12px; background: rgba(0,0,0,0.3); border: 1px solid var(--card-border); padding: 2px 7px; border-radius: 4px; color: var(--emerald);">${sshTarget}</code>
+                <span class="status-badge" style="font-size: 10px; padding: 1px 7px; background: rgba(255,255,255,0.06);">${escapeHtml(osLabel)}</span>
+                ${latency !== undefined && latency !== null ? `<span style="font-size: 11px; color: var(--text-muted); font-family: var(--font-mono);">${latency}ms</span>` : ''}
+              </div>
+              <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                <span class="status-badge ${statusBadgeClass}" style="font-size: 11px; padding: 2px 8px;">${statusText}</span>
+              </div>
+            </div>
+
+            <!-- Path & Identification Row -->
+            <div style="font-size: 12px; color: var(--text-muted); font-family: var(--font-mono); margin-bottom: 10px; word-break: break-all;">
+              📁 ${workspaceDisplay}
+            </div>
+
+            <!-- Three-Line Status Grid (Requirement 16) -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; font-size: 12px; background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.04); border-radius: 6px; padding: 10px 14px; margin-bottom: 12px;">
+              <div>
+                <span style="color: var(--text-muted); display: block; font-size: 11px; margin-bottom: 2px;">Antigravity CLI</span>
+                ${agy.installed ?
+                  `<span style="color: var(--emerald); font-weight: 600;">✓ v${escapeHtml(agy.version || 'installed')}</span>` :
+                  `<span style="color: var(--text-muted);">✕ Not installed</span>`
+                }
+              </div>
+              <div>
+                <span style="color: var(--text-muted); display: block; font-size: 11px; margin-bottom: 2px;">Remote Control</span>
+                ${daemonRunning ?
+                  `<span style="color: var(--emerald); font-weight: 600;"><span class="pip pip-emerald" style="display: inline-block; vertical-align: middle; margin-right: 4px;"></span> Running</span> <span style="color: var(--text-muted); font-size: 11px;">(${agyNameDisplay})</span>` :
+                  (rc.supported === false ?
+                    `<span style="color: var(--text-muted);">✕ Unsupported</span>` :
+                    `<span style="color: var(--text-muted);"><span class="pip pip-inactive" style="display: inline-block; vertical-align: middle; margin-right: 4px;"></span> Stopped</span>`
+                  )
+                }
+              </div>
+              <div>
+                <span style="color: var(--text-muted); display: block; font-size: 11px; margin-bottom: 2px;">AntiAgent Safety</span>
+                ${isProtected ?
+                  `<span style="color: var(--emerald); font-weight: 600;"><svg class="icon" style="width: 12px; height: 12px; stroke: #34d399; vertical-align: -1px; margin-right: 2px;" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> Protected</span>` :
+                  (aa.installed ?
+                    `<span style="color: var(--amber); font-weight: 500;">⚠ Hook disabled</span>` :
+                    `<span style="color: var(--text-muted);">○ Unprotected</span>`
+                  )
+                }
+              </div>
+            </div>
+
+            <!-- OAuth Authentication Warning Callout (Requirement 11) -->
+            ${authRequired ? `
+              <div style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 6px; padding: 10px 14px; margin-bottom: 12px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                  <div>
+                    <div style="font-weight: 600; color: #fbbf24; font-size: 12px; margin-bottom: 2px;">⚠️ Antigravity Authentication Required</div>
+                    <div style="font-size: 11px; color: var(--text-muted);">
+                      Google Antigravity requires interactive OAuth login on this host before sessions can run.
+                    </div>
+                  </div>
+                  <div style="display: flex; gap: 6px; align-items: center;">
+                    <code style="font-family: var(--font-mono); font-size: 11px; background: rgba(0,0,0,0.5); border: 1px solid rgba(245, 158, 11, 0.4); padding: 4px 8px; border-radius: 4px; color: #fde68a;">antiagent remote login ${escapeHtml(m.name)}</code>
+                    <button class="btn btn-outline btn-sm" onclick="copyLoginCmd('${escapeHtml(m.name)}', this)" style="padding: 2px 8px; font-size: 11px;">Copy</button>
+                  </div>
+                </div>
+              </div>
+            ` : ''}
+
+            ${probeError ? `
+              <div style="background: rgba(244, 63, 94, 0.08); border: 1px solid rgba(244, 63, 94, 0.25); border-radius: 6px; padding: 8px 12px; margin-bottom: 12px; font-size: 12px; color: var(--rose);">
+                <strong>Probe Diagnostic:</strong> ${escapeHtml(probeError)}
+              </div>
+            ` : ''}
+
+            <!-- Actions Toolbar (Requirement 16) -->
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+              <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                ${daemonRunning ? `
+                  <a href="${escapeHtml(controlUrl)}" target="_blank" rel="noopener" class="btn btn-primary btn-sm" title="Open official Google Antigravity Remote Control dashboard">
+                    <svg class="icon" viewBox="0 0 24 24" style="stroke: #050507;"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                    <span>Open Antigravity</span>
+                  </a>
+                  <button class="btn btn-outline btn-sm" onclick="toggleRemoteDaemon('${escapeHtml(m.name)}', false)" title="Stop remote Antigravity background daemon">
+                    <svg class="icon" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12"/></svg>
+                    <span>Stop Daemon</span>
+                  </button>
+                ` : `
+                  <button class="btn btn-outline btn-sm" ${!isOnline ? 'disabled' : ''} onclick="toggleRemoteDaemon('${escapeHtml(m.name)}', true)" title="Start remote Antigravity background daemon">
+                    <svg class="icon" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                    <span>Start Daemon</span>
+                  </button>
+                `}
+                <button class="btn btn-outline btn-sm" onclick="openConnectModal('${escapeHtml(m.name)}')" title="View interactive terminal attach command">
+                  <svg class="icon" viewBox="0 0 24 24"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+                  <span>Connect</span>
+                </button>
+                <button class="btn btn-outline btn-sm" onclick="runRemoteDoctor('${escapeHtml(m.name)}')" title="Run remote diagnostics">
+                  <svg class="icon" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                  <span>Doctor</span>
+                </button>
+                ${!isProtected && aa.installed ? `
+                  <button class="btn btn-outline btn-sm" onclick="protectRemoteMachine('${escapeHtml(m.name)}')" title="Enable AntiAgent global protection hook on remote host">
+                    <svg class="icon" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                    <span>Protect</span>
+                  </button>
+                ` : ''}
+              </div>
+              <div style="display: flex; gap: 6px;">
+                <button class="btn btn-outline btn-sm" onclick="openEditMachineModal('${escapeHtml(m.name)}')" title="Edit machine configuration">
+                  <svg class="icon" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                  <span>Edit</span>
+                </button>
+                <button class="btn btn-outline btn-sm" style="color: var(--rose); border-color: rgba(244, 63, 94, 0.3);" onclick="deleteRemoteMachine('${escapeHtml(m.name)}')" title="Remove machine from registry">
+                  <svg class="icon" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                  <span>Delete</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+      });
+      html += '</div>';
+      container.innerHTML = html;
+    }
+
+    function openAddMachineModal() {
+      document.getElementById('addRemoteModalTitle').textContent = 'Configure Remote Machine';
+      const nameInput = document.getElementById('remoteInputName');
+      nameInput.value = '';
+      nameInput.disabled = false;
+      document.getElementById('remoteInputSshHost').value = '';
+      document.getElementById('remoteInputUser').value = '';
+      document.getElementById('remoteInputPort').value = '22';
+      document.getElementById('remoteInputOs').value = 'auto';
+      document.getElementById('remoteInputIdentityFile').value = '';
+      document.getElementById('remoteInputWorkspace').value = '';
+      document.getElementById('remoteInputAgyName').value = '';
+      document.getElementById('remoteInputAgyPath').value = '';
+      const feedback = document.getElementById('remoteTestFeedback');
+      if (feedback) feedback.style.display = 'none';
+      openModal('addRemoteModal');
+    }
+
+    function openEditMachineModal(name) {
+      const m = currentRemotes.find(x => x.name === name);
+      if (!m) return;
+
+      document.getElementById('addRemoteModalTitle').textContent = 'Edit Remote Machine (' + m.name + ')';
+      const nameInput = document.getElementById('remoteInputName');
+      nameInput.value = m.name;
+      nameInput.disabled = true;
+      document.getElementById('remoteInputSshHost').value = m.ssh_host || '';
+      document.getElementById('remoteInputUser').value = m.user || '';
+      document.getElementById('remoteInputPort').value = m.port || 22;
+      document.getElementById('remoteInputOs').value = m.remote_os || 'auto';
+      document.getElementById('remoteInputIdentityFile').value = m.identity_file || '';
+      document.getElementById('remoteInputWorkspace').value = m.workspace || m.default_workspace || '';
+      document.getElementById('remoteInputAgyName').value = m.antigravity_name || '';
+      document.getElementById('remoteInputAgyPath').value = m.agy_path || '';
+      const feedback = document.getElementById('remoteTestFeedback');
+      if (feedback) feedback.style.display = 'none';
+      openModal('addRemoteModal');
+    }
+
+    async function saveRemoteMachine() {
+      const name = document.getElementById('remoteInputName').value.trim();
+      const ssh_host = document.getElementById('remoteInputSshHost').value.trim();
+      const user = document.getElementById('remoteInputUser').value.trim();
+      const portVal = document.getElementById('remoteInputPort').value.trim();
+      const port = portVal ? parseInt(portVal, 10) : 22;
+      const remote_os = document.getElementById('remoteInputOs').value;
+      const identity_file = document.getElementById('remoteInputIdentityFile').value.trim();
+      const workspace = document.getElementById('remoteInputWorkspace').value.trim();
+      const antigravity_name = document.getElementById('remoteInputAgyName').value.trim();
+      const agy_path = document.getElementById('remoteInputAgyPath').value.trim();
+
+      if (!name) {
+        alert('Please specify a machine display name.');
+        return;
+      }
+      if (!ssh_host) {
+        alert('Please specify an SSH Host or SSH config alias.');
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/remotes/add', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name,
+            ssh_host,
+            user,
+            port,
+            remote_os,
+            identity_file,
+            workspace,
+            default_workspace: workspace,
+            antigravity_name,
+            agy_path
+          })
+        });
+        const data = await res.json();
+        if (data.ok) {
+          closeModal('addRemoteModal');
+          fetchRemotes(true);
+        } else {
+          alert('Error saving remote machine: ' + (data.error || 'Unknown error'));
+        }
+      } catch (err) {
+        alert('Failed to save remote machine: ' + err.message);
+      }
+    }
+
+    async function deleteRemoteMachine(name) {
+      if (!confirm('Are you sure you want to remove remote machine "' + name + '"?')) return;
+      try {
+        const res = await fetch('/api/remotes/remove', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name })
+        });
+        const data = await res.json();
+        if (data.ok) {
+          fetchRemotes(false);
+        } else {
+          alert('Error removing machine: ' + (data.error || 'Failed'));
+        }
+      } catch (err) {
+        alert('Failed to remove machine: ' + err.message);
+      }
+    }
+
+    async function toggleRemoteDaemon(name, start) {
+      const endpoint = start ? '/api/remotes/start' : '/api/remotes/stop';
+      try {
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name })
+        });
+        const data = await res.json();
+        if (!data.ok) {
+          alert((start ? 'Start' : 'Stop') + ' daemon failed: ' + (data.error || 'Unknown error'));
+        }
+        fetchRemotes(true);
+      } catch (err) {
+        alert('Daemon request failed: ' + err.message);
+        fetchRemotes(true);
+      }
+    }
+
+    async function protectRemoteMachine(name) {
+      try {
+        const res = await fetch('/api/remotes/protect', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name })
+        });
+        const data = await res.json();
+        if (data.ok) {
+          alert(data.message || 'Remote workspace protected successfully.');
+          fetchRemotes(true);
+        } else {
+          alert('Protection failed: ' + (data.error || 'Unknown error'));
+        }
+      } catch (err) {
+        alert('Protect request failed: ' + err.message);
+      }
+    }
+
+    function openConnectModal(name) {
+      const cmd = 'antiagent remote connect ' + name;
+      const cmdEl = document.getElementById('remoteConnectCmdText');
+      if (cmdEl) cmdEl.textContent = cmd;
+      const btnText = document.getElementById('copyConnectCmdBtnText');
+      if (btnText) btnText.textContent = 'Copy';
+      openModal('remoteConnectModal');
+    }
+
+    function copyConnectCmd() {
+      const cmdEl = document.getElementById('remoteConnectCmdText');
+      if (!cmdEl) return;
+      navigator.clipboard.writeText(cmdEl.textContent).then(() => {
+        const btnText = document.getElementById('copyConnectCmdBtnText');
+        if (btnText) {
+          btnText.textContent = 'Copied!';
+          setTimeout(() => { btnText.textContent = 'Copy'; }, 2000);
+        }
+      }).catch(err => {
+        alert('Could not copy command to clipboard: ' + err);
+      });
+    }
+
+    function copyLoginCmd(name, btn) {
+      const cmd = 'antiagent remote login ' + name;
+      navigator.clipboard.writeText(cmd).then(() => {
+        const orig = btn.textContent;
+        btn.textContent = 'Copied!';
+        setTimeout(() => { btn.textContent = orig; }, 2000);
+      }).catch(err => {
+        alert('Could not copy login command: ' + err);
+      });
+    }
+
+    async function runRemoteDoctor(name) {
+      const title = document.getElementById('remoteDoctorTitle');
+      const content = document.getElementById('remoteDoctorContent');
+      if (title) title.textContent = 'Diagnostics: ' + name;
+      if (content) {
+        content.innerHTML = '<div style="color: var(--text-muted); padding: 24px 0; text-align: center;"><div class="pip pip-emerald" style="display: inline-block; margin-right: 6px;"></div> Running deep diagnostics on ' + escapeHtml(name) + '...</div>';
+      }
+      openModal('remoteDoctorModal');
+
+      try {
+        const res = await fetch('/api/remotes/doctor?name=' + encodeURIComponent(name));
+        const data = await res.json();
+        if (!data.ok && (!data.checks || data.checks.length === 0)) {
+          if (content) {
+            content.innerHTML = '<div style="color: var(--rose); padding: 16px;">Diagnostic failed: ' + escapeHtml(data.error || 'Unknown error') + '</div>';
+          }
+          return;
+        }
+
+        const checks = data.checks || [];
+        let itemsHtml = '';
+        checks.forEach(c => {
+          let iconHtml = '';
+          let badgeClass = 'badge-active';
+          if (c.status === 'ok') {
+            iconHtml = '<span style="color: var(--emerald); font-weight: bold; font-size: 15px;">✓</span>';
+            badgeClass = 'badge-active';
+          } else if (c.status === 'warn') {
+            iconHtml = '<span style="color: var(--amber); font-weight: bold; font-size: 15px;">⚠</span>';
+            badgeClass = 'badge-warning';
+          } else {
+            iconHtml = '<span style="color: var(--rose); font-weight: bold; font-size: 15px;">✕</span>';
+            badgeClass = 'badge-danger';
+          }
+
+          itemsHtml += `
+            <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--card-border); border-radius: 6px; padding: 10px 14px; margin-bottom: 8px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                <div style="display: flex; align-items: center; gap: 8px; font-weight: 600; color: #ffffff;">
+                  ${iconHtml}
+                  <span>${escapeHtml(c.name)}</span>
+                </div>
+                <span class="status-badge ${badgeClass}" style="font-size: 10px; padding: 1px 7px;">${escapeHtml(c.status.toUpperCase())}</span>
+              </div>
+              <div style="color: var(--text-muted); font-size: 12px; margin-left: 23px; line-height: 1.4;">
+                ${escapeHtml(c.detail)}
+              </div>
+              ${c.remedy ? `
+                <div style="margin-left: 23px; margin-top: 6px; font-size: 11px; color: #38bdf8; font-family: var(--font-mono); background: rgba(56, 189, 248, 0.08); padding: 4px 8px; border-radius: 4px;">
+                  💡 ${escapeHtml(c.remedy)}
+                </div>
+              ` : ''}
+            </div>
+          `;
+        });
+
+        if (content) {
+          content.innerHTML = `
+            <div style="margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-size: 12px; color: var(--text-muted);">Diagnosis for <strong>${escapeHtml(name)}</strong>:</span>
+              <span class="status-badge ${data.has_errors ? 'badge-danger' : 'badge-active'}">${data.has_errors ? 'Issues Detected' : 'All Checks Passed'}</span>
+            </div>
+            <div style="max-height: 400px; overflow-y: auto; padding-right: 4px;">
+              ${itemsHtml}
+            </div>
+          `;
+        }
+      } catch (err) {
+        if (content) {
+          content.innerHTML = '<div style="color: var(--rose); padding: 16px;">Failed to run diagnostics: ' + escapeHtml(err.message) + '</div>';
+        }
+      }
+    }
+
+    async function testRemoteFormConnection() {
+      const ssh_host = document.getElementById('remoteInputSshHost').value.trim();
+      const user = document.getElementById('remoteInputUser').value.trim();
+      const portVal = document.getElementById('remoteInputPort').value.trim();
+      const port = portVal ? parseInt(portVal, 10) : 22;
+      const identity_file = document.getElementById('remoteInputIdentityFile').value.trim();
+      const feedback = document.getElementById('remoteTestFeedback');
+      const btn = document.getElementById('btnTestRemoteConn');
+
+      if (!ssh_host) {
+        alert('Please enter an SSH Host or Alias to test.');
+        return;
+      }
+
+      if (feedback) {
+        feedback.style.display = 'block';
+        feedback.style.background = 'rgba(255,255,255,0.04)';
+        feedback.style.color = 'var(--text-muted)';
+        feedback.style.border = '1px solid var(--card-border)';
+        feedback.textContent = 'Testing OpenSSH connectivity to ' + ssh_host + '...';
+      }
+      if (btn) btn.disabled = true;
+
+      try {
+        const res = await fetch('/api/remotes/test', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ssh_host, user, port, identity_file })
+        });
+        const data = await res.json();
+        if (feedback) {
+          if (data.ok) {
+            feedback.style.background = 'rgba(16, 185, 129, 0.12)';
+            feedback.style.color = '#34d399';
+            feedback.style.border = '1px solid rgba(16, 185, 129, 0.3)';
+            const latency = data.latency_ms !== undefined ? data.latency_ms : (data.probe && data.probe.latency_ms);
+            const latencyStr = latency !== undefined && latency !== null ? ' (' + latency + 'ms)' : '';
+            const remoteOs = data.remote_os || (data.probe && data.probe.remote_os) || 'unknown';
+            const hostName = data.host || (data.probe && data.probe.host) || ssh_host;
+            feedback.innerHTML = '✓ Connection successful' + latencyStr + '! Remote OS: <strong>' + escapeHtml(remoteOs) + '</strong>, Target: <strong>' + escapeHtml(hostName) + '</strong>';
+          } else {
+            feedback.style.background = 'rgba(244, 63, 94, 0.12)';
+            feedback.style.color = '#fb7185';
+            feedback.style.border = '1px solid rgba(244, 63, 94, 0.3)';
+            let msg = '✕ Connection failed: ' + escapeHtml(data.error || 'Unknown error');
+            if (data.advice) {
+              msg += '<div style="margin-top: 4px; font-size: 11px; color: #fecdd3;">Tip: ' + escapeHtml(data.advice) + '</div>';
+            }
+            feedback.innerHTML = msg;
+          }
+        }
+      } catch (err) {
+        if (feedback) {
+          feedback.style.background = 'rgba(244, 63, 94, 0.12)';
+          feedback.style.color = '#fb7185';
+          feedback.textContent = '✕ Test request failed: ' + err.message;
+        }
+      } finally {
+        if (btn) btn.disabled = false;
       }
     }
 

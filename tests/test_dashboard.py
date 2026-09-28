@@ -375,6 +375,110 @@ class TestDashboardServer(unittest.TestCase):
             self.assertIn("changelog-table-wrap", content)
             self.assertIn("releaseNotesExternalLink", content)
 
+    def test_api_remotes_endpoints(self):
+        from unittest.mock import patch
+        from antiagent.dashboard.server import global_remote_manager
+        from antiagent.engine.remote_sessions import RemoteHost, RemoteProbeResult, RemoteControlStatus, AntiAgentRemoteStatus, AntigravityStatus
+
+        # 1. Add remote host via POST /api/remotes/add
+        add_url = f"http://127.0.0.1:{self.port}/api/remotes/add"
+        payload = json.dumps({
+            "name": "dash-box",
+            "ssh_host": "dash-box.corp",
+            "workspace": "~/Developer/PigeonBox",
+            "antigravity_name": "Dash Box",
+        }).encode("utf-8")
+        req = urllib.request.Request(add_url, data=payload, headers={"Content-Type": "application/json"})
+        with urllib.request.urlopen(req) as resp:
+            self.assertEqual(resp.status, 200)
+            data = json.loads(resp.read().decode("utf-8"))
+            self.assertTrue(data["ok"])
+            self.assertEqual(data["host"]["name"], "dash-box")
+
+        # 2. List remote hosts via GET /api/remotes
+        list_url = f"http://127.0.0.1:{self.port}/api/remotes"
+        mock_probe = RemoteProbeResult(
+            ok=True,
+            name="dash-box",
+            ssh_connected=True,
+            latency_ms=20,
+            remote_os="Linux",
+            hostname="dash-box",
+            antigravity=AntigravityStatus(installed=True, version="1.15.0"),
+            remote_control=RemoteControlStatus(supported=True, running=True, instance_name="Dash Box"),
+            antiagent=AntiAgentRemoteStatus(installed=True, global_hook_active=True, protection_status="Protected"),
+        )
+        with patch.object(global_remote_manager, "probe_all", return_value=[mock_probe]):
+            with urllib.request.urlopen(list_url) as resp:
+                self.assertEqual(resp.status, 200)
+                data = json.loads(resp.read().decode("utf-8"))
+                self.assertTrue(data["ok"])
+                self.assertTrue(any(h["name"] == "dash-box" for h in data["hosts"]))
+
+        # 3. Status via GET /api/remotes/status
+        status_url = f"http://127.0.0.1:{self.port}/api/remotes/status?name=dash-box"
+        with patch.object(global_remote_manager, "probe", return_value=mock_probe):
+            with urllib.request.urlopen(status_url) as resp:
+                self.assertEqual(resp.status, 200)
+                data = json.loads(resp.read().decode("utf-8"))
+                self.assertTrue(data["ok"])
+                self.assertEqual(data["probe"]["name"], "dash-box")
+
+        # 4. Doctor via GET /api/remotes/doctor
+        doc_url = f"http://127.0.0.1:{self.port}/api/remotes/doctor?name=dash-box"
+        doc_result = {"ok": True, "host": {"name": "dash-box"}, "probe": mock_probe.to_dict()}
+        with patch.object(global_remote_manager, "doctor", return_value=doc_result):
+            with urllib.request.urlopen(doc_url) as resp:
+                self.assertEqual(resp.status, 200)
+                data = json.loads(resp.read().decode("utf-8"))
+                self.assertTrue(data["ok"])
+
+        # 5. Test connection via POST /api/remotes/test
+        test_url = f"http://127.0.0.1:{self.port}/api/remotes/test"
+        with patch.object(global_remote_manager, "test_connection", return_value={"ok": True, "latency_ms": 15, "remote_os": "Linux"}):
+            req = urllib.request.Request(test_url, data=json.dumps({"name": "dash-box"}).encode("utf-8"), headers={"Content-Type": "application/json"})
+            with urllib.request.urlopen(req) as resp:
+                self.assertEqual(resp.status, 200)
+                data = json.loads(resp.read().decode("utf-8"))
+                self.assertTrue(data["ok"])
+                self.assertEqual(data["latency_ms"], 15)
+
+        # 6. Start daemon via POST /api/remotes/start
+        start_url = f"http://127.0.0.1:{self.port}/api/remotes/start"
+        with patch.object(global_remote_manager, "start_remote_control", return_value={"ok": True, "running": True, "instance_name": "Dash Box", "url": "https://antigravity.google.com/"}):
+            req = urllib.request.Request(start_url, data=json.dumps({"name": "dash-box"}).encode("utf-8"), headers={"Content-Type": "application/json"})
+            with urllib.request.urlopen(req) as resp:
+                self.assertEqual(resp.status, 200)
+                data = json.loads(resp.read().decode("utf-8"))
+                self.assertTrue(data["ok"])
+                self.assertTrue(data["running"])
+
+        # 7. Stop daemon via POST /api/remotes/stop
+        stop_url = f"http://127.0.0.1:{self.port}/api/remotes/stop"
+        with patch.object(global_remote_manager, "stop_remote_control", return_value={"ok": True, "running": False}):
+            req = urllib.request.Request(stop_url, data=json.dumps({"name": "dash-box"}).encode("utf-8"), headers={"Content-Type": "application/json"})
+            with urllib.request.urlopen(req) as resp:
+                self.assertEqual(resp.status, 200)
+                data = json.loads(resp.read().decode("utf-8"))
+                self.assertTrue(data["ok"])
+
+        # 8. Protect remote via POST /api/remotes/protect
+        protect_url = f"http://127.0.0.1:{self.port}/api/remotes/protect"
+        with patch.object(global_remote_manager, "protect_remote", return_value={"ok": True, "protection_status": "Protected"}):
+            req = urllib.request.Request(protect_url, data=json.dumps({"name": "dash-box"}).encode("utf-8"), headers={"Content-Type": "application/json"})
+            with urllib.request.urlopen(req) as resp:
+                self.assertEqual(resp.status, 200)
+                data = json.loads(resp.read().decode("utf-8"))
+                self.assertTrue(data["ok"])
+
+        # 9. Remove remote host via POST /api/remotes/remove
+        remove_url = f"http://127.0.0.1:{self.port}/api/remotes/remove"
+        req = urllib.request.Request(remove_url, data=json.dumps({"name": "dash-box"}).encode("utf-8"), headers={"Content-Type": "application/json"})
+        with urllib.request.urlopen(req) as resp:
+            self.assertEqual(resp.status, 200)
+            data = json.loads(resp.read().decode("utf-8"))
+            self.assertTrue(data["ok"])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -5,6 +5,7 @@ import shutil
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 from antiagent.cli import install_hook, uninstall_hook
 
@@ -150,6 +151,137 @@ class TestCLI(unittest.TestCase):
              patch("antiagent.updater.UpdateDownloader", return_value=mock_dl), \
              patch("antiagent.updater.open_downloaded_file", return_value=True):
             handle_update_cli(args)
+
+
+class TestRemoteCLI(unittest.TestCase):
+    def setUp(self):
+        self.test_dir = tempfile.mkdtemp()
+        self.remotes_file = Path(self.test_dir) / "remotes.json"
+        self.registry_patch = patch(
+            "antiagent.engine.remote_sessions.get_global_config_dir",
+            return_value=Path(self.test_dir),
+        )
+        self.registry_patch.start()
+
+    def tearDown(self):
+        self.registry_patch.stop()
+        shutil.rmtree(self.test_dir, ignore_errors=True)
+
+    def test_remote_cli_lifecycle(self):
+        import argparse
+        from io import StringIO
+        from unittest.mock import patch
+        from antiagent.cli import handle_remote_cli
+
+        # 1. remote list (empty)
+        with patch("sys.stdout", new_callable=StringIO) as out:
+            handle_remote_cli(argparse.Namespace(remote_command="list"))
+            self.assertIn("No remote machines configured yet", out.getvalue())
+
+        # 2. remote add
+        add_args = argparse.Namespace(
+            remote_command="add",
+            name="mac-mini",
+            ssh_host="mac-mini.local",
+            hostname=None,
+            user="aiden",
+            port=22,
+            identity_file="~/.ssh/id_ed25519",
+            workspace="~/Developer/PigeonBox",
+            remote_os="auto",
+            antigravity_name="Aiden Mac Mini",
+            agy_path=None,
+        )
+        with patch("sys.stdout", new_callable=StringIO) as out:
+            handle_remote_cli(add_args)
+            self.assertIn("successfully added", out.getvalue())
+
+        # 3. remote list (populated)
+        with patch("sys.stdout", new_callable=StringIO) as out:
+            handle_remote_cli(argparse.Namespace(remote_command="list"))
+            self.assertIn("mac-mini", out.getvalue())
+            self.assertIn("aiden@mac-mini.local", out.getvalue())
+
+        # 4. remote show
+        with patch("sys.stdout", new_callable=StringIO) as out:
+            handle_remote_cli(argparse.Namespace(remote_command="show", name="mac-mini"))
+            val = out.getvalue()
+            self.assertIn("mac-mini", val)
+            self.assertIn("~/Developer/PigeonBox", val)
+            self.assertIn("Aiden Mac Mini", val)
+
+        # 5. remote test (mocked)
+        with patch("antiagent.engine.remote_sessions.RemoteSessionManager.test_connection", return_value={"ok": True, "latency_ms": 35, "remote_os": "macOS"}):
+            with patch("sys.stdout", new_callable=StringIO) as out:
+                handle_remote_cli(argparse.Namespace(remote_command="test", name="mac-mini"))
+                self.assertIn("reachability verified", out.getvalue())
+                self.assertIn("35ms", out.getvalue())
+
+        # 6. remote doctor (mocked)
+        doc_res = {
+            "ok": True,
+            "host": {"name": "mac-mini", "ssh_host": "mac-mini.local"},
+            "probe": {
+                "ssh_connected": True,
+                "latency_ms": 40,
+                "remote_os": "macOS",
+                "hostname": "mac-mini",
+                "workspace_path": "/Users/aiden/Developer",
+                "workspace_exists": True,
+                "antigravity": {"installed": True, "version": "1.15.0", "authenticated": True, "path": "/bin/agy"},
+                "remote_control": {"running": True, "instance_name": "Aiden Mac Mini"},
+                "antiagent": {"installed": True, "version": "0.2.0", "global_hook_active": True, "protection_status": "Protected"},
+            }
+        }
+        with patch("antiagent.engine.remote_sessions.RemoteSessionManager.doctor", return_value=doc_res):
+            with patch("sys.stdout", new_callable=StringIO) as out:
+                handle_remote_cli(argparse.Namespace(remote_command="doctor", name="mac-mini"))
+                val = out.getvalue()
+                self.assertIn("SSH Reachability:      🟢 Connected", val)
+                self.assertIn("Antigravity CLI:       🟢 Installed", val)
+                self.assertIn("Remote Control:        🟢 Running", val)
+                self.assertIn("Protection:            🟢 Protected", val)
+
+        # 7. remote status (mocked)
+        from antiagent.engine.remote_sessions import RemoteProbeResult, RemoteControlStatus, AntiAgentRemoteStatus, AntigravityStatus
+        probe_res = RemoteProbeResult(
+            ok=True,
+            name="mac-mini",
+            ssh_connected=True,
+            remote_control=RemoteControlStatus(supported=True, running=True, instance_name="Aiden Mac Mini", url="https://antigravity.google.com/"),
+            antiagent=AntiAgentRemoteStatus(installed=True, global_hook_active=True, protection_status="Protected"),
+        )
+        with patch("antiagent.engine.remote_sessions.RemoteSessionManager.probe", return_value=probe_res):
+            with patch("sys.stdout", new_callable=StringIO) as out:
+                handle_remote_cli(argparse.Namespace(remote_command="status", name="mac-mini"))
+                val = out.getvalue()
+                self.assertIn("🟢 Running", val)
+                self.assertIn("Aiden Mac Mini", val)
+
+        # 8. remote start (mocked)
+        start_res = {"ok": True, "running": True, "instance_name": "Aiden Mac Mini", "url": "https://antigravity.google.com/"}
+        with patch("antiagent.engine.remote_sessions.RemoteSessionManager.start_remote_control", return_value=start_res), \
+             patch("antiagent.engine.remote_sessions.RemoteSessionManager.probe", return_value=probe_res):
+            with patch("sys.stdout", new_callable=StringIO) as out:
+                handle_remote_cli(argparse.Namespace(remote_command="start", name="mac-mini", name_override=None))
+                self.assertIn("Remote Control started on 'mac-mini'", out.getvalue())
+
+        # 9. remote stop (mocked)
+        with patch("antiagent.engine.remote_sessions.RemoteSessionManager.stop_remote_control", return_value={"ok": True}):
+            with patch("sys.stdout", new_callable=StringIO) as out:
+                handle_remote_cli(argparse.Namespace(remote_command="stop", name="mac-mini"))
+                self.assertIn("Remote Control stopped on 'mac-mini'", out.getvalue())
+
+        # 10. remote protect (mocked)
+        with patch("antiagent.engine.remote_sessions.RemoteSessionManager.protect_remote", return_value={"ok": True, "message": "Hook enabled."}):
+            with patch("sys.stdout", new_callable=StringIO) as out:
+                handle_remote_cli(argparse.Namespace(remote_command="protect", name="mac-mini"))
+                self.assertIn("Hook enabled", out.getvalue())
+
+        # 11. remote remove
+        with patch("sys.stdout", new_callable=StringIO) as out:
+            handle_remote_cli(argparse.Namespace(remote_command="remove", name="mac-mini"))
+            self.assertIn("removed", out.getvalue())
 
 
 if __name__ == "__main__":

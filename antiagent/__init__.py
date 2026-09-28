@@ -1,5 +1,5 @@
 """AntiAgent: Intelligent safety supervisor and "Approved for Me" gatekeeper for Google Antigravity."""
 
-__version__ = "0.1.9"
+__version__ = "0.2.0"
 __author__ = "AntiAgent Authors"
 __license__ = "MIT"

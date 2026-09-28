@@ -3,6 +3,27 @@
 All notable changes to the **AntiAgent** project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.2.0] — 2026-09-28
+
+### Summary
+Introduced **Remote Sessions via SSH**, enabling developers and operators to seamlessly configure remote machines, probe Antigravity and AntiAgent runtime status, manage background `agy --remote-control` daemons, and launch interactive PTY sessions directly from AntiAgent. Built with zero external dependencies, strict standard OpenSSH client delegation, and robust security guarantees (zero password/key storage, no `StrictHostKeyChecking=no`, atomic config persistence, and comprehensive input validation).
+
+### Architectural & Functional Highlights
+
+| Area / Component | Improvement |
+| :--- | :--- |
+| **Native SSH Engine (`antiagent/engine/remote_sessions.py`)** | Implemented stdlib-only SSH engine utilizing system `ssh` and `scp` binaries. Features deterministic argument assembly (`build_ssh_argv`), OpenSSH batch mode execution, cached probing with configurable TTL, intelligent SSH error classification (auth failure, host verification failure, unreachable, timeout), and structured remote status parsing. |
+| **Interactive Terminal Proxy (`launch_interactive_ssh`)** | Full pseudo-terminal (PTY) proxy with POSIX raw mode restoration, automatic terminal window resize synchronization (`SIGWINCH`), and real-time Antigravity web UI URL detection. Gracefully falls back to direct subprocess execution on Windows and non-TTY environments. |
+| **Atomic Host Registry (`~/.antiagent/remotes.json`)** | Secure, multi-host configuration store with atomic write-replace (`tempfile.NamedTemporaryFile` + `os.replace`), strict POSIX file permissions (`0600`), and robust input validation preventing argument and command injection. |
+| **Comprehensive CLI Suite (`antiagent remote`)** | Added 12 complete subcommands: `list`, `add`, `remove`, `show`, `test`, `doctor`, `login`, `status`, `start`, `stop`, `connect`, and `protect` with rich tabular terminal formatting and actionable diagnostic advice. |
+| **Dashboard Integration & REST Endpoints** | Added 9 secure REST endpoints under `/api/remotes/*` (`GET /api/remotes`, `GET /api/remotes/status`, `GET /api/remotes/doctor`, `POST /api/remotes/add`, `POST /api/remotes/remove`, `POST /api/remotes/test`, `POST /api/remotes/start`, `POST /api/remotes/stop`, `POST /api/remotes/protect`) protected by origin verification and host header checks. |
+| **Modern Dashboard UI (`index.html`)** | Added dark glassmorphic Remote Sessions management card, real-time status badges, machine addition/editing modal with connection testing, diagnostics doctor modal, and one-click interactive connect instructions. |
+| **Automated Verification Suite** | Added 43 comprehensive unit tests across `tests/test_remote_sessions.py`, `tests/test_cli.py`, and `tests/test_dashboard.py`, verifying validation, injection prevention, atomic file operations, CLI execution, error classification, and API handlers. |
+
+### Verification Proof
+- All 169 unit tests passed (`python3 -m unittest discover tests`) in ~2.5s with 0 failures and 0 errors.
+- Verified CLI commands (`list`, `add`, `test`, `doctor`, `connect`, etc.) and dashboard endpoints end-to-end.
+
 ---
 
 ## [v0.1.9] — 2026-09-22

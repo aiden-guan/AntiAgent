@@ -35,6 +35,10 @@ from antiagent.engine.pr_monitor import (
     list_pull_requests,
     merge_pr,
 )
+from antiagent.engine.remote_sessions import (
+    RemoteHost,
+    RemoteSessionManager,
+)
 from antiagent.updater import (
     check_for_updates,
     global_downloader,
@@ -44,6 +48,8 @@ from antiagent.updater import (
     open_downloaded_file,
     reveal_in_file_manager,
 )
+
+global_remote_manager = RemoteSessionManager()
 
 
 def get_default_workspace_path() -> str:
@@ -249,6 +255,19 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
             self._send_json({"ok": True, "monitors": global_pr_manager.list_monitors()})
         elif path == "/api/pr/gh_status":
             self._send_json(check_gh_cli_status())
+        elif path == "/api/remotes":
+            query = parse_qs(parsed_url.query)
+            force_probe = query.get("probe", ["false"])[0].lower() in ("true", "1", "yes") or query.get("refresh", ["false"])[0].lower() in ("true", "1", "yes")
+            self._handle_api_remotes_list(force_probe=force_probe)
+        elif path == "/api/remotes/status":
+            query = parse_qs(parsed_url.query)
+            name = query.get("name", [None])[0]
+            refresh = query.get("refresh", ["false"])[0].lower() in ("true", "1", "yes")
+            self._handle_api_remotes_status(name, refresh)
+        elif path == "/api/remotes/doctor":
+            query = parse_qs(parsed_url.query)
+            name = query.get("name", [None])[0]
+            self._handle_api_remotes_doctor(name)
         else:
             self.send_response(404)
             self.end_headers()
@@ -443,6 +462,18 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
                 "pr_monitor_auto_merge": cfg.pr_monitor_auto_merge,
                 "pr_monitor_interval": cfg.pr_monitor_interval,
             })
+        elif path == "/api/remotes/add":
+            self._handle_api_remotes_add(body)
+        elif path == "/api/remotes/remove":
+            self._handle_api_remotes_remove(body)
+        elif path == "/api/remotes/test":
+            self._handle_api_remotes_test(body)
+        elif path == "/api/remotes/start":
+            self._handle_api_remotes_start(body)
+        elif path == "/api/remotes/stop":
+            self._handle_api_remotes_stop(body)
+        elif path == "/api/remotes/protect":
+            self._handle_api_remotes_protect(body)
         else:
             self.send_response(404)
             self.end_headers()
@@ -679,6 +710,150 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
         except Exception as e:
             self._send_json({"ok": False, "error": str(e)}, status=500)
 
+    def _handle_api_remotes_list(self, force_probe: bool = False) -> None:
+        hosts = global_remote_manager.registry.list_hosts()
+        probes = global_remote_manager.probe_all(bypass_cache=force_probe)
+        probe_map = {p.name: p.to_dict() for p in probes}
+        items = []
+        for h in hosts:
+            h_dict = h.to_dict()
+            h_dict["probe"] = probe_map.get(h.name)
+            h_dict["default_workspace"] = h.workspace
+            items.append(h_dict)
+        self._send_json({"ok": True, "hosts": items, "machines": items})
+
+    def _handle_api_remotes_status(self, name: Optional[str], refresh: bool) -> None:
+        if not name:
+            self._send_json({"ok": False, "error": "Remote machine name is required."}, status=400)
+            return
+        host = global_remote_manager.registry.get_host(name)
+        if not host:
+            self._send_json({"ok": False, "error": f"Machine '{name}' not found."}, status=404)
+            return
+        probe = global_remote_manager.probe(host, bypass_cache=refresh)
+        self._send_json({"ok": probe.ok, "probe": probe.to_dict()})
+
+    def _handle_api_remotes_doctor(self, name: Optional[str]) -> None:
+        if not name:
+            self._send_json({"ok": False, "error": "Remote machine name is required."}, status=400)
+            return
+        res = global_remote_manager.doctor(name)
+        status = 200 if res.get("ok") else 400
+        self._send_json(res, status=status)
+
+    def _handle_api_remotes_add(self, body: Dict[str, Any]) -> None:
+        name = (body.get("name") or "").strip()
+        ssh_host = (body.get("ssh_host") or "").strip()
+        if not name or not ssh_host:
+            self._send_json({"ok": False, "error": "Display name and SSH host are required."}, status=400)
+            return
+        try:
+            port = int(body["port"]) if body.get("port") else None
+            ws = (body.get("workspace") or body.get("default_workspace") or "").strip() or None
+            host = RemoteHost(
+                name=name,
+                ssh_host=ssh_host,
+                hostname=(body.get("hostname") or "").strip() or None,
+                user=(body.get("user") or "").strip() or None,
+                port=port,
+                identity_file=(body.get("identity_file") or "").strip() or None,
+                remote_os=(body.get("remote_os") or "auto").strip(),
+                workspace=ws,
+                antigravity_name=(body.get("antigravity_name") or "").strip() or None,
+                agy_path=(body.get("agy_path") or "").strip() or None,
+            )
+            existing = global_remote_manager.registry.get_host(name)
+            if existing:
+                saved = global_remote_manager.registry.update_host(host)
+            else:
+                saved = global_remote_manager.registry.add_host(host)
+            global_remote_manager.clear_cache(name)
+            global_remote_manager._log_audit(
+                "remote_machine_add" if not existing else "remote_machine_update",
+                name,
+                True,
+                f"Remote host '{name}' ({ssh_host}) configured.",
+            )
+            self._send_json({"ok": True, "host": saved.to_dict()})
+        except Exception as e:
+            self._send_json({"ok": False, "error": str(e)}, status=400)
+
+    def _handle_api_remotes_remove(self, body: Dict[str, Any]) -> None:
+        name = (body.get("name") or "").strip()
+        if not name:
+            self._send_json({"ok": False, "error": "Machine name required."}, status=400)
+            return
+        removed = global_remote_manager.registry.remove_host(name)
+        global_remote_manager.clear_cache(name)
+        if removed:
+            global_remote_manager._log_audit(
+                "remote_machine_remove",
+                name,
+                True,
+                f"Remote host '{name}' removed from registry.",
+            )
+            self._send_json({"ok": True})
+        else:
+            self._send_json({"ok": False, "error": f"Machine '{name}' not found."}, status=404)
+
+    def _handle_api_remotes_test(self, body: Dict[str, Any]) -> None:
+        name = (body.get("name") or "").strip()
+        if name:
+            res = global_remote_manager.test_connection(name)
+        else:
+            ssh_host = (body.get("ssh_host") or "").strip()
+            if not ssh_host:
+                self._send_json({"ok": False, "error": "Machine name or SSH host required to test."}, status=400)
+                return
+            try:
+                port = int(body["port"]) if body.get("port") else None
+                temp_host = RemoteHost(
+                    name="test-target",
+                    ssh_host=ssh_host,
+                    hostname=(body.get("hostname") or "").strip() or None,
+                    user=(body.get("user") or "").strip() or None,
+                    port=port,
+                    identity_file=(body.get("identity_file") or "").strip() or None,
+                    remote_os=(body.get("remote_os") or "auto").strip(),
+                )
+                res = global_remote_manager.test_connection(temp_host)
+            except Exception as e:
+                self._send_json({"ok": False, "error": str(e)}, status=400)
+                return
+        status = 200 if res.get("ok") else 400
+        payload = dict(res)
+        payload["probe"] = dict(res)
+        self._send_json(payload, status=status)
+
+    def _handle_api_remotes_start(self, body: Dict[str, Any]) -> None:
+        name = (body.get("name") or "").strip()
+        if not name:
+            self._send_json({"ok": False, "error": "Machine name required."}, status=400)
+            return
+        instance_name = (body.get("instance_name") or "").strip() or None
+        workspace = (body.get("workspace") or "").strip() or None
+        res = global_remote_manager.start_remote_control(name, instance_name=instance_name, workspace=workspace)
+        status = 200 if res.get("ok") else 400
+        self._send_json(res, status=status)
+
+    def _handle_api_remotes_stop(self, body: Dict[str, Any]) -> None:
+        name = (body.get("name") or "").strip()
+        if not name:
+            self._send_json({"ok": False, "error": "Machine name required."}, status=400)
+            return
+        res = global_remote_manager.stop_remote_control(name)
+        status = 200 if res.get("ok") else 400
+        self._send_json(res, status=status)
+
+    def _handle_api_remotes_protect(self, body: Dict[str, Any]) -> None:
+        name = (body.get("name") or "").strip()
+        if not name:
+            self._send_json({"ok": False, "error": "Machine name required."}, status=400)
+            return
+        res = global_remote_manager.protect_remote(name)
+        status = 200 if res.get("ok") else 400
+        self._send_json(res, status=status)
+
     def _read_json_body(self) -> Dict[str, Any]:
         content_length = int(self.headers.get("Content-Length", 0))
         if content_length <= 0:
@@ -707,14 +882,32 @@ def run_dashboard(
 ) -> None:
     """Launch the AntiAgent local dashboard server."""
     DashboardRequestHandler.workspace_path = workspace_path
-    server = ThreadingHTTPServer((host, port), DashboardRequestHandler)
     url = f"http://{host}:{port}"
+    try:
+        server = ThreadingHTTPServer((host, port), DashboardRequestHandler)
+    except OSError as e:
+        if "Address already in use" in str(e) or getattr(e, "errno", None) in (48, 98):
+            print(f"🛡️  AntiAgent Dashboard is already running at: {url}")
+            if open_browser:
+                try:
+                    if sys.platform == "darwin":
+                        subprocess.run(["open", url], check=False)
+                    else:
+                        webbrowser.open(url)
+                except Exception:
+                    pass
+            return
+        raise
+
     print(f"🛡️  AntiAgent Dashboard running at: {url}")
     print("   Press Ctrl+C to stop the dashboard.")
 
     if open_browser:
         try:
-            webbrowser.open(url)
+            if sys.platform == "darwin":
+                subprocess.run(["open", url], check=False)
+            else:
+                webbrowser.open(url)
         except Exception:
             pass
 

@@ -38,6 +38,7 @@ class AuditLogger:
         reason: str,
         conversation_id: Optional[str] = None,
         step_idx: Optional[int] = None,
+        category: str = "tool_call",
     ) -> None:
         """Record an audit event."""
         entry: Dict[str, Any] = {
@@ -48,6 +49,7 @@ class AuditLogger:
             "args": tool_args,
             "decision": decision,
             "reason": reason,
+            "category": category,
         }
 
         try:
