@@ -760,6 +760,260 @@ def handle_update_cli(args: argparse.Namespace) -> None:
             print(f"❌ Download failed: {final_st.get('error')}")
 
 
+def handle_remote_cli(args: argparse.Namespace) -> None:
+    """Handle the 'antiagent remote' subcommands for managing remote SSH sessions."""
+    from antiagent.engine.remote_sessions import (
+        RemoteHost,
+        RemoteSessionManager,
+        OFFICIAL_ANTIGRAVITY_URL,
+    )
+
+    manager = RemoteSessionManager()
+    sub = getattr(args, "remote_command", None)
+
+    if sub == "list":
+        hosts = manager.registry.list_hosts()
+        if not hosts:
+            print("ℹ️ No remote machines configured yet.")
+            print("   Add one using: antiagent remote add <name> --ssh-host <host-or-ssh-alias>")
+            return
+        print(f"🖥️  Saved Remote Machines ({len(hosts)}):")
+        print("=" * 65)
+        for h in hosts:
+            target = f"{h.user}@{h.ssh_host}" if h.user else h.ssh_host
+            ws_desc = f" ({h.workspace})" if h.workspace else ""
+            print(f"  • {h.name:<16} {target:<24} [{h.remote_os}]{ws_desc}")
+        print("=" * 65)
+        print("💡 Run 'antiagent remote doctor <name>' for live health and status.")
+        return
+
+    if sub == "add":
+        try:
+            port = int(args.port) if getattr(args, "port", None) is not None else None
+            host = RemoteHost(
+                name=args.name,
+                ssh_host=args.ssh_host,
+                hostname=getattr(args, "hostname", None),
+                user=getattr(args, "user", None),
+                port=port,
+                identity_file=getattr(args, "identity_file", None),
+                remote_os=getattr(args, "remote_os", "auto"),
+                workspace=getattr(args, "workspace", None),
+                antigravity_name=getattr(args, "antigravity_name", None),
+                agy_path=getattr(args, "agy_path", None),
+            )
+            manager.registry.add_host(host)
+            manager._log_audit("remote_machine_add", host.name, True, f"Remote machine '{host.name}' added.")
+            print(f"✅ Remote machine '{host.name}' successfully added.")
+            print(f"   SSH Host:  {host.ssh_host}")
+            if host.workspace:
+                print(f"   Workspace: {host.workspace}")
+            print(f"\n💡 Verify reachability: antiagent remote test {host.name}")
+            print(f"💡 Run full doctor:     antiagent remote doctor {host.name}")
+        except Exception as e:
+            print(f"❌ Failed to add remote machine: {e}")
+            sys.exit(1)
+        return
+
+    if sub == "remove":
+        removed = manager.registry.remove_host(args.name)
+        if removed:
+            manager.clear_cache(args.name)
+            manager._log_audit("remote_machine_remove", args.name, True, f"Remote machine '{args.name}' removed.")
+            print(f"✅ Remote machine '{args.name}' removed.")
+        else:
+            print(f"❌ Remote machine '{args.name}' not found.")
+            sys.exit(1)
+        return
+
+    if sub == "show":
+        host = manager.registry.get_host(args.name)
+        if not host:
+            print(f"❌ Remote machine '{args.name}' not found.")
+            sys.exit(1)
+        print(f"🖥️  Remote Machine: {host.name}")
+        print("=" * 45)
+        print(f"  SSH Host:          {host.ssh_host}")
+        print(f"  Resolved Hostname: {host.hostname or '(ssh config)'}")
+        print(f"  User:              {host.user or '(default)'}")
+        print(f"  Port:              {host.port or 22}")
+        print(f"  Identity File:     {host.identity_file or '(default)'}")
+        print(f"  Remote OS:         {host.remote_os}")
+        print(f"  Default Workspace: {host.workspace or '(not set)'}")
+        print(f"  Antigravity Name:  {host.antigravity_name or host.name}")
+        print(f"  Custom agy Path:   {host.agy_path or '(default)'}")
+        print(f"  Created:           {host.created_at[:19].replace('T', ' ')}")
+        print(f"  Updated:           {host.updated_at[:19].replace('T', ' ')}")
+        print("=" * 45)
+        return
+
+    if sub == "test":
+        print(f"🔍 Testing SSH reachability to '{args.name}'...")
+        res = manager.test_connection(args.name)
+        if res.get("ok"):
+            print(f"✅ SSH reachability verified! ({res.get('latency_ms')}ms)")
+            print(f"   Remote OS: {res.get('remote_os')}")
+        else:
+            print(f"❌ Could not reach '{args.name}'.")
+            print(f"   Error: {res.get('error')}")
+            sys.exit(1)
+        return
+
+    if sub == "doctor":
+        print(f"🩺 Running AntiAgent Remote Doctor for '{args.name}'...")
+        print("=" * 60)
+        doc = manager.doctor(args.name)
+        if not doc.get("ok") and doc.get("error"):
+            print(f"❌ {doc.get('error')}")
+            sys.exit(1)
+
+        probe = doc.get("probe", {})
+        h_info = doc.get("host", {})
+
+        ssh_status = "🟢 Connected" if probe.get("ssh_connected") else "🔴 Disconnected"
+        latency = f" ({probe.get('latency_ms')}ms)" if probe.get("latency_ms") is not None else ""
+        print(f"  SSH Reachability:      {ssh_status}{latency}")
+        print(f"  Remote Hostname:       {probe.get('hostname') or h_info.get('ssh_host')}")
+        print(f"  Remote OS:             {probe.get('remote_os', 'Unknown')}")
+
+        ws_exists = probe.get("workspace_exists")
+        ws_path = probe.get("workspace_path") or h_info.get("workspace")
+        if ws_path:
+            if ws_exists is True:
+                ws_state = " [Exists]"
+            elif ws_exists is False:
+                ws_state = " [Missing]"
+            else:
+                ws_state = ""
+            print(f"  Configured Workspace:  {ws_path}{ws_state}")
+        else:
+            print("  Configured Workspace:  (none set)")
+
+        agy = probe.get("antigravity", {})
+        if agy.get("installed"):
+            ver = f" (v{agy.get('version')})" if agy.get("version") else ""
+            p = f" [{agy.get('path')}]" if agy.get("path") else ""
+            print(f"  Antigravity CLI:       🟢 Installed{ver}{p}")
+        else:
+            print("  Antigravity CLI:       🔴 Not Installed (agy command not found)")
+
+        if agy.get("installed"):
+            if agy.get("authenticated"):
+                print("  Authentication:        🟢 Authenticated")
+            else:
+                print("  Authentication:        ⚠️ Authentication Required")
+
+        rc = probe.get("remote_control", {})
+        rc_running = rc.get("running")
+        rc_status_text = "🟢 Running" if rc_running else "⚪ Stopped"
+        inst_name = f" (Instance: '{rc.get('instance_name')}')" if rc.get("instance_name") else ""
+        print(f"  Remote Control:        {rc_status_text}{inst_name}")
+
+        aa = probe.get("antiagent", {})
+        if aa.get("installed"):
+            aa_ver = f" (v{aa.get('version')})" if aa.get("version") else ""
+            print(f"  AntiAgent:             🟢 Installed{aa_ver}")
+        else:
+            print("  AntiAgent:             ⚪ Not Installed")
+
+        prot = aa.get("protection_status", "Unknown")
+        prot_badge = "🟢" if prot == "Protected" else "⚠️"
+        print(f"  Protection:            {prot_badge} {prot}")
+        print("=" * 60)
+
+        # Actionable recommendations
+        if agy.get("installed") and not agy.get("authenticated"):
+            print("\n💡 Action Required: Antigravity authentication required on this machine.")
+            print(f"   Run: antiagent remote login {args.name}")
+        elif not agy.get("installed"):
+            print("\n⚠️ Antigravity CLI ('agy') is missing on the remote host.")
+        elif not aa.get("installed"):
+            print("\n💡 Note: Remote machine is unprotected because AntiAgent is not installed.")
+            print("   Install AntiAgent on the remote machine (e.g. 'pip install antiagent') to enable safety hooks.")
+        elif not aa.get("global_hook_active"):
+            print("\n💡 Tip: AntiAgent is installed on the remote machine, but global hook is inactive.")
+            print(f"   Run: antiagent remote protect {args.name}")
+        print("")
+        return
+
+    if sub == "status":
+        probe = manager.probe(args.name, bypass_cache=True)
+        if not probe.ok and not probe.ssh_connected:
+            print(f"❌ Could not reach '{args.name}': {probe.error}")
+            sys.exit(1)
+
+        rc = probe.remote_control
+        st_text = "🟢 Running" if rc.running else "⚪ Stopped"
+        print(f"\n⚡ Antigravity Remote Control: {args.name}")
+        print("=" * 50)
+        print(f"  Remote Control:  {st_text}")
+        if rc.instance_name:
+            print(f"  Instance Name:   {rc.instance_name}")
+        print(f"  Protection:      {probe.antiagent.protection_status}")
+        if rc.running and rc.url:
+            print(f"  Dashboard URL:   {rc.url}")
+        print("=" * 50)
+        return
+
+    if sub == "start":
+        print(f"🚀 Starting Antigravity Remote Control daemon on '{args.name}'...")
+        inst_name = getattr(args, "name_override", None)
+        ws_override = getattr(args, "workspace", None)
+        res = manager.start_remote_control(args.name, instance_name=inst_name, workspace=ws_override)
+        if res.get("ok"):
+            print(f"\n✅ Remote Control started on '{args.name}'.\n")
+            print(f"  Machine:    {res.get('instance_name')}")
+            host = manager.registry.get_host(args.name)
+            if host:
+                print(f"  Host:       {host.ssh_host}")
+            probe = manager.probe(args.name, bypass_cache=True)
+            print(f"  Protection: {probe.antiagent.protection_status}")
+            url = res.get("url") or OFFICIAL_ANTIGRAVITY_URL
+            print(f"\n  Open Antigravity:\n  {url}\n")
+            if getattr(args, "open_browser", False) and not getattr(args, "no_open", False):
+                import webbrowser
+                try:
+                    webbrowser.open(url)
+                except Exception:
+                    pass
+        else:
+            print(f"❌ Failed to start Remote Control: {res.get('error')}")
+            sys.exit(1)
+        return
+
+    if sub == "stop":
+        print(f"⏹️ Stopping Antigravity Remote Control daemon on '{args.name}'...")
+        res = manager.stop_remote_control(args.name)
+        if res.get("ok"):
+            print(f"✅ Remote Control stopped on '{args.name}'.")
+        else:
+            print(f"❌ {res.get('error')}")
+            sys.exit(1)
+        return
+
+    if sub == "connect":
+        ws = getattr(args, "workspace", None)
+        no_open = getattr(args, "no_open", False)
+        code = manager.connect_interactive(args.name, workspace_override=ws, no_open=no_open)
+        sys.exit(code)
+
+    if sub == "login":
+        code = manager.login_interactive(args.name)
+        sys.exit(code)
+
+    if sub == "protect":
+        print(f"🛡️  Enabling AntiAgent global protection hook on '{args.name}'...")
+        res = manager.protect_remote(args.name)
+        if res.get("ok"):
+            print(f"✅ {res.get('message', 'Protection enabled successfully.')}")
+        else:
+            print(f"❌ {res.get('error')}")
+            sys.exit(1)
+        return
+
+    print("Available remote subcommands: list, add, remove, show, test, doctor, login, status, start, stop, connect, protect.")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         prog="antiagent",
@@ -889,6 +1143,74 @@ def main() -> None:
     update_parser.add_argument("--pip", action="store_true", help="Upgrade AntiAgent using pip")
     update_parser.add_argument("--asset", help="Specific asset filename to download")
 
+    # remote (Remote Sessions via SSH)
+    remote_parser = subparsers.add_parser("remote", help="Manage Google Antigravity remote sessions over SSH")
+    remote_subparsers = remote_parser.add_subparsers(dest="remote_command", help="Remote subcommands")
+
+    # remote list
+    remote_subparsers.add_parser("list", help="List configured remote machines")
+
+    # remote add
+    add_parser = remote_subparsers.add_parser("add", help="Add a new remote SSH machine")
+    add_parser.add_argument("name", help="Identifier / alias for the remote machine")
+    add_parser.add_argument("--ssh-host", required=True, help="SSH hostname, IP, or ~/.ssh/config alias")
+    add_parser.add_argument("--hostname", help="Underlying hostname if distinct from ssh-host")
+    add_parser.add_argument("--user", help="SSH username")
+    add_parser.add_argument("--port", type=int, help="SSH port (default: 22)")
+    add_parser.add_argument("--identity-file", help="Path to SSH private key identity file")
+    add_parser.add_argument("--workspace", help="Default remote project workspace directory")
+    add_parser.add_argument("--remote-os", choices=["auto", "posix", "windows"], default="auto", help="Remote OS (default: auto)")
+    add_parser.add_argument("--antigravity-name", help="Antigravity Remote Control daemon instance name")
+    add_parser.add_argument("--agy-path", help="Custom path to 'agy' executable on the remote host")
+
+    # remote remove
+    remove_parser = remote_subparsers.add_parser("remove", help="Remove a remote SSH machine")
+    remove_parser.add_argument("name", help="Remote machine name to remove")
+
+    # remote show
+    show_parser = remote_subparsers.add_parser("show", help="Show saved configuration for a remote machine")
+    show_parser.add_argument("name", help="Remote machine name")
+
+    # remote test
+    test_p = remote_subparsers.add_parser("test", help="Test SSH reachability and latency to a remote machine")
+    test_p.add_argument("name", help="Remote machine name")
+
+    # remote doctor
+    doc_parser = remote_subparsers.add_parser("doctor", help="Run deep diagnostic health check on remote machine")
+    doc_parser.add_argument("name", help="Remote machine name")
+
+    # remote login
+    login_parser = remote_subparsers.add_parser("login", help="Complete Antigravity OAuth login on remote machine via interactive terminal")
+    login_parser.add_argument("name", help="Remote machine name")
+
+    # remote status
+    status_p = remote_subparsers.add_parser("status", help="Check Antigravity Remote Control daemon status")
+    status_p.add_argument("name", help="Remote machine name")
+
+    # remote start
+    start_parser = remote_subparsers.add_parser("start", help="Start Antigravity Remote Control daemon on remote machine")
+    start_parser.add_argument("name", help="Remote machine name")
+    start_parser.add_argument("--name", dest="name_override", help="Instance nickname override for Antigravity Remote Control")
+    start_parser.add_argument("--workspace", help="Remote workspace directory to run in")
+    start_parser.add_argument("--daemon", action="store_true", default=True, help="Run as background daemon (default: True)")
+    start_parser.add_argument("--no-open", action="store_true", help="Do not open Remote Control URL automatically in browser")
+    start_parser.add_argument("--open", dest="open_browser", action="store_true", help="Open Remote Control URL in browser")
+
+    # remote stop
+    stop_parser = remote_subparsers.add_parser("stop", help="Stop Antigravity Remote Control daemon on remote machine")
+    stop_parser.add_argument("name", help="Remote machine name")
+
+    # remote connect
+    conn_parser = remote_subparsers.add_parser("connect", help="Attach interactive Antigravity TUI session over SSH")
+    conn_parser.add_argument("name", help="Remote machine name")
+    conn_parser.add_argument("--workspace", help="Workspace directory override")
+    conn_parser.add_argument("--interactive", action="store_true", default=True, help="Run in interactive terminal mode (default: True)")
+    conn_parser.add_argument("--no-open", action="store_true", help="Do not open Remote Control URL automatically in browser")
+
+    # remote protect
+    prot_parser = remote_subparsers.add_parser("protect", help="Enable AntiAgent global protection hook on remote machine")
+    prot_parser.add_argument("name", help="Remote machine name")
+
     args = parser.parse_args()
 
     if args.command == "install":
@@ -907,6 +1229,8 @@ def main() -> None:
         configure_cli(args)
     elif args.command == "pr":
         handle_pr_cli(args)
+    elif args.command == "remote":
+        handle_remote_cli(args)
     elif args.command == "dashboard":
         from antiagent.dashboard.server import run_dashboard
         run_dashboard(

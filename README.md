@@ -208,6 +208,72 @@ antiagent config --set-pr-auto-merge true
 
 ---
 
+## 🖥️ Remote Sessions via SSH
+
+AntiAgent provides production-grade **Remote Sessions via SSH**, enabling you to manage and attach to Google Antigravity sessions running on remote machines (Mac Minis, Linux servers, cloud VMs, or dedicated build boxes) from your local workstation or laptop.
+
+```
+┌──────────────────────────────────────┐             Standard OpenSSH / PTY
+│       Local AntiAgent Host           │ ──────────────────────────────────────────────┐
+│  • CLI: antiagent remote connect     │                                               │
+│  • Dashboard: /api/remotes/*         │                                               │
+│  • Registry: ~/.antiagent/remotes.json│                                               │
+└──────────────────────────────────────┘                                               │
+                                                                                       ▼
+                                                             ┌─────────────────────────────────────────┐
+                                                             │           Remote Machine                │
+                                                             │   • Native OpenSSH Server (sshd)        │
+                                                             │   • agy --remote-control (Daemon)       │
+                                                             │   • AntiAgent PreToolUse Hook (Protected│
+                                                             └─────────────────────────────────────────┘
+```
+
+### 🔒 Core Security Principles
+
+- **Zero Secret Storage**: AntiAgent **never** prompts for or saves SSH passwords, passphrase strings, private key contents, or OAuth tokens. It delegates authentication exclusively to your local OpenSSH client, `ssh-agent`, and `~/.ssh/config`.
+- **Strict Host Key Verification**: AntiAgent **never** passes `StrictHostKeyChecking=no` or `UserKnownHostsFile=/dev/null`. Your standard `~/.ssh/known_hosts` file is strictly respected to prevent Man-in-the-Middle (MITM) attacks.
+- **Zero Shell Injection**: Subprocesses are executed using argument arrays (`list[str]`) without `shell=True`. Hostnames, aliases, ports, and instance names are strictly validated against RFC/POSIX character sets.
+- **Atomic Config Storage**: Host configurations are saved to `~/.antiagent/remotes.json` using atomic temporary file replacement and POSIX file mode `0600` (read/write only by the current user).
+
+### 🚀 Remote CLI Quickstart
+
+```bash
+# 1. Register a remote machine (uses your ~/.ssh/config alias or IP)
+antiagent remote add devbox 192.168.1.50 --user ubuntu --workspace ~/projects/app --agy-name "Ubuntu Devbox"
+
+# 2. Test SSH connectivity and latency
+antiagent remote test devbox
+
+# 3. Run full remote health diagnostics (checks SSH, Antigravity binary, daemon, and hook status)
+antiagent remote doctor devbox
+
+# 4. Install AntiAgent safety hook on the remote workspace
+antiagent remote protect devbox
+
+# 5. Start Antigravity daemon in the background on the remote machine
+antiagent remote start devbox
+
+# 6. Check remote daemon status and retrieve web control URL
+antiagent remote status devbox
+
+# 7. Attach an interactive terminal session (full PTY support with window resizing)
+antiagent remote connect devbox
+
+# 8. List all configured remote machines
+antiagent remote list
+```
+
+### 🌐 Dashboard Integration
+
+The AntiAgent Web Dashboard (`antiagent dashboard`) includes a real-time **Remote Sessions** card:
+- **Live Fleet View**: Shows machine reachability, remote OS, background daemon status, and AntiAgent protection status at a glance.
+- **1-Click Control**: Start or stop remote `agy --remote-control` daemons without logging in manually.
+- **Visual Diagnostics Modal**: Run deep system health checks across SSH, workspaces, and binaries with actionable remediation tips.
+- **Connection Tester**: Test OpenSSH connectivity and measure round-trip latency in milliseconds directly within the modal.
+- **Localhost Security**: All remote REST endpoints are strictly bound to localhost with CSRF origin checks.
+
+---
+
 ## ⚙️ Configuration & Safety Profiles
 
 AntiAgent supports three distinct safety profiles:
@@ -278,6 +344,15 @@ Sample output:
 
 | Command | Description |
 | :--- | :--- |
+| `antiagent remote list` | List all configured remote machines and probe status |
+| `antiagent remote add <name> <host>` | Register a new remote machine with SSH parameters |
+| `antiagent remote test <name>` | Verify SSH connectivity and report latency |
+| `antiagent remote doctor <name>` | Deep diagnostic of remote Antigravity & AntiAgent state |
+| `antiagent remote start <name>` | Start remote Antigravity background daemon (`agy --remote-control`) |
+| `antiagent remote stop <name>` | Gracefully stop remote Antigravity daemon |
+| `antiagent remote connect <name>` | Launch interactive PTY terminal session to remote machine |
+| `antiagent remote protect <name>` | Install AntiAgent safety hook on remote workspace |
+| `antiagent remote remove <name>` | Remove a machine from the remote registry |
 | `antiagent pr status` | Inspect current branch's PR status and CI check runs |
 | `antiagent pr monitor [--auto-merge]` | Live watch PR until checks pass/fail (Claude Code style) |
 | `antiagent pr autofix` | Extract failed CI check logs for prompt/agent remediation |
