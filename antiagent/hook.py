@@ -23,6 +23,9 @@ def handle_pre_tool_use(payload: Dict[str, Any]) -> Dict[str, Any]:
     workspace_paths = payload.get("workspacePaths", [])
     conversation_id = payload.get("conversationId", "")
     step_idx = payload.get("stepIdx", -1)
+    transcript_path = payload.get("transcriptPath")
+    artifact_directory = payload.get("artifactDirectoryPath")
+    model_name = payload.get("modelName")
 
     # Determine primary workspace
     primary_workspace = workspace_paths[0] if workspace_paths else None
@@ -30,10 +33,14 @@ def handle_pre_tool_use(payload: Dict[str, Any]) -> Dict[str, Any]:
 
     # Extract bounded task context if available (OpenAI "Approve for Me" model)
     context = None
-    if conversation_id:
+    if conversation_id or transcript_path:
         try:
             extractor = TranscriptContextExtractor()
-            context = extractor.extract_context(conversation_id, step_idx=step_idx)
+            context = extractor.extract_context(
+                conversation_id=conversation_id,
+                step_idx=step_idx,
+                transcript_path=transcript_path,
+            )
         except Exception:
             context = None
 

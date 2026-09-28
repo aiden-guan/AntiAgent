@@ -49,6 +49,12 @@ def clean_user_prompt(raw: str) -> str:
     match = re.search(r"<USER_REQUEST>(.*?)</USER_REQUEST>", cleaned, flags=re.DOTALL)
     if match:
         cleaned = match.group(1)
+    # Extract <original_task>...</original_task> if present
+    match_orig = re.search(r"<original_task>(.*?)</original_task>", cleaned, flags=re.DOTALL)
+    if match_orig:
+        cleaned = match_orig.group(1)
+    # Strip any stray </?original_task> tags
+    cleaned = re.sub(r"</?original_task>", "", cleaned)
     # Strip leading/trailing whitespace
     return cleaned.strip()
 
@@ -79,21 +85,50 @@ class TranscriptContextExtractor:
         self,
         conversation_id: str,
         step_idx: int = -1,
+        transcript_path: Optional[str] = None,
         max_bytes: int = 65536,
     ) -> TaskContext:
         """Reads the tail of transcript.jsonl to build TaskContext (<1ms)."""
         ctx = TaskContext(conversation_id=conversation_id, step_idx=step_idx)
-        if not conversation_id or not re.match(r"^[a-zA-Z0-9_-]+$", conversation_id):
-            return ctx
 
-        transcript_file = (
-            self.brain_dir
-            / conversation_id
-            / ".system_generated"
-            / "logs"
-            / "transcript.jsonl"
-        )
-        if not transcript_file.is_file():
+        transcript_file: Optional[Path] = None
+
+        # 1. If explicit trusted transcript_path is supplied by hook, use it
+        if transcript_path:
+            try:
+                candidate = Path(transcript_path).resolve()
+                if candidate.is_file():
+                    transcript_file = candidate
+            except Exception:
+                pass
+
+        # 2. Otherwise resolve by conversation_id
+        if not transcript_file:
+            if not conversation_id or not re.match(r"^[a-zA-Z0-9_\-\.]+$", conversation_id):
+                return ctx
+
+            # First check self.brain_dir (preserves base_brain_dir compatibility for tests)
+            candidate = self.brain_dir / conversation_id / ".system_generated" / "logs" / "transcript.jsonl"
+            if candidate.is_file():
+                transcript_file = candidate
+            else:
+                candidate_alt = self.brain_dir / conversation_id / "transcript.jsonl"
+                if candidate_alt.is_file():
+                    transcript_file = candidate_alt
+
+            # If not in self.brain_dir, discover across known Desktop, IDE, CLI sources
+            if not transcript_file:
+                try:
+                    from antiagent.engine.conversations import get_conversation_store
+                    lookup = get_conversation_store().get_conversation(conversation_id, allow_ambiguous=True)
+                    if lookup and lookup[1].transcript_path:
+                        disc_file = Path(lookup[1].transcript_path)
+                        if disc_file.is_file():
+                            transcript_file = disc_file
+                except Exception:
+                    pass
+
+        if not transcript_file or not transcript_file.is_file():
             return ctx
 
         user_prompts: List[str] = []

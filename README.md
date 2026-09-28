@@ -274,6 +274,47 @@ The AntiAgent Web Dashboard (`antiagent dashboard`) includes a real-time **Remot
 
 ---
 
+## 💬 Unified Antigravity Conversation Browser & Native `agy` Context Management
+
+AntiAgent provides a centralized, high-performance browser for all your Antigravity conversation sessions across **Desktop**, **IDE**, and **CLI / `agy`**.
+
+### ⚡ Key Capabilities
+
+- **Unified Multi-Source Discovery**: Discovers and indexes sessions across Antigravity Desktop (`~/.gemini/antigravity`), Antigravity IDE (`~/.gemini/antigravity-ide`), and CLI (`~/.gemini/antigravity-cli`, `~/.gemini/agy`) under a canonical `(source, conversation_id)` identity.
+- **Native Context & Auto-Compaction Inspection**: `agy` already provides built-in automatic context compaction. AntiAgent deeply integrates with Antigravity's native engine: detecting checkpoints (`CHECKPOINT`, `COMPACTION`, `CONTEXT_RESET`), turn counts, tool executions, transcript size, and displaying the latest compaction summary rather than duplicating LLM compression.
+- **Strict Chain-of-Thought & Privacy Protection**: The model's internal reasoning (`thinking`) is strictly stripped and never rendered in the UI or written to transcript exports.
+- **Sensitive Credential Shielding**: Tool arguments containing tokens, passwords, API keys, Bearer tokens, GitHub PATs, OpenAI keys, or PEM private keys are automatically redacted.
+- **High-Performance Bounded Indexing**: Uses bounded head (<8KB) and tail (<16KB) byte reads combined with SQLite `conversation_summaries.db` caching and in-memory mtime checks to index hundreds of sessions in milliseconds.
+- **Session Resumption & Export**: One-click transcript export (Markdown or JSON) and session continuation via `agy --resume` (CLI) or native IDE/Desktop workspace launchers.
+
+### 💻 Conversation CLI Commands
+
+```bash
+# List all sessions across Desktop, IDE, and CLI
+antiagent conversations list
+
+# Filter by source (desktop, ide, cli) and search keywords
+antiagent conversations list --source desktop --search "refactor" --limit 10
+
+# Output as JSON
+antiagent conversations list --json
+
+# Inspect conversation details and native context compaction state
+antiagent conversations show <conversation-id>
+
+# Export transcript to clean Markdown or JSON (without internal reasoning)
+antiagent conversations export <conversation-id> --format markdown > session.md
+antiagent conversations export <conversation-id> --format json > session.json
+
+# Resume or open session in Antigravity CLI / agy
+antiagent conversations resume <conversation-id>
+
+# Inspect conversations on a remote SSH machine
+antiagent remote conversations <machine-name> list
+```
+
+---
+
 ## ⚙️ Configuration & Safety Profiles
 
 AntiAgent supports three distinct safety profiles:
@@ -356,7 +397,11 @@ Sample output:
 | `antiagent pr status` | Inspect current branch's PR status and CI check runs |
 | `antiagent pr monitor [--auto-merge]` | Live watch PR until checks pass/fail (Claude Code style) |
 | `antiagent pr autofix` | Extract failed CI check logs for prompt/agent remediation |
-| `antiagent pr list` | List open pull requests for current repository |
+| `antiagent conversations list` | Browse and filter Antigravity sessions across Desktop, IDE, CLI |
+| `antiagent conversations show <id>` | Inspect transcript and native context auto-compaction state |
+| `antiagent conversations export <id>` | Export clean session transcript (Markdown or JSON) without CoT |
+| `antiagent conversations resume <id>` | Resume conversation via `agy` or open workspace |
+| `antiagent remote conversations <machine>` | Browse conversations on remote SSH machines |
 | `antiagent app` | Launch the native desktop application (macOS & Windows) |
 | `antiagent dashboard` | Launch the interactive local web dashboard |
 | `antiagent doctor` | Run comprehensive health check on Antigravity & hooks |

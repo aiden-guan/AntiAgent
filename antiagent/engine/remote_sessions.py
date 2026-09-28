@@ -1034,6 +1034,7 @@ class RemoteSessionManager:
     ):
         self.registry = registry or RemoteHostRegistry()
         self.ssh_client = ssh_client or SSHClient()
+        self.client = self.ssh_client
         self.cache_ttl = cache_ttl
         self.audit_log_path = audit_log_path
         self._cache: Dict[str, Tuple[float, RemoteProbeResult]] = {}

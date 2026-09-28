@@ -428,8 +428,20 @@ def run_doctor(workspace_path: str = ".") -> None:
 
     # 4. Antigravity Sessions / Transcripts
     sess = report["antigravity_sessions"]
+    sources = sess.get("sources", {})
+    if sources:
+        def _get_cnt(val):
+            if isinstance(val, dict):
+                return val.get("count", 0)
+            return val if isinstance(val, int) else 0
+        d_cnt = _get_cnt(sources.get("desktop"))
+        i_cnt = _get_cnt(sources.get("ide"))
+        c_cnt = _get_cnt(sources.get("cli"))
+        breakdown = f" (Desktop: {d_cnt}, IDE: {i_cnt}, CLI: {c_cnt})"
+    else:
+        breakdown = ""
     if sess["count"] > 0:
-        print(f"🧠 Antigravity Sessions: Found {sess['count']} conversation history folder(s) [OK]")
+        print(f"🧠 Antigravity Sessions: Found {sess['count']} session(s){breakdown} [OK]")
     else:
         print(f"🧠 Antigravity Sessions: Directory {sess['path']} not yet created.")
 
@@ -1011,7 +1023,238 @@ def handle_remote_cli(args: argparse.Namespace) -> None:
             sys.exit(1)
         return
 
-    print("Available remote subcommands: list, add, remove, show, test, doctor, login, status, start, stop, connect, protect.")
+    if sub == "conversations":
+        machine = getattr(args, "machine", None)
+        conv_cmd = getattr(args, "remote_conv_cmd", "list")
+        if not machine:
+            print("❌ Remote machine name required.")
+            sys.exit(1)
+        host = manager.registry.get_host(machine)
+        if not host:
+            print(f"❌ Remote machine '{machine}' not found.")
+            sys.exit(1)
+        remote_cmd = ["antiagent", "conversations", "list", "--json"]
+        if getattr(args, "source", None) and args.source != "all":
+            remote_cmd.extend(["--source", args.source])
+        if getattr(args, "limit", None):
+            remote_cmd.extend(["--limit", str(args.limit)])
+        res = manager.ssh_client.run_command(host, remote_command=remote_cmd)
+        if res.returncode != 0:
+            err = res.stderr.strip() or res.stdout.strip() or f"Exited with code {res.returncode}"
+            print(f"❌ Failed to query remote conversations on '{machine}': {err}")
+            sys.exit(1)
+        if getattr(args, "json", False):
+            print(res.stdout)
+        else:
+            try:
+                data = json.loads(res.stdout)
+                convs = data.get("conversations", [])
+                print(f"\n💬 Remote Antigravity Conversations on '{machine}' ({data.get('total', len(convs))} total):")
+                print("=" * 95)
+                for c in convs:
+                    print(f"  • {c.get('source'):<8} {c.get('conversation_id')[:8]} {c.get('title')[:45]}")
+                print("=" * 95)
+            except Exception:
+                print(res.stdout)
+        return
+
+    print("Available remote subcommands: list, add, remove, show, test, doctor, login, status, start, stop, connect, protect, conversations.")
+
+
+def handle_conversations_cli(args: argparse.Namespace) -> None:
+    """Handle 'antiagent conversations' subcommands: list, show, export, resume."""
+    from antiagent.engine.conversations import (
+        AmbiguousConversationError,
+        get_conversation_store,
+        VALID_SOURCES,
+    )
+
+    store = get_conversation_store()
+    sub = getattr(args, "conv_command", None)
+
+    if sub == "list":
+        source = getattr(args, "source", "all") or "all"
+        workspace = getattr(args, "workspace", None)
+        search = getattr(args, "search", None)
+        limit = getattr(args, "limit", 20) or 20
+        is_json = getattr(args, "json", False)
+
+        convs, total = store.list_conversations(
+            source=source,
+            workspace=workspace,
+            search=search,
+            limit=limit,
+            offset=0,
+        )
+
+        if is_json:
+            print(json.dumps({
+                "ok": True,
+                "total": total,
+                "limit": limit,
+                "conversations": [c.to_dict() for c in convs],
+            }, indent=2))
+            return
+
+        if not convs:
+            print("ℹ️ No conversations found matching the criteria.")
+            return
+
+        print(f"\n💬 Antigravity Conversations ({total} total, showing {len(convs)}):")
+        print("=" * 105)
+        print(f"{'Source':<9} {'ID':<10} {'Updated':<17} {'Turns':<6} {'Size':<10} {'Workspace':<18} {'Title / Prompt'}")
+        print("-" * 105)
+        for c in convs:
+            short_id = c.conversation_id[:8]
+            up = (c.updated_at or "")[:16].replace("T", " ")
+            turns = str(c.user_turn_count or c.message_count or 0)
+            sz = f"{round(c.transcript_size_bytes / 1024, 1)} KB" if c.transcript_size_bytes else "-"
+            ws = Path(c.workspace_paths[0]).name if c.workspace_paths else "-"
+            if len(ws) > 16:
+                ws = ws[:14] + ".."
+            title = (c.title or c.preview or c.last_user_prompt or f"Session {short_id}").strip()
+            if len(title) > 42:
+                title = title[:39] + "..."
+            print(f"{c.source:<9} {short_id:<10} {up:<17} {turns:<6} {sz:<10} {ws:<18} {title}")
+        print("=" * 105)
+        print("💡 Run 'antiagent conversations show <id> --source <source>' to inspect messages.\n")
+        return
+
+    if sub == "show":
+        cid = getattr(args, "conversation_id", None)
+        if not cid:
+            print("❌ Conversation ID is required.")
+            sys.exit(1)
+
+        source = getattr(args, "source", None)
+        tail = getattr(args, "tail", None)
+        tools = getattr(args, "tools", False)
+        is_json = getattr(args, "json", False)
+
+        try:
+            lookup = store.get_conversation(cid, source=source)
+        except AmbiguousConversationError as e:
+            print(f"❌ Conversation '{cid}' exists in multiple sources ({', '.join(e.sources)}). Please specify --source <source>.")
+            sys.exit(1)
+
+        if not lookup:
+            print(f"❌ Conversation '{cid}' not found" + (f" in source '{source}'." if source else "."))
+            sys.exit(1)
+
+        matched_source, summary = lookup
+        messages, total, ctx_state = store.get_conversation_messages(
+            cid, source=matched_source, limit=10000, offset=0
+        )
+
+        if tail and tail > 0:
+            messages = messages[-tail:]
+
+        if not tools:
+            messages = [m for m in messages if m.type != "tool"]
+
+        if is_json:
+            print(json.dumps({
+                "summary": summary.to_dict(),
+                "context_state": ctx_state.to_dict(),
+                "total_messages": total,
+                "messages": [m.to_dict() for m in messages],
+            }, indent=2))
+            return
+
+        print(f"\n💬 Conversation: {summary.title or f'Session {cid[:8]}'}")
+        print("=" * 75)
+        print(f"  ID:          {summary.conversation_id}")
+        print(f"  Source:      {matched_source.upper()}")
+        print(f"  Updated:     {summary.updated_at or '-'}")
+        ws_str = ", ".join(summary.workspace_paths) if summary.workspace_paths else "(none)"
+        print(f"  Workspace:   {ws_str}")
+        print(f"  Model:       {summary.model_name or '(default)'}")
+        compactions = ctx_state.compaction_count or 0
+        print(f"  Context:     Managed automatically by agy (Compactions: {compactions})")
+        print("=" * 75)
+
+        for m in messages:
+            ts = f" [{m.timestamp[:19].replace('T', ' ')}]" if m.timestamp else ""
+            if m.type == "user":
+                print(f"\n👤 User{ts}:")
+                print(f"   {m.visible_text}")
+            elif m.type == "assistant":
+                print(f"\n🤖 Assistant{ts}:")
+                print(f"   {m.visible_text}")
+            elif m.type == "tool":
+                status_str = f" [{m.status}]" if m.status else ""
+                print(f"  ⚡ {m.sanitized_tool_summary}{status_str}{ts}")
+            elif m.type == "compaction":
+                print(f"\n📦 Native Compaction{ts}: {m.visible_text}")
+            elif m.type == "system_event":
+                print(f"  ⚙️ System Event{ts}: {m.visible_text}")
+        print("")
+        return
+
+    if sub == "export":
+        cid = getattr(args, "conversation_id", None)
+        if not cid:
+            print("❌ Conversation ID is required.")
+            sys.exit(1)
+
+        source = getattr(args, "source", None)
+        fmt = getattr(args, "format", "markdown") or "markdown"
+        out_path = getattr(args, "output", None)
+
+        try:
+            lookup = store.get_conversation(cid, source=source)
+        except AmbiguousConversationError as e:
+            print(f"❌ Conversation '{cid}' exists in multiple sources ({', '.join(e.sources)}). Please specify --source <source>.")
+            sys.exit(1)
+
+        if not lookup:
+            print(f"❌ Conversation '{cid}' not found" + (f" in source '{source}'." if source else "."))
+            sys.exit(1)
+
+        matched_source, _ = lookup
+        try:
+            content = store.export_conversation(cid, source=matched_source, format=fmt)
+            if out_path:
+                p = Path(out_path).resolve()
+                p.parent.mkdir(parents=True, exist_ok=True)
+                p.write_text(content, encoding="utf-8")
+                print(f"✅ Conversation exported to {p}")
+            else:
+                print(content)
+        except Exception as e:
+            print(f"❌ Export failed: {e}")
+            sys.exit(1)
+        return
+
+    if sub == "resume":
+        cid = getattr(args, "conversation_id", None)
+        if not cid:
+            print("❌ Conversation ID is required.")
+            sys.exit(1)
+
+        source = getattr(args, "source", None)
+        try:
+            lookup = store.get_conversation(cid, source=source)
+        except AmbiguousConversationError as e:
+            print(f"❌ Conversation '{cid}' exists in multiple sources ({', '.join(e.sources)}). Please specify --source <source>.")
+            sys.exit(1)
+
+        if not lookup:
+            print(f"❌ Conversation '{cid}' not found" + (f" in source '{source}'." if source else "."))
+            sys.exit(1)
+
+        matched_source, _ = lookup
+        res = store.resume_conversation(cid, source=matched_source, launch=True)
+        if not res.get("ok"):
+            print(f"❌ {res.get('error')}")
+            if res.get("instructions"):
+                print(f"💡 {res.get('instructions')}")
+            sys.exit(1)
+        else:
+            print(f"✅ Resuming conversation {cid} via {res.get('command')}...")
+        return
+
+    print("Available conversation subcommands: list, show, export, resume.")
 
 
 def main() -> None:
@@ -1211,9 +1454,52 @@ def main() -> None:
     prot_parser = remote_subparsers.add_parser("protect", help="Enable AntiAgent global protection hook on remote machine")
     prot_parser.add_argument("name", help="Remote machine name")
 
+    # remote conversations
+    rem_conv_parser = remote_subparsers.add_parser("conversations", help="Query conversations on remote machine via SSH")
+    rem_conv_parser.add_argument("machine", help="Remote machine name")
+    rem_conv_sub = rem_conv_parser.add_subparsers(dest="remote_conv_cmd", help="Remote conversation command")
+    rem_conv_list = rem_conv_sub.add_parser("list", help="List conversations on remote machine")
+    rem_conv_list.add_argument("--source", choices=["all", "desktop", "ide", "cli"], default="all")
+    rem_conv_list.add_argument("--limit", type=int, default=20)
+    rem_conv_list.add_argument("--json", action="store_true")
+
+    # conversations
+    conv_parser = subparsers.add_parser("conversations", help="Browse and inspect Antigravity conversations across Desktop, IDE, and CLI")
+    conv_subparsers = conv_parser.add_subparsers(dest="conv_command", help="Conversation subcommands")
+
+    # conversations list
+    conv_list_parser = conv_subparsers.add_parser("list", help="List Antigravity conversations")
+    conv_list_parser.add_argument("--source", choices=["all", "desktop", "ide", "cli"], default="all", help="Filter by conversation source (default: all)")
+    conv_list_parser.add_argument("--workspace", help="Filter by workspace directory or path")
+    conv_list_parser.add_argument("--search", help="Search conversation titles and user prompts")
+    conv_list_parser.add_argument("--limit", type=int, default=20, help="Maximum number of conversations to list (default: 20)")
+    conv_list_parser.add_argument("--json", action="store_true", help="Output results in JSON format")
+
+    # conversations show
+    conv_show_parser = conv_subparsers.add_parser("show", help="Show transcript and messages for a conversation")
+    conv_show_parser.add_argument("conversation_id", help="Conversation ID to inspect")
+    conv_show_parser.add_argument("--source", choices=["desktop", "ide", "cli"], help="Explicit source (required if ID exists in multiple sources)")
+    conv_show_parser.add_argument("--tail", type=int, help="Show only the last N messages")
+    conv_show_parser.add_argument("--tools", action="store_true", help="Include tool call events in output")
+    conv_show_parser.add_argument("--json", action="store_true", help="Output conversation in JSON format")
+
+    # conversations export
+    conv_export_parser = conv_subparsers.add_parser("export", help="Export conversation transcript")
+    conv_export_parser.add_argument("conversation_id", help="Conversation ID to export")
+    conv_export_parser.add_argument("--source", choices=["desktop", "ide", "cli"], help="Conversation source")
+    conv_export_parser.add_argument("--format", choices=["markdown", "json"], default="markdown", help="Export format (default: markdown)")
+    conv_export_parser.add_argument("--output", help="Path to write output file (default: stdout)")
+
+    # conversations resume
+    conv_resume_parser = conv_subparsers.add_parser("resume", help="Resume conversation via supported native agy CLI")
+    conv_resume_parser.add_argument("conversation_id", help="Conversation ID to resume")
+    conv_resume_parser.add_argument("--source", choices=["desktop", "ide", "cli"], help="Conversation source")
+
     args = parser.parse_args()
 
-    if args.command == "install":
+    if args.command == "conversations":
+        handle_conversations_cli(args)
+    elif args.command == "install":
         install_hook(is_global=args.is_global, workspace_path=args.workspace_path)
     elif args.command == "uninstall":
         uninstall_hook(is_global=args.is_global, workspace_path=args.workspace_path)

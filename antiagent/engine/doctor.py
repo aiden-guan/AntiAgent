@@ -46,11 +46,12 @@ def get_doctor_report(workspace_path: str = ".") -> Dict[str, Any]:
         except Exception:
             ws_status = "corrupt"
 
-    # 4. Antigravity Brain Sessions
-    brain_dir = Path(os.path.expanduser("~/.gemini/antigravity/brain"))
-    session_count = 0
-    if brain_dir.is_dir():
-        session_count = len([d for d in brain_dir.iterdir() if d.is_dir()])
+    # 4. Antigravity Sessions across Desktop, IDE, and CLI
+    from antiagent.engine.conversations import get_conversation_store
+    conv_store = get_conversation_store()
+    sources_summary = conv_store.get_sources_summary()
+    total_session_count = sources_summary.get("total", 0)
+    primary_brain_dir = conv_store.get_primary_root("desktop") or Path(os.path.expanduser("~/.gemini/antigravity/brain"))
 
     # 5. Native Desktop App
     desktop_app_installed = False
@@ -126,8 +127,23 @@ def get_doctor_report(workspace_path: str = ".") -> Dict[str, Any]:
             "active": ws_status == "active",
         },
         "antigravity_sessions": {
-            "count": session_count,
-            "path": str(brain_dir),
+            "count": total_session_count,
+            "path": str(primary_brain_dir),
+            "sources": {
+                "desktop": {
+                    "count": sources_summary.get("desktop", {}).get("count", 0) if isinstance(sources_summary.get("desktop"), dict) else (sources_summary.get("desktop") if isinstance(sources_summary.get("desktop"), int) else 0),
+                    "available": sources_summary.get("desktop", {}).get("available", False) if isinstance(sources_summary.get("desktop"), dict) else bool(sources_summary.get("desktop")),
+                },
+                "ide": {
+                    "count": sources_summary.get("ide", {}).get("count", 0) if isinstance(sources_summary.get("ide"), dict) else (sources_summary.get("ide") if isinstance(sources_summary.get("ide"), int) else 0),
+                    "available": sources_summary.get("ide", {}).get("available", False) if isinstance(sources_summary.get("ide"), dict) else bool(sources_summary.get("ide")),
+                },
+                "cli": {
+                    "count": sources_summary.get("cli", {}).get("count", 0) if isinstance(sources_summary.get("cli"), dict) else (sources_summary.get("cli") if isinstance(sources_summary.get("cli"), int) else 0),
+                    "available": sources_summary.get("cli", {}).get("available", False) if isinstance(sources_summary.get("cli"), dict) else bool(sources_summary.get("cli")),
+                },
+            },
+            "sources_detail": sources_summary,
         },
         "desktop_app": {
             "installed": desktop_app_installed,
@@ -140,3 +156,7 @@ def get_doctor_report(workspace_path: str = ".") -> Dict[str, Any]:
         "modes": mode_recommendations,
         "github_cli": gh_info,
     }
+
+
+run_doctor_check = get_doctor_report
+

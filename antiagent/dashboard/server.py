@@ -1,4 +1,4 @@
-"""Lightweight local web server for the AntiAgent dashboard."""
+from __future__ import annotations
 
 import json
 import os
@@ -9,7 +9,7 @@ import time
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import parse_qs, urlparse
 
 from antiagent import __version__
@@ -24,6 +24,14 @@ from antiagent.constants import (
     PROFILE_AUTONOMOUS,
     PROFILE_BALANCED,
     PROFILE_PARANOID,
+)
+from antiagent.engine.conversations import (
+    AmbiguousConversationError,
+    ConversationStore,
+    VALID_SOURCES,
+    detect_agy_capabilities,
+    get_conversation_store,
+    validate_conversation_id,
 )
 from antiagent.engine.evaluator import AntiAgentEvaluator
 from antiagent.engine.pr_monitor import (
@@ -268,6 +276,15 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
             query = parse_qs(parsed_url.query)
             name = query.get("name", [None])[0]
             self._handle_api_remotes_doctor(name)
+        elif path == "/api/conversations":
+            query = parse_qs(parsed_url.query)
+            self._handle_api_conversations_list(query)
+        elif path == "/api/conversations/detail":
+            query = parse_qs(parsed_url.query)
+            self._handle_api_conversations_detail(query)
+        elif path == "/api/conversations/context":
+            query = parse_qs(parsed_url.query)
+            self._handle_api_conversations_context(query)
         else:
             self.send_response(404)
             self.end_headers()
@@ -476,6 +493,12 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
             self._handle_api_remotes_stop(body)
         elif path == "/api/remotes/protect":
             self._handle_api_remotes_protect(body)
+        elif path == "/api/conversations/resume":
+            self._handle_api_conversations_resume(body)
+        elif path == "/api/conversations/open":
+            self._handle_api_conversations_open(body)
+        elif path == "/api/conversations/export":
+            self._handle_api_conversations_export(body)
         else:
             self.send_response(404)
             self.end_headers()
@@ -872,6 +895,259 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
         res = global_remote_manager.protect_remote(name)
         status = 200 if res.get("ok") else 400
         self._send_json(res, status=status)
+
+    def _handle_api_conversations_list(self, query: Dict[str, List[str]]) -> None:
+        source = query.get("source", ["all"])[0]
+        if source not in ("all", "desktop", "ide", "cli"):
+            self._send_json({"ok": False, "error": f"Invalid source '{source}'. Must be all, desktop, ide, or cli."}, status=400)
+            return
+
+        search = query.get("q", query.get("search", [None]))[0]
+        workspace = query.get("workspace", [None])[0]
+        try:
+            limit = max(1, min(100, int(query.get("limit", ["25"])[0])))
+            offset = max(0, int(query.get("offset", ["0"])[0]))
+        except (ValueError, TypeError):
+            self._send_json({"ok": False, "error": "Invalid limit or offset parameter."}, status=400)
+            return
+
+        refresh = query.get("refresh", ["false"])[0].lower() in ("true", "1", "yes")
+
+        store = get_conversation_store()
+        try:
+            convs, total = store.list_conversations(
+                source=source,
+                workspace=workspace,
+                search=search,
+                limit=limit,
+                offset=offset,
+                bypass_cache=refresh,
+            )
+            sources_summary = store.get_sources_summary()
+            caps = detect_agy_capabilities()
+
+            self._send_json({
+                "ok": True,
+                "conversations": [c.to_dict() for c in convs],
+                "total": total,
+                "limit": limit,
+                "offset": offset,
+                "sources": sources_summary,
+                "agy_capabilities": caps.to_dict(),
+            })
+        except Exception as e:
+            self._send_json({"ok": False, "error": str(e)}, status=500)
+
+    def _handle_api_conversations_detail(self, query: Dict[str, List[str]]) -> None:
+        cid = query.get("id", [None])[0]
+        if not cid:
+            self._send_json({"ok": False, "error": "Conversation ID is required ('id')."}, status=400)
+            return
+
+        try:
+            validate_conversation_id(cid)
+        except ValueError as e:
+            self._send_json({"ok": False, "error": str(e)}, status=400)
+            return
+
+        source = query.get("source", [None])[0]
+        if source and source not in VALID_SOURCES:
+            self._send_json({"ok": False, "error": f"Invalid source '{source}'."}, status=400)
+            return
+
+        try:
+            limit = max(1, min(1000, int(query.get("limit", ["100"])[0])))
+            offset_val = query.get("offset", query.get("before", ["0"]))[0]
+            offset = max(0, int(offset_val))
+        except (ValueError, TypeError):
+            self._send_json({"ok": False, "error": "Invalid limit or offset parameter."}, status=400)
+            return
+
+        store = get_conversation_store()
+        try:
+            lookup = store.get_conversation(cid, source=source)
+        except AmbiguousConversationError as e:
+            self._send_json({"ok": False, "error": str(e), "sources": e.sources, "ambiguous": True}, status=409)
+            return
+
+        if not lookup:
+            self._send_json({"ok": False, "error": f"Conversation '{cid}' not found."}, status=404)
+            return
+
+        matched_source, summary = lookup
+        try:
+            messages, total, ctx_state = store.get_conversation_messages(
+                cid, source=matched_source, limit=limit, offset=offset
+            )
+            self._send_json({
+                "ok": True,
+                "conversation": summary.to_dict(),
+                "messages": [m.to_dict() for m in messages],
+                "total_messages": total,
+                "context_state": ctx_state.to_dict(),
+            })
+        except Exception as e:
+            self._send_json({"ok": False, "error": str(e)}, status=500)
+
+    def _handle_api_conversations_context(self, query: Dict[str, List[str]]) -> None:
+        cid = query.get("id", [None])[0]
+        if not cid:
+            self._send_json({"ok": False, "error": "Conversation ID is required ('id')."}, status=400)
+            return
+
+        try:
+            validate_conversation_id(cid)
+        except ValueError as e:
+            self._send_json({"ok": False, "error": str(e)}, status=400)
+            return
+
+        source = query.get("source", [None])[0]
+        if source and source not in VALID_SOURCES:
+            self._send_json({"ok": False, "error": f"Invalid source '{source}'."}, status=400)
+            return
+
+        store = get_conversation_store()
+        try:
+            lookup = store.get_conversation(cid, source=source)
+        except AmbiguousConversationError as e:
+            self._send_json({"ok": False, "error": str(e), "sources": e.sources, "ambiguous": True}, status=409)
+            return
+
+        if not lookup:
+            self._send_json({"ok": False, "error": f"Conversation '{cid}' not found."}, status=404)
+            return
+
+        matched_source, _ = lookup
+        try:
+            ctx_state = store.get_context_state(cid, source=matched_source)
+            self._send_json({"ok": True, "context_state": ctx_state.to_dict()})
+        except Exception as e:
+            self._send_json({"ok": False, "error": str(e)}, status=500)
+
+    def _handle_api_conversations_resume(self, body: Dict[str, Any]) -> None:
+        cid = (body.get("conversation_id") or "").strip()
+        source = (body.get("source") or "").strip() or None
+        launch = bool(body.get("launch", True))
+
+        if not cid:
+            self._send_json({"ok": False, "error": "'conversation_id' is required."}, status=400)
+            return
+
+        try:
+            validate_conversation_id(cid)
+        except ValueError as e:
+            self._send_json({"ok": False, "error": str(e)}, status=400)
+            return
+
+        if source and source not in VALID_SOURCES:
+            self._send_json({"ok": False, "error": f"Invalid source '{source}'. Must be desktop, ide, or cli."}, status=400)
+            return
+
+        store = get_conversation_store()
+        try:
+            lookup = store.get_conversation(cid, source=source)
+        except AmbiguousConversationError as e:
+            self._send_json({"ok": False, "error": str(e), "sources": e.sources, "ambiguous": True}, status=409)
+            return
+
+        if not lookup:
+            msg = f"Conversation '{cid}' not found in source '{source}'." if source else f"Conversation '{cid}' not found."
+            self._send_json({"ok": False, "error": msg}, status=404)
+            return
+
+        matched_source, _ = lookup
+        res = store.resume_conversation(cid, source=matched_source, launch=launch)
+        if not res.get("ok"):
+            status = 409 if not res.get("supported") else 400
+            self._send_json(res, status=status)
+            return
+
+        self._send_json(res, status=200)
+
+    def _handle_api_conversations_open(self, body: Dict[str, Any]) -> None:
+        cid = (body.get("conversation_id") or "").strip()
+        source = (body.get("source") or "desktop").strip()
+
+        if not cid:
+            self._send_json({"ok": False, "error": "Conversation ID is required."}, status=400)
+            return
+
+        try:
+            validate_conversation_id(cid)
+        except ValueError as e:
+            self._send_json({"ok": False, "error": str(e)}, status=400)
+            return
+
+        if source not in VALID_SOURCES:
+            self._send_json({"ok": False, "error": f"Invalid source '{source}'."}, status=400)
+            return
+
+        store = get_conversation_store()
+        try:
+            lookup = store.get_conversation(cid, source=source)
+        except AmbiguousConversationError as e:
+            self._send_json({"ok": False, "error": str(e), "sources": e.sources, "ambiguous": True}, status=409)
+            return
+
+        if not lookup:
+            self._send_json({"ok": False, "error": f"Conversation '{cid}' not found in source '{source}'."}, status=404)
+            return
+
+        if source == SOURCE_DESKTOP and sys.platform == "darwin":
+            app_p = Path("/Applications/Antigravity.app")
+            if app_p.exists():
+                try:
+                    subprocess.run(["open", "-a", "Antigravity"], check=False)
+                    self._send_json({"ok": True, "message": "Opened Google Antigravity Desktop app."})
+                    return
+                except Exception as e:
+                    self._send_json({"ok": False, "error": str(e)}, status=500)
+                    return
+
+        instructions = (
+            f"To open this {source.capitalize()} session, switch to Antigravity {source.upper()} "
+            "and locate the chat in your conversation history."
+        )
+        self._send_json({
+            "ok": False,
+            "supported": False,
+            "source": source,
+            "conversation_id": cid,
+            "instructions": instructions,
+        }, status=409)
+
+    def _handle_api_conversations_export(self, body: Dict[str, Any]) -> None:
+        cid = (body.get("conversation_id") or "").strip()
+        source = (body.get("source") or "desktop").strip()
+        fmt = (body.get("format") or "markdown").strip()
+
+        if not cid:
+            self._send_json({"ok": False, "error": "Conversation ID is required."}, status=400)
+            return
+
+        try:
+            validate_conversation_id(cid)
+        except ValueError as e:
+            self._send_json({"ok": False, "error": str(e)}, status=400)
+            return
+
+        store = get_conversation_store()
+        try:
+            lookup = store.get_conversation(cid, source=source)
+        except AmbiguousConversationError as e:
+            self._send_json({"ok": False, "error": str(e), "sources": e.sources, "ambiguous": True}, status=409)
+            return
+
+        if not lookup:
+            self._send_json({"ok": False, "error": f"Conversation '{cid}' not found in source '{source}'."}, status=404)
+            return
+
+        matched_source, _ = lookup
+        try:
+            content = store.export_conversation(cid, source=matched_source, format=fmt)
+            self._send_json({"ok": True, "format": fmt, "content": content})
+        except Exception as e:
+            self._send_json({"ok": False, "error": str(e)}, status=500)
 
     def _read_json_body(self) -> Dict[str, Any]:
         content_length = int(self.headers.get("Content-Length", 0))

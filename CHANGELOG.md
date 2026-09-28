@@ -3,6 +3,33 @@
 All notable changes to the **AntiAgent** project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.3.0] — 2026-09-28
+
+### Summary
+Introduced the **Unified Antigravity Conversation Browser + Native `agy` Context Management Integration**. AntiAgent now discovers, indexes, inspects, and manages conversations across all Antigravity runtimes—Desktop, IDE, and CLI/`agy`. Rather than duplicating LLM context compression, AntiAgent deeply integrates with Antigravity's native compaction engine: detecting checkpoints, compactions, and resets while exposing rich context telemetry. Includes robust security isolation (blocking path traversal, symlink escapes, and credential leakage), strict chain-of-thought protection (never exposing internal thinking), high-performance bounded indexing with SQLite summary caching, full CLI commands, and a sleek dashboard interface.
+
+### Architectural & Functional Highlights
+
+| Area / Component | Improvement |
+| :--- | :--- |
+| **Unified Multi-Source Discovery (`engine/conversations.py`)** | Centralized session discovery across Desktop (`~/.gemini/antigravity`), IDE (`~/.gemini/antigravity-ide`), and CLI (`~/.gemini/antigravity-cli`, `~/.gemini/agy`) using canonical `(source, conversation_id)` identity with environment variable isolation (`ANTIAGENT_DESKTOP_DIR`, `ANTIAGENT_IDE_DIR`, `ANTIAGENT_CLI_DIR`). |
+| **Native Context & Compaction State Inspector** | Exposes native Antigravity auto-compaction and transcript lifecycle events (`CHECKPOINT`, `COMPACTION`, `CONTEXT_RESET`, `SESSION_RESET`). Computes turn counts, tool executions, transcript byte size, and extracts the latest compaction checkpoint summary directly from transcripts. |
+| **Strict Security & Privacy Enforcement** | Rejects directory traversal (`../`, absolute paths) and verifies path containment preventing symlink escapes. Automatically redacts sensitive credentials in tool arguments (`password`, `token`, `secret`, `api_key`, `authorization`, Bearer tokens, GitHub PATs, OpenAI keys, PEM private keys). |
+| **Chain-of-Thought (CoT) Protection** | Strips internal agent reasoning (`thinking`) across normalized message streams, dashboard UI, and Markdown/JSON transcript exports. Only user requests, assistant responses, and sanitized tool calls are rendered. |
+| **High-Performance Bounded Indexing** | Optimized for massive histories using bounded head/tail byte inspections (<8KB head for first prompt and model, <16KB tail for latest prompt and compactions) combined with read-only SQLite `conversation_summaries.db` caching and in-memory mtime/size checks. |
+| **Transcript Path Forwarding (`hook.py` & `context_extractor.py`)** | Hook payloads now capture and forward `transcriptPath`, enabling instant context resolution without redundant filesystem scans. |
+| **CLI Conversation Management (`antiagent/cli.py`)** | Added full CLI suite: `antiagent conversations list` (with `--source`, `--search`, `--limit`, `--json`), `antiagent conversations show <id>`, `antiagent conversations export <id> [--format markdown|json]`, `antiagent conversations resume <id>`, and `antiagent remote conversations <machine> list`. |
+| **REST API Suite (`antiagent/dashboard/server.py`)** | Added 6 secure endpoints: `GET /api/conversations`, `GET /api/conversations/detail`, `GET /api/conversations/context`, `POST /api/conversations/resume`, `POST /api/conversations/open`, and `POST /api/conversations/export`. |
+| **Unified Dashboard UI (`index.html`)** | Added glassmorphic Conversations card with real-time source tabs (`All`, `Desktop`, `IDE`, `CLI`), 300ms debounced search, native context telemetry banner, conversation detail & context modal, transcript viewer, and resume/export actions. |
+| **Doctor Diagnostics (`engine/doctor.py`)** | Enhanced `run_doctor_check` to report structured session breakdowns across Desktop, IDE, and CLI sources with direct jump actions in the dashboard. |
+
+### Verification Proof
+- All 215 unit tests passed (`python3 -m unittest discover tests`) with 0 failures and 0 errors.
+- Added comprehensive test suite in `tests/test_conversations.py` (39 tests) covering multi-source discovery, SQLite summaries, path traversal/symlinks, redaction, CoT protection, API endpoints, and full CLI subcommands (`list`, `show`, `export`, `resume`, `remote conversations`).
+- Verified live REST API endpoints and real Antigravity session discovery (156 sessions across Desktop & IDE).
+
+---
+
 ## [v0.2.1] — 2026-09-28
 
 ### Summary

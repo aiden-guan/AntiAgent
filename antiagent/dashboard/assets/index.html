@@ -1316,6 +1316,201 @@
       vertical-align: middle;
       display: inline-block;
     }
+
+    /* Unified Antigravity Conversations Styles */
+    .modal-card-xl {
+      max-width: 980px;
+      width: 95vw;
+      height: 88vh;
+      display: flex;
+      flex-direction: column;
+      padding: 24px;
+      overflow: hidden;
+    }
+    .context-panel {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      padding: 14px 18px;
+      margin-bottom: 16px;
+      flex-shrink: 0;
+    }
+    .context-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .context-metric {
+      background: rgba(8, 9, 12, 0.65);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 10px;
+      padding: 10px 12px;
+    }
+    .context-metric-label {
+      font-size: 10.5px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 4px;
+    }
+    .context-metric-val {
+      font-size: 13.5px;
+      font-weight: 600;
+      color: #ffffff;
+      font-family: var(--font-mono);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .messages-stream {
+      flex: 1;
+      overflow-y: auto;
+      padding: 4px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .msg-card {
+      border-radius: 14px;
+      padding: 14px 16px;
+      border: 1px solid var(--card-border);
+      position: relative;
+    }
+    .msg-user {
+      background: rgba(255, 255, 255, 0.035);
+      border-color: rgba(255, 255, 255, 0.12);
+    }
+    .msg-assistant {
+      background: rgba(13, 15, 20, 0.85);
+      border-color: rgba(255, 255, 255, 0.08);
+    }
+    .msg-compaction {
+      background: linear-gradient(135deg, rgba(74, 222, 128, 0.08), rgba(34, 197, 94, 0.03));
+      border-color: rgba(74, 222, 128, 0.35);
+      padding: 12px 16px;
+    }
+    .msg-tool {
+      background: rgba(59, 130, 246, 0.04);
+      border-color: rgba(59, 130, 246, 0.2);
+    }
+    .msg-system {
+      background: rgba(148, 163, 184, 0.04);
+      border-color: rgba(148, 163, 184, 0.15);
+    }
+    .msg-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      font-size: 11.5px;
+    }
+    .msg-author {
+      font-weight: 600;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .msg-content {
+      font-size: 13px;
+      line-height: 1.6;
+      color: #e4e4e7;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: var(--font);
+    }
+    .msg-tools {
+      margin-top: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .tool-chip-block {
+      background: rgba(0, 0, 0, 0.45);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-family: var(--font-mono);
+      font-size: 11.5px;
+    }
+    .tool-chip-summary {
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: #a1a1aa;
+    }
+    .tool-chip-summary:hover {
+      color: #ffffff;
+    }
+    .conv-item {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 14px 18px;
+      background: rgba(8, 9, 12, 0.75);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      margin-bottom: 10px;
+      transition: all 0.2s var(--ease-spring);
+      cursor: pointer;
+    }
+    .conv-item:hover {
+      border-color: rgba(255, 255, 255, 0.24);
+      background: rgba(18, 20, 26, 0.85);
+      transform: translateY(-1px);
+    }
+    .conv-item-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+    }
+    .conv-title {
+      font-weight: 600;
+      font-size: 14px;
+      color: #ffffff;
+      line-height: 1.4;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .conv-meta-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      font-size: 11.5px;
+      color: var(--text-muted);
+    }
+    .source-badge-desktop {
+      background: rgba(59, 130, 246, 0.12);
+      color: #93c5fd;
+      border: 1px solid rgba(59, 130, 246, 0.3);
+    }
+    .source-badge-ide {
+      background: rgba(168, 85, 247, 0.12);
+      color: #d8b4fe;
+      border: 1px solid rgba(168, 85, 247, 0.3);
+    }
+    .source-badge-cli {
+      background: rgba(34, 197, 94, 0.12);
+      color: #86efac;
+      border: 1px solid rgba(34, 197, 94, 0.3);
+    }
+    .compaction-pill {
+      background: rgba(34, 197, 94, 0.1);
+      color: #86efac;
+      border: 1px solid rgba(34, 197, 94, 0.25);
+      border-radius: 9999px;
+      padding: 1px 7px;
+      font-size: 10.5px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
   </style>
 </head>
 <body>
@@ -1335,10 +1530,15 @@
         </div>
         <div class="logo-title-group">
           <span class="logo-title">AntiAgent</span>
-          <span id="appVersionTag" class="version-tag" onclick="openUpdateModal()" style="cursor: pointer;" title="Click to check for updates">v0.2.1</span>
+          <span id="appVersionTag" class="version-tag" onclick="openUpdateModal()" style="cursor: pointer;" title="Click to check for updates">v0.3.0</span>
         </div>
       </div>
       <div class="header-badges">
+        <button id="conversationsHeaderBtn" class="btn btn-outline btn-sm" onclick="scrollToConversations()" title="View and inspect Antigravity Conversations">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          <span>Conversations</span>
+          <span id="conversationsHeaderBadge" class="status-badge badge-inactive" style="font-size: 10px; padding: 1px 7px; margin-left: 2px;">0</span>
+        </button>
         <button id="remotesHeaderBtn" class="btn btn-outline btn-sm" onclick="scrollToRemoteSessions()" title="View and manage Remote Sessions over SSH">
           <svg class="icon" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
           <span>Remote Sessions</span>
@@ -1632,6 +1832,66 @@
       </div>
       <div id="prInfoContainer" style="margin-top: 8px;">
         <div style="font-size: 13px; color: var(--text-muted); padding: 8px 0;">Loading pull request data...</div>
+      </div>
+    </div>
+
+    <!-- Unified Antigravity Conversations Card -->
+    <div class="card" style="margin-top: 20px;" id="conversationsCard">
+      <div class="card-title">
+        <div class="card-title-left">
+          <svg class="card-title-icon" viewBox="0 0 24 24">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+          </svg>
+          <span>Antigravity Conversations &amp; Native Context</span>
+          <span id="conversationsCardBadge" class="status-badge badge-active" style="font-size: 11px; padding: 2px 8px;">0 Sessions</span>
+        </div>
+        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+          <button class="btn btn-outline btn-sm" onclick="fetchConversations(true)" title="Rescan session directories and refresh cache">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+            <span>Refresh</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Controls & Filter Toolbar -->
+      <div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; margin: 12px 0 16px;">
+        <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+          <span style="font-size: 11px; color: var(--text-muted); margin-right: 4px; text-transform: uppercase; letter-spacing: 0.08em;">Source:</span>
+          <button id="filterSourceAll" class="filter-chip active" onclick="setConversationSourceFilter('all')">All (<span id="countSourceAll">0</span>)</button>
+          <button id="filterSourceDesktop" class="filter-chip" onclick="setConversationSourceFilter('desktop')">Desktop (<span id="countSourceDesktop">0</span>)</button>
+          <button id="filterSourceIde" class="filter-chip" onclick="setConversationSourceFilter('ide')">IDE (<span id="countSourceIde">0</span>)</button>
+          <button id="filterSourceCli" class="filter-chip" onclick="setConversationSourceFilter('cli')">CLI (<span id="countSourceCli">0</span>)</button>
+        </div>
+
+        <div style="display: flex; gap: 10px; align-items: center; flex: 1; max-width: 440px; min-width: 240px;">
+          <div class="sidebar-search-box" style="width: 100%;">
+            <svg class="icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="conversationSearchInput" class="sidebar-search-input" placeholder="Search prompt, title, ID, workspace..." oninput="handleConversationSearch(this.value)">
+          </div>
+        </div>
+      </div>
+
+      <!-- Native Context Auto-Compaction Banner -->
+      <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--card-border); border-radius: 10px; padding: 10px 14px; margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
+        <div style="display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--text-muted);">
+          <span class="pip pip-emerald"></span>
+          <span><strong>Native Context Management:</strong> Context compaction is managed automatically by Google Antigravity &amp; <code>agy</code>. AntiAgent inspects compaction events and transcript state without creating redundant LLM summarization.</span>
+        </div>
+        <div id="agyStatusBadge" class="status-badge badge-inactive" style="font-size: 11px;">Checking agy...</div>
+      </div>
+
+      <!-- Conversations List Container -->
+      <div id="conversationsListContainer">
+        <div style="font-size: 13px; color: var(--text-muted); padding: 16px 0; text-align: center;">Loading conversations...</div>
+      </div>
+
+      <!-- Pagination / Footer -->
+      <div id="conversationsPagination" style="display: none; justify-content: space-between; align-items: center; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--card-border-subtle); font-size: 12px; color: var(--text-muted);">
+        <span id="conversationsPageInfo">Showing 1-25</span>
+        <div style="display: flex; gap: 8px;">
+          <button id="conversationsPrevBtn" class="btn btn-outline btn-sm" onclick="changeConversationsPage(-1)" disabled>Previous</button>
+          <button id="conversationsNextBtn" class="btn btn-outline btn-sm" onclick="changeConversationsPage(1)">Next</button>
+        </div>
       </div>
     </div>
 
@@ -2062,7 +2322,7 @@
               <span>Checking for updates...</span>
             </div>
             <div id="updateStatusSub" style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">
-              Current installed version: <strong id="updateCurrentVer" style="color: #ffffff;">v0.2.1</strong>
+              Current installed version: <strong id="updateCurrentVer" style="color: #ffffff;">v0.3.0</strong>
             </div>
           </div>
           <button id="updateRefreshBtn" class="btn btn-outline btn-sm" onclick="checkForUpdates(false)">
@@ -2169,7 +2429,7 @@
           <div style="font-size: 11px; font-weight: 600; display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
             <svg class="icon" viewBox="0 0 24 24" style="width: 13px; height: 13px; stroke: var(--text-muted); min-width: 13px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
             <span id="releaseNotesSectionLabel" style="color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em;">Recent Release Notes:</span>
-            <span id="releaseNotesTag" style="color: #ffffff; font-weight: 600;">v0.2.1</span>
+            <span id="releaseNotesTag" style="color: #ffffff; font-weight: 600;">v0.3.0</span>
             <span id="releaseNotesName" style="color: #a1a1aa; font-weight: 400;"></span>
           </div>
           <div style="display: flex; align-items: center; gap: 10px;">
@@ -2438,6 +2698,129 @@
 
       <div style="display: flex; justify-content: flex-end; margin-top: 16px;">
         <button class="btn btn-outline btn-sm" onclick="closeModal('remoteDoctorModal')">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 10. Conversation Detail & Native Context Modal -->
+  <div id="conversationDetailModal" class="modal-overlay" style="display: none;">
+    <div class="modal-card modal-card-xl">
+      <!-- Modal Header -->
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; border-bottom: 1px solid var(--card-border); padding-bottom: 14px; margin-bottom: 16px; flex-shrink: 0;">
+        <div style="flex: 1; min-width: 0;">
+          <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <h3 id="modalConvTitle" style="font-size: 16px; font-weight: 700; color: #ffffff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 580px;">Conversation Details</h3>
+            <span id="modalConvSourceBadge" class="status-badge badge-active" style="font-size: 10px; padding: 2px 8px;">Desktop</span>
+            <span id="modalConvModelBadge" class="status-badge badge-inactive" style="font-size: 10px; padding: 2px 8px; display: none;">Model</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 12px; margin-top: 4px; font-size: 11.5px; color: var(--text-muted); font-family: var(--font-mono);">
+            <span>ID: <span id="modalConvId" style="color: #e4e4e7;">-</span></span>
+            <span id="modalConvWorkspace" style="color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 400px;">-</span>
+          </div>
+        </div>
+        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+          <button id="modalConvResumeBtn" class="btn btn-primary btn-sm" onclick="resumeActiveConversation()" title="Resume or open session in Antigravity">
+            <svg class="icon" viewBox="0 0 24 24" style="stroke: #050507;"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            <span>Resume / Open</span>
+          </button>
+          <button class="btn btn-outline btn-sm" onclick="exportActiveConversation('markdown')" title="Export session transcript to Markdown">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            <span>Export MD</span>
+          </button>
+          <button class="btn btn-outline btn-sm" onclick="exportActiveConversation('json')" title="Export session transcript to JSON">JSON</button>
+          <button class="btn btn-outline btn-sm" onclick="closeModal('conversationDetailModal')" style="font-size: 14px; padding: 4px 10px;">✕</button>
+        </div>
+      </div>
+
+      <!-- Native Context State Panel -->
+      <div class="context-panel" id="modalContextPanel">
+        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px;">
+          <span style="font-weight: 600; color: #ffffff; display: flex; align-items: center; gap: 6px;">
+            <svg class="icon" viewBox="0 0 24 24" style="stroke: #22c55e;"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            Native Context &amp; Compaction State
+          </span>
+          <span id="modalCompactionStatusText" style="font-size: 11px; color: #86efac; font-family: var(--font-mono);">
+            Managed natively by agy
+          </span>
+        </div>
+        <div class="context-grid">
+          <div class="context-metric">
+            <div class="context-metric-label">Auto-Compaction</div>
+            <div class="context-metric-val" id="metricAutoCompaction">
+              <span class="pip pip-emerald"></span> Enabled
+            </div>
+          </div>
+          <div class="context-metric">
+            <div class="context-metric-label">Compactions</div>
+            <div class="context-metric-val" id="metricCompactionsCount">0</div>
+          </div>
+          <div class="context-metric">
+            <div class="context-metric-label">Active Context</div>
+            <div class="context-metric-val" id="metricContextUsage">Managed by agy</div>
+          </div>
+          <div class="context-metric">
+            <div class="context-metric-label">Total Turns</div>
+            <div class="context-metric-val" id="metricTurnCount">0</div>
+          </div>
+          <div class="context-metric">
+            <div class="context-metric-label">Tool Executions</div>
+            <div class="context-metric-val" id="metricToolCallsCount">0</div>
+          </div>
+          <div class="context-metric">
+            <div class="context-metric-label">Transcript Size</div>
+            <div class="context-metric-val" id="metricFileSize">0 KB</div>
+          </div>
+        </div>
+        <div id="modalCompactionCheckpointSummary" style="display: none; margin-top: 10px; padding: 10px 12px; background: rgba(34, 197, 94, 0.06); border: 1px solid rgba(74, 222, 128, 0.2); border-radius: 8px; font-size: 12px; color: #d4d4d8;">
+          <div style="font-weight: 600; color: #86efac; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+            <span>Latest Compaction Checkpoint:</span>
+          </div>
+          <div id="modalCompactionCheckpointText" style="font-family: var(--font-mono); font-size: 11.5px; max-height: 80px; overflow-y: auto; white-space: pre-wrap;"></div>
+        </div>
+      </div>
+
+      <!-- Messages Filter & Tools Toggle Bar -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 12px; flex-shrink: 0;">
+        <div class="sidebar-search-box" style="flex: 1; max-width: 360px;">
+          <svg class="icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="modalMessageSearchInput" class="sidebar-search-input" placeholder="Filter transcript messages..." oninput="filterModalMessages(this.value)">
+        </div>
+        <label style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-muted); cursor: pointer; user-select: none;">
+          <input type="checkbox" id="modalToggleTools" onchange="toggleModalToolCalls(this.checked)" checked style="accent-color: #ffffff;">
+          <span>Show Tool Invocations</span>
+        </label>
+      </div>
+
+      <!-- Normalized Transcript Stream -->
+      <div class="messages-stream" id="modalMessagesStream">
+        <div style="text-align: center; color: var(--text-muted); padding: 24px 0;">Loading session messages...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 11. Conversation Resume / Launch Modal -->
+  <div id="conversationLaunchModal" class="modal-overlay" style="display: none;">
+    <div class="modal-card" style="max-width: 580px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid var(--card-border); padding-bottom: 12px;">
+        <div style="font-size: 16px; font-weight: 700; color: #ffffff; display: flex; align-items: center; gap: 8px;">
+          <svg class="icon" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          <span id="launchModalTitle">Resume Conversation</span>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="closeModal('conversationLaunchModal')">✕</button>
+      </div>
+
+      <div id="launchModalBody" style="font-size: 13px; color: var(--text); line-height: 1.5; margin-bottom: 16px;"></div>
+
+      <div id="launchModalCmdBox" style="display: none; background: rgba(0, 0, 0, 0.5); border: 1px solid var(--card-border); border-radius: 8px; padding: 12px 14px; margin-bottom: 16px;">
+        <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 6px;">Terminal Command:</div>
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px;">
+          <code id="launchModalCmdText" style="font-family: var(--font-mono); font-size: 12.5px; color: #34d399; word-break: break-all;">agy --resume</code>
+          <button class="btn btn-outline btn-sm" onclick="copyLaunchModalCmd()">Copy</button>
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end;">
+        <button class="btn btn-primary btn-sm" onclick="closeModal('conversationLaunchModal')">Done</button>
       </div>
     </div>
   </div>
@@ -2729,6 +3112,7 @@
         document.getElementById('customDenyInput').value = (data.custom_deny_patterns || []).join('\n');
         fetchPRStatus();
         fetchRemotes();
+        fetchConversations();
       } catch (err) {
         console.error('Failed to fetch status:', err);
       }
@@ -3063,13 +3447,19 @@
         `;
 
         const sessionCount = data.antigravity_sessions ? Number(data.antigravity_sessions.count) || 0 : 0;
+        const sources = data.antigravity_sessions && data.antigravity_sessions.sources ? data.antigravity_sessions.sources : null;
+        const getSourceCnt = s => (typeof s === 'object' && s !== null ? (s.count || 0) : (Number(s) || 0));
+        let sourcesDetail = `${sessionCount} active or historical agent session(s) detected`;
+        if (sources) {
+          sourcesDetail += ` (Desktop: ${getSourceCnt(sources.desktop)}, IDE: ${getSourceCnt(sources.ide)}, CLI: ${getSourceCnt(sources.cli)})`;
+        }
         html += `
-          <div class="doctor-row">
+          <div class="doctor-row" onclick="scrollToConversations()" style="cursor: pointer;" title="Click to view Unified Conversations">
             <div class="doctor-row-left">
               <span class="pip pip-active"></span>
               <div>
                 <div style="font-weight: 600; color: #ffffff;">Antigravity Brain Sessions</div>
-                <div class="doctor-row-sub">${sessionCount} active or historical agent session(s) detected</div>
+                <div class="doctor-row-sub">${sourcesDetail}</div>
               </div>
             </div>
             <span class="status-badge badge-active">${sessionCount > 0 ? 'Connected' : 'Ready'}</span>
@@ -3089,7 +3479,7 @@
           </div>
         `;
 
-        const currentVer = currentConfig.version || '0.2.1';
+        const currentVer = currentConfig.version || '0.3.0';
         const hasUpdate = latestUpdateData && latestUpdateData.update_available;
         const updateText = hasUpdate ? `v${latestUpdateData.latest_version} available (Click to download in app)` : `v${currentVer} installed`;
         html += `
@@ -3719,7 +4109,7 @@
       const title = document.getElementById('updateStatusTitle');
       const sub = document.getElementById('updateStatusSub');
       const currentVerEl = document.getElementById('updateCurrentVer');
-      const curVer = (currentConfig && currentConfig.version) || '0.2.1';
+      const curVer = (currentConfig && currentConfig.version) || '0.3.0';
       if (currentVerEl) currentVerEl.textContent = 'v' + curVer;
 
       if (!silent && title) {
@@ -4140,7 +4530,7 @@
       const restartNotice = document.getElementById('oneClickRestartNotice');
       const updateTitle = document.getElementById('updateStatusTitle');
       const updateSub = document.getElementById('updateStatusSub');
-      const curVer = (currentConfig && currentConfig.version) || '0.2.1';
+      const curVer = (currentConfig && currentConfig.version) || '0.3.0';
 
       if (st && st.logs) {
         lastSelfUpdateLogs = st.logs;
@@ -4344,7 +4734,7 @@
 
       // Poll until the server is back up and responding
       let attempts = 0;
-      const curVer = (currentConfig && currentConfig.version) || '0.2.1';
+      const curVer = (currentConfig && currentConfig.version) || '0.3.0';
       const pollTimer = setInterval(async () => {
         attempts++;
         try {
@@ -4594,6 +4984,693 @@
         }
       } catch (err) {
         alert('Merge request failed: ' + err.message);
+      }
+    }
+
+    // --- Unified Antigravity Conversations & Native Context Management ---
+    let currentConversations = [];
+    let conversationsTotal = 0;
+    let conversationsPage = 0;
+    const conversationsPageSize = 20;
+    let conversationsFilterSource = 'all';
+    let conversationsSearchQuery = '';
+    let conversationsAgyCaps = { available: false };
+    let conversationsSources = { desktop: 0, ide: 0, cli: 0, total: 0 };
+    let activeConversationDetail = null;
+    let activeConversationMessages = [];
+    let activeConversationContext = null;
+    let activeConversationTotal = 0;
+    let loadingMoreMessages = false;
+    let searchDebounceTimer = null;
+
+    function scrollToConversations() {
+      const card = document.getElementById('conversationsCard');
+      if (card) {
+        card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+
+    async function fetchConversations(forceRefresh = false) {
+      const listContainer = document.getElementById('conversationsListContainer');
+      const cardBadge = document.getElementById('conversationsCardBadge');
+      const headerBadge = document.getElementById('conversationsHeaderBadge');
+
+      if (forceRefresh && listContainer) {
+        listContainer.innerHTML = '<div style="font-size: 13px; color: var(--text-muted); padding: 16px 0; text-align: center;">Scanning session directories and updating cache...</div>';
+      }
+
+      try {
+        const params = new URLSearchParams();
+        params.set('source', conversationsFilterSource);
+        params.set('limit', String(conversationsPageSize));
+        params.set('offset', String(conversationsPage * conversationsPageSize));
+        if (conversationsSearchQuery.trim()) {
+          params.set('q', conversationsSearchQuery.trim());
+        }
+        if (forceRefresh) {
+          params.set('refresh', 'true');
+        }
+
+        const res = await fetch('/api/conversations?' + params.toString());
+        if (!res.ok) {
+          throw new Error('Server returned status ' + res.status);
+        }
+        const data = await res.json();
+        if (!data.ok) {
+          throw new Error(data.error || 'Failed to fetch conversations');
+        }
+
+        currentConversations = data.conversations || [];
+        conversationsTotal = data.total || 0;
+        conversationsSources = data.sources || { desktop: 0, ide: 0, cli: 0, total: 0 };
+        conversationsAgyCaps = data.agy_capabilities || { available: false };
+
+        if (headerBadge) {
+          headerBadge.textContent = conversationsSources.total || 0;
+          headerBadge.className = 'status-badge ' + (conversationsSources.total > 0 ? 'badge-active' : 'badge-inactive');
+        }
+        if (cardBadge) {
+          cardBadge.textContent = (conversationsSources.total || 0) + ' Sessions';
+        }
+
+        const elAll = document.getElementById('countSourceAll');
+        const elDesk = document.getElementById('countSourceDesktop');
+        const elIde = document.getElementById('countSourceIde');
+        const elCli = document.getElementById('countSourceCli');
+        const getSourceCount = s => (typeof s === 'object' && s !== null ? (s.count || 0) : (Number(s) || 0));
+        if (elAll) elAll.textContent = conversationsSources.total || 0;
+        if (elDesk) elDesk.textContent = getSourceCount(conversationsSources.desktop);
+        if (elIde) elIde.textContent = getSourceCount(conversationsSources.ide);
+        if (elCli) elCli.textContent = getSourceCount(conversationsSources.cli);
+
+        const agyBadge = document.getElementById('agyStatusBadge');
+        if (agyBadge) {
+          if (conversationsAgyCaps.available) {
+            agyBadge.className = 'status-badge badge-active';
+            agyBadge.innerHTML = '<span class="pip pip-emerald"></span> agy: ' + escapeHtml(conversationsAgyCaps.version || 'Active');
+          } else {
+            agyBadge.className = 'status-badge badge-inactive';
+            agyBadge.innerHTML = '<span class="pip pip-inactive"></span> agy CLI: Not on PATH (Desktop / IDE Active)';
+          }
+        }
+
+        renderConversationsList();
+        renderConversationsPagination();
+      } catch (err) {
+        console.error('Failed to fetch conversations:', err);
+        if (listContainer) {
+          listContainer.innerHTML = `
+            <div style="background: rgba(248, 113, 113, 0.08); border: 1px solid rgba(248, 113, 113, 0.25); border-radius: 8px; padding: 14px; text-align: center; color: var(--danger); font-size: 13px;">
+              Error loading conversations: ${escapeHtml(err.message)}
+            </div>
+          `;
+        }
+      }
+    }
+
+    function setConversationSourceFilter(source) {
+      conversationsFilterSource = source;
+      conversationsPage = 0;
+
+      ['all', 'desktop', 'ide', 'cli'].forEach(s => {
+        const btn = document.getElementById('filterSource' + s.charAt(0).toUpperCase() + s.slice(1));
+        if (btn) {
+          if (s === source) {
+            btn.classList.add('active');
+          } else {
+            btn.classList.remove('active');
+          }
+        }
+      });
+
+      fetchConversations(false);
+    }
+
+    function handleConversationSearch(query) {
+      conversationsSearchQuery = query || '';
+      conversationsPage = 0;
+      if (searchDebounceTimer) {
+        clearTimeout(searchDebounceTimer);
+      }
+      searchDebounceTimer = setTimeout(() => {
+        fetchConversations(false);
+      }, 300);
+    }
+
+    function changeConversationsPage(delta) {
+      const maxPage = Math.max(0, Math.ceil(conversationsTotal / conversationsPageSize) - 1);
+      conversationsPage = Math.max(0, Math.min(maxPage, conversationsPage + delta));
+      fetchConversations(false);
+    }
+
+    function renderConversationsPagination() {
+      const pag = document.getElementById('conversationsPagination');
+      const pageInfo = document.getElementById('conversationsPageInfo');
+      const prevBtn = document.getElementById('conversationsPrevBtn');
+      const nextBtn = document.getElementById('conversationsNextBtn');
+      if (!pag) return;
+
+      if (conversationsTotal <= conversationsPageSize) {
+        pag.style.display = 'none';
+        return;
+      }
+
+      pag.style.display = 'flex';
+      const startIdx = conversationsPage * conversationsPageSize + 1;
+      const endIdx = Math.min(conversationsTotal, (conversationsPage + 1) * conversationsPageSize);
+      if (pageInfo) {
+        pageInfo.textContent = `Showing ${startIdx}-${endIdx} of ${conversationsTotal}`;
+      }
+      if (prevBtn) prevBtn.disabled = (conversationsPage === 0);
+      if (nextBtn) nextBtn.disabled = ((conversationsPage + 1) * conversationsPageSize >= conversationsTotal);
+    }
+
+    function formatTimeRelative(isoStr) {
+      if (!isoStr) return '-';
+      try {
+        const d = new Date(isoStr);
+        if (isNaN(d.getTime())) return isoStr;
+        const diffMs = Date.now() - d.getTime();
+        const diffSec = Math.floor(diffMs / 1000);
+        if (diffSec < 60) return 'just now';
+        const diffMin = Math.floor(diffSec / 60);
+        if (diffMin < 60) return `${diffMin}m ago`;
+        const diffHrs = Math.floor(diffMin / 60);
+        if (diffHrs < 24) return `${diffHrs}h ago`;
+        const diffDays = Math.floor(diffHrs / 24);
+        if (diffDays < 30) return `${diffDays}d ago`;
+        return d.toLocaleDateString();
+      } catch (e) {
+        return isoStr;
+      }
+    }
+
+    function renderConversationsList() {
+      const container = document.getElementById('conversationsListContainer');
+      if (!container) return;
+
+      if (!currentConversations || currentConversations.length === 0) {
+        container.innerHTML = `
+          <div style="background: rgba(255, 255, 255, 0.02); border: 1px dashed var(--card-border); border-radius: 12px; padding: 28px 20px; text-align: center;">
+            <div style="font-size: 14px; font-weight: 600; color: #ffffff; margin-bottom: 6px;">No Antigravity Conversations Found</div>
+            <p style="font-size: 12px; color: var(--text-muted); max-width: 480px; margin: 0 auto; line-height: 1.5;">
+              ${conversationsSearchQuery ? 'No sessions match your search filter.' : 'Start a chat in Google Antigravity Desktop, IDE extension, or agy CLI to inspect it here.'}
+            </p>
+          </div>
+        `;
+        return;
+      }
+
+      let html = '<div style="display: flex; flex-direction: column; gap: 8px;">';
+      currentConversations.forEach(c => {
+        const title = c.title || c.first_prompt || 'Untitled Conversation';
+        const src = (c.source || 'desktop').toLowerCase();
+        let srcBadgeClass = 'source-badge-desktop';
+        if (src === 'ide') srcBadgeClass = 'source-badge-ide';
+        else if (src === 'cli') srcBadgeClass = 'source-badge-cli';
+
+        const sizeKb = c.file_size_bytes ? (c.file_size_bytes / 1024).toFixed(1) + ' KB' : '0 KB';
+        const relativeTime = formatTimeRelative(c.updated_at || c.created_at);
+        const ws = c.workspace_path || 'No workspace specified';
+        const turns = c.turn_count || 0;
+        const model = c.model_name || '';
+        const compactions = c.compaction_count || 0;
+
+        html += `
+          <div class="conv-item" onclick="openConversationDetail('${escapeHtml(c.conversation_id)}', '${escapeHtml(c.source)}')">
+            <div class="conv-item-top">
+              <div style="flex: 1; min-width: 0;">
+                <div class="conv-title">${escapeHtml(title)}</div>
+                <div class="conv-meta-row" style="margin-top: 6px;">
+                  <span class="status-badge ${srcBadgeClass}" style="font-size: 10px; padding: 1px 7px;">${escapeHtml(c.source.toUpperCase())}</span>
+                  <span style="font-family: var(--font-mono); color: var(--text-muted); font-size: 11px;">${escapeHtml(c.conversation_id.slice(0, 8))}…</span>
+                  <span style="color: var(--text-dim);">•</span>
+                  <span>${turns} turns</span>
+                  <span style="color: var(--text-dim);">•</span>
+                  <span>${sizeKb}</span>
+                  ${model ? `<span style="color: var(--text-dim);">•</span><span style="font-family: var(--font-mono);">${escapeHtml(model)}</span>` : ''}
+                  ${compactions > 0 ? `<span class="compaction-pill"><span class="pip pip-emerald"></span> ${compactions} compaction${compactions > 1 ? 's' : ''}</span>` : ''}
+                </div>
+              </div>
+              <div style="text-align: right; flex-shrink: 0; font-size: 11.5px; color: var(--text-muted);">
+                <div>${escapeHtml(relativeTime)}</div>
+              </div>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px; font-size: 11px; color: var(--text-dim);">
+              <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 70%; font-family: var(--font-mono);" title="${escapeHtml(ws)}">
+                📂 ${escapeHtml(ws)}
+              </span>
+              <div style="display: flex; gap: 6px;" onclick="event.stopPropagation()">
+                <button class="btn btn-outline btn-sm" style="font-size: 10.5px; padding: 2px 8px;" onclick="exportConversationPrompt('${escapeHtml(c.conversation_id)}', '${escapeHtml(c.source)}')">Export</button>
+                <button class="btn btn-outline btn-sm" style="font-size: 10.5px; padding: 2px 8px;" onclick="openConversationDetail('${escapeHtml(c.conversation_id)}', '${escapeHtml(c.source)}')">Inspect</button>
+              </div>
+            </div>
+          </div>
+        `;
+      });
+      html += '</div>';
+      container.innerHTML = html;
+    }
+
+    async function openConversationDetail(conversationId, source) {
+      openModal('conversationDetailModal');
+
+      const titleEl = document.getElementById('modalConvTitle');
+      const idEl = document.getElementById('modalConvId');
+      const wsEl = document.getElementById('modalConvWorkspace');
+      const srcEl = document.getElementById('modalConvSourceBadge');
+      const modelEl = document.getElementById('modalConvModelBadge');
+      const streamEl = document.getElementById('modalMessagesStream');
+      const resumeBtn = document.getElementById('modalConvResumeBtn');
+
+      if (titleEl) titleEl.textContent = 'Loading conversation...';
+      if (idEl) idEl.textContent = conversationId;
+      if (wsEl) wsEl.textContent = '';
+      if (srcEl) {
+        srcEl.textContent = source.toUpperCase();
+        srcEl.className = 'status-badge ' + (source === 'ide' ? 'source-badge-ide' : (source === 'cli' ? 'source-badge-cli' : 'source-badge-desktop'));
+      }
+      if (modelEl) modelEl.style.display = 'none';
+      if (resumeBtn) {
+        if (source === 'cli') {
+          resumeBtn.innerHTML = '<svg class="icon" viewBox="0 0 24 24" style="stroke: #050507;"><polygon points="5 3 19 12 5 21 5 3"/></svg><span>Resume in CLI</span>';
+          resumeBtn.title = 'Resume session in Antigravity CLI';
+        } else if (source === 'desktop') {
+          resumeBtn.innerHTML = '<svg class="icon" viewBox="0 0 24 24" style="stroke: #050507;"><polygon points="5 3 19 12 5 21 5 3"/></svg><span>Open in Desktop</span>';
+          resumeBtn.title = 'Open session in Antigravity Desktop app';
+        } else if (source === 'ide') {
+          resumeBtn.innerHTML = '<svg class="icon" viewBox="0 0 24 24" style="stroke: #050507;"><polygon points="5 3 19 12 5 21 5 3"/></svg><span>Open in IDE</span>';
+          resumeBtn.title = 'Open session in Antigravity IDE';
+        } else {
+          resumeBtn.innerHTML = '<svg class="icon" viewBox="0 0 24 24" style="stroke: #050507;"><polygon points="5 3 19 12 5 21 5 3"/></svg><span>Resume / Open</span>';
+          resumeBtn.title = 'Resume or open session in Antigravity';
+        }
+      }
+      if (streamEl) streamEl.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 32px 0;">Loading transcript and context state...</div>';
+
+      try {
+        const res = await fetch(`/api/conversations/detail?id=${encodeURIComponent(conversationId)}&source=${encodeURIComponent(source)}&limit=300`);
+        if (!res.ok) {
+          throw new Error('Status ' + res.status);
+        }
+        const data = await res.json();
+        if (!data.ok) {
+          throw new Error(data.error || 'Failed to load details');
+        }
+
+        activeConversationDetail = data.conversation || {};
+        activeConversationMessages = data.messages || [];
+        activeConversationTotal = data.total_messages || activeConversationMessages.length;
+        activeConversationContext = data.context_state || {};
+
+        renderConversationDetail(activeConversationDetail, activeConversationMessages, activeConversationContext);
+      } catch (err) {
+        console.error('Failed to load conversation details:', err);
+        if (streamEl) {
+          streamEl.innerHTML = `
+            <div style="background: rgba(248, 113, 113, 0.08); border: 1px solid rgba(248, 113, 113, 0.25); border-radius: 8px; padding: 16px; color: var(--danger); font-size: 13px; text-align: center;">
+              Failed to load conversation transcript: ${escapeHtml(err.message)}
+            </div>
+          `;
+        }
+      }
+    }
+
+    function renderConversationDetail(conv, messages, ctx) {
+      const titleEl = document.getElementById('modalConvTitle');
+      const idEl = document.getElementById('modalConvId');
+      const wsEl = document.getElementById('modalConvWorkspace');
+      const modelEl = document.getElementById('modalConvModelBadge');
+
+      const title = conv.title || conv.first_prompt || 'Antigravity Session';
+      if (titleEl) titleEl.textContent = title;
+      if (idEl) idEl.textContent = conv.conversation_id;
+      if (wsEl) wsEl.textContent = conv.workspace_path || 'No workspace specified';
+
+      if (modelEl) {
+        if (conv.model_name) {
+          modelEl.textContent = conv.model_name;
+          modelEl.style.display = 'inline-flex';
+        } else {
+          modelEl.style.display = 'none';
+        }
+      }
+
+      const metricAuto = document.getElementById('metricAutoCompaction');
+      const metricComp = document.getElementById('metricCompactionsCount');
+      const metricContext = document.getElementById('metricContextUsage');
+      const metricTurns = document.getElementById('metricTurnCount');
+      const metricTools = document.getElementById('metricToolCallsCount');
+      const metricSize = document.getElementById('metricFileSize');
+      const compStatusText = document.getElementById('modalCompactionStatusText');
+
+      const compCount = ctx.compaction_count || 0;
+      if (metricAuto) {
+        metricAuto.innerHTML = '<span class="pip pip-emerald"></span> Enabled (Native)';
+      }
+      if (metricComp) {
+        metricComp.innerHTML = compCount > 0
+          ? `<span style="color: #86efac;">${compCount}</span>`
+          : '0';
+      }
+      if (metricContext) {
+        if (ctx.context_used) {
+          const limitStr = ctx.context_limit ? ` / ${(ctx.context_limit / 1000).toFixed(0)}k` : '';
+          const pctStr = ctx.usage_ratio ? ` (${(ctx.usage_ratio * 100).toFixed(0)}%)` : '';
+          metricContext.innerHTML = `<span style="color: #60a5fa;">${ctx.context_used.toLocaleString()}</span>${limitStr}${pctStr}`;
+        } else {
+          metricContext.innerHTML = '<span style="color: #94a3b8; font-size: 12px;">Managed by agy</span>';
+        }
+      }
+      if (metricTurns) {
+        metricTurns.textContent = ctx.turn_count || conv.turn_count || 0;
+      }
+      if (metricTools) {
+        metricTools.textContent = ctx.tool_calls_count || 0;
+      }
+      if (metricSize) {
+        const bytes = ctx.file_size_bytes || conv.file_size_bytes || 0;
+        metricSize.textContent = (bytes / 1024).toFixed(1) + ' KB';
+      }
+      if (compStatusText) {
+        if (ctx.context_used) {
+          const limitStr = ctx.context_limit ? ` / ${(ctx.context_limit / 1000).toFixed(0)}k` : '';
+          const pctStr = ctx.usage_ratio ? ` (${(ctx.usage_ratio * 100).toFixed(1)}%)` : '';
+          compStatusText.textContent = `Active Context: ${ctx.context_used.toLocaleString()}${limitStr}${pctStr}`;
+        } else if (compCount > 0) {
+          compStatusText.textContent = `${compCount} compaction checkpoint(s) recorded natively`;
+        } else {
+          compStatusText.textContent = 'Managed natively by agy (Exact context usage unavailable)';
+        }
+      }
+
+      const summaryBox = document.getElementById('modalCompactionCheckpointSummary');
+      const summaryText = document.getElementById('modalCompactionCheckpointText');
+      if (summaryBox && summaryText) {
+        if (ctx.latest_compaction_summary) {
+          summaryText.textContent = ctx.latest_compaction_summary;
+          summaryBox.style.display = 'block';
+        } else {
+          summaryBox.style.display = 'none';
+        }
+      }
+
+      renderMessagesStream(messages);
+    }
+
+    function renderMessagesStream(messages) {
+      const streamEl = document.getElementById('modalMessagesStream');
+      const showTools = document.getElementById('modalToggleTools') ? document.getElementById('modalToggleTools').checked : true;
+      const searchInput = document.getElementById('modalMessageSearchInput');
+      const searchFilter = (searchInput ? searchInput.value : '').toLowerCase().trim();
+
+      if (!streamEl) return;
+
+      if (!messages || messages.length === 0) {
+        streamEl.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 32px 0;">No messages found in transcript.</div>';
+        return;
+      }
+
+      let html = '';
+      messages.forEach((msg, idx) => {
+        const type = msg.type || 'message';
+        const role = msg.role || 'user';
+        const content = msg.content || '';
+        const toolCalls = msg.tool_calls || [];
+        const hasTools = toolCalls.length > 0;
+
+        if (searchFilter) {
+          const matchContent = content.toLowerCase().includes(searchFilter);
+          const matchToolName = (msg.tool_name || '').toLowerCase().includes(searchFilter);
+          const matchSummary = (msg.sanitized_tool_summary || '').toLowerCase().includes(searchFilter);
+          const matchTools = toolCalls.some(t => (t.tool_name || '').toLowerCase().includes(searchFilter));
+          if (!matchContent && !matchToolName && !matchSummary && !matchTools) return;
+        }
+
+        if (type === 'compaction') {
+          html += `
+            <div class="msg-card msg-compaction">
+              <div class="msg-header">
+                <span class="msg-author" style="color: #86efac;">
+                  <span class="pip pip-emerald"></span>
+                  <span>Native Context Compaction Checkpoint</span>
+                </span>
+                <span style="font-family: var(--font-mono); font-size: 11px; color: var(--text-muted);">${escapeHtml(msg.timestamp || '')}</span>
+              </div>
+              <div class="msg-content" style="color: #d4d4d8; font-family: var(--font-mono); font-size: 12px;">${escapeHtml(content || 'Context compacted automatically by Antigravity engine.')}</div>
+            </div>
+          `;
+          return;
+        }
+
+        if (type === 'system_event') {
+          html += `
+            <div class="msg-card msg-system">
+              <div class="msg-header">
+                <span class="msg-author" style="color: #94a3b8;">
+                  <svg class="icon" viewBox="0 0 24 24" style="stroke: #94a3b8;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                  <span>System Event</span>
+                </span>
+                <span style="font-family: var(--font-mono); font-size: 11px; color: var(--text-muted);">${escapeHtml(msg.timestamp || '')}</span>
+              </div>
+              <div class="msg-content" style="color: #cbd5e1; font-family: var(--font-mono); font-size: 12px;">${escapeHtml(content)}</div>
+            </div>
+          `;
+          return;
+        }
+
+        if (type === 'tool') {
+          if (!showTools) return;
+          const toolName = msg.tool_name || (toolCalls[0] && toolCalls[0].tool_name) || 'tool';
+          const toolStatus = msg.status || (toolCalls[0] && toolCalls[0].status) || 'DONE';
+          const args = msg.tool_args || (toolCalls[0] && toolCalls[0].args) || {};
+          const summaryStr = msg.sanitized_tool_summary || (toolCalls[0] && toolCalls[0].sanitized_summary) || '';
+          const statusBadge = toolStatus === 'SUCCESS'
+            ? '<span class="status-badge badge-active" style="font-size: 10px; padding: 1px 6px;">SUCCESS</span>'
+            : (toolStatus === 'FAILED'
+              ? '<span class="status-badge badge-danger" style="font-size: 10px; padding: 1px 6px;">FAILED</span>'
+              : `<span class="status-badge badge-inactive" style="font-size: 10px; padding: 1px 6px;">${escapeHtml(toolStatus)}</span>`);
+
+          html += `
+            <div class="msg-card msg-tool">
+              <div class="msg-header">
+                <span class="msg-author" style="color: #93c5fd;">
+                  <svg class="icon" viewBox="0 0 24 24" style="stroke: #60a5fa;"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+                  <span>Tool Invocation: <strong style="color: #ffffff;">${escapeHtml(toolName)}</strong></span>
+                  ${statusBadge}
+                </span>
+                <span style="font-family: var(--font-mono); font-size: 11px; color: var(--text-muted);">${escapeHtml(msg.timestamp || '')}</span>
+              </div>
+              ${summaryStr ? `<div style="font-size: 12px; color: #cbd5e1; margin-bottom: 8px;">${escapeHtml(summaryStr)}</div>` : ''}
+              <div class="tool-chip-block">
+                <div class="tool-chip-summary" onclick="this.nextElementSibling.style.display = (this.nextElementSibling.style.display === 'none' ? 'block' : 'none')">
+                  <span style="font-size: 11px; color: var(--text-muted);">Arguments &amp; Parameters ▾</span>
+                  <span style="font-size: 10px; color: var(--text-dim); font-family: var(--font-mono);">${Object.keys(args).length} key(s)</span>
+                </div>
+                <div style="display: none; margin-top: 8px; border-top: 1px solid rgba(255, 255, 255, 0.06); padding-top: 8px;">
+                  <div style="font-size: 10.5px; color: var(--text-muted); margin-bottom: 2px;">Sanitized Arguments:</div>
+                  <pre style="background: rgba(0,0,0,0.6); padding: 8px; border-radius: 6px; overflow-x: auto; color: #a1a1aa; font-size: 11px;"><code>${escapeHtml(JSON.stringify(args, null, 2))}</code></pre>
+                </div>
+              </div>
+            </div>
+          `;
+          return;
+        }
+
+        const isUser = role === 'user';
+        const cardClass = isUser ? 'msg-user' : 'msg-assistant';
+        const authorIcon = isUser
+          ? '<svg class="icon" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>'
+          : '<svg class="icon" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>';
+        const authorName = isUser ? 'User' : 'Antigravity Agent';
+        const modelName = msg.model || (activeConversationDetail ? activeConversationDetail.model_name : null);
+
+        html += `
+          <div class="msg-card ${cardClass}">
+            <div class="msg-header">
+              <span class="msg-author">
+                ${authorIcon}
+                <span>${authorName}</span>
+                ${(!isUser && modelName) ? `<span class="version-tag" style="font-size: 10px; padding: 1px 6px;">${escapeHtml(modelName)}</span>` : ''}
+              </span>
+              <span style="font-family: var(--font-mono); font-size: 11px; color: var(--text-muted);">${escapeHtml(msg.timestamp || '')}</span>
+            </div>
+            ${content ? `<div class="msg-content">${escapeHtml(content)}</div>` : ''}
+
+            ${hasTools && showTools ? `
+              <div class="msg-tools">
+                <div style="font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 4px;">
+                  Tool Invocations (${toolCalls.length})
+                </div>
+                ${toolCalls.map(t => `
+                  <div class="tool-chip-block">
+                    <div class="tool-chip-summary" onclick="this.nextElementSibling.style.display = (this.nextElementSibling.style.display === 'none' ? 'block' : 'none')">
+                      <div style="display: flex; align-items: center; gap: 6px;">
+                        <svg class="icon" style="width: 13px; height: 13px;" viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+                        <span style="font-weight: 600; color: #ffffff;">${escapeHtml(t.tool_name || 'tool')}</span>
+                        ${t.status ? `<span class="status-badge badge-active" style="font-size: 9px; padding: 0 4px;">${escapeHtml(t.status)}</span>` : ''}
+                      </div>
+                      <span style="font-size: 11px; color: var(--text-muted);">Toggle arguments ▾</span>
+                    </div>
+                    <div style="display: none; margin-top: 8px; border-top: 1px solid rgba(255, 255, 255, 0.06); padding-top: 8px;">
+                      <div style="font-size: 10.5px; color: var(--text-muted); margin-bottom: 2px;">Sanitized Arguments:</div>
+                      <pre style="background: rgba(0,0,0,0.6); padding: 8px; border-radius: 6px; overflow-x: auto; color: #a1a1aa; font-size: 11px;"><code>${escapeHtml(JSON.stringify(t.args || {}, null, 2))}</code></pre>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            ` : ''}
+          </div>
+        `;
+      });
+
+      if (!html) {
+        html = '<div style="text-align: center; color: var(--text-muted); padding: 32px 0;">No messages match your filter query.</div>';
+      }
+
+      if (activeConversationMessages.length < activeConversationTotal) {
+        html += `
+          <div style="text-align: center; margin-top: 16px; margin-bottom: 8px;">
+            <button id="loadMoreMessagesBtn" class="btn btn-outline btn-sm" onclick="loadMoreMessages()" style="font-size: 12px; padding: 6px 16px;">
+              Load More Messages (${activeConversationMessages.length} of ${activeConversationTotal})
+            </button>
+          </div>
+        `;
+      }
+
+      streamEl.innerHTML = html;
+    }
+
+    async function loadMoreMessages() {
+      if (loadingMoreMessages || !activeConversationDetail || !activeConversationDetail.conversation_id) return;
+      if (activeConversationMessages.length >= activeConversationTotal) return;
+
+      loadingMoreMessages = true;
+      const loadBtn = document.getElementById('loadMoreMessagesBtn');
+      if (loadBtn) loadBtn.textContent = 'Loading more messages...';
+
+      try {
+        const cid = activeConversationDetail.conversation_id;
+        const src = activeConversationDetail.source || 'desktop';
+        const offset = activeConversationMessages.length;
+        const res = await fetch(`/api/conversations/detail?id=${encodeURIComponent(cid)}&source=${encodeURIComponent(src)}&limit=300&offset=${offset}`);
+        const data = await res.json();
+        if (data.ok && data.messages && data.messages.length > 0) {
+          activeConversationMessages = activeConversationMessages.concat(data.messages);
+          renderMessagesStream(activeConversationMessages);
+        } else if (loadBtn) {
+          loadBtn.style.display = 'none';
+        }
+      } catch (err) {
+        console.error('Failed to load more messages:', err);
+        if (loadBtn) loadBtn.textContent = 'Failed to load more messages';
+      } finally {
+        loadingMoreMessages = false;
+      }
+    }
+
+    function toggleModalToolCalls(show) {
+      renderMessagesStream(activeConversationMessages);
+    }
+
+    function filterModalMessages(val) {
+      renderMessagesStream(activeConversationMessages);
+    }
+
+    async function resumeActiveConversation() {
+      if (!activeConversationDetail || !activeConversationDetail.conversation_id) return;
+      const cid = activeConversationDetail.conversation_id;
+      const src = activeConversationDetail.source || 'desktop';
+
+      try {
+        const res = await fetch('/api/conversations/resume', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ conversation_id: cid, source: src, launch: true })
+        });
+        const data = await res.json();
+
+        const titleEl = document.getElementById('launchModalTitle');
+        const bodyEl = document.getElementById('launchModalBody');
+        const cmdBox = document.getElementById('launchModalCmdBox');
+        const cmdText = document.getElementById('launchModalCmdText');
+
+        if (titleEl) titleEl.textContent = `Resume Session (${src.toUpperCase()})`;
+
+        if (data.ok) {
+          if (bodyEl) {
+            bodyEl.innerHTML = `
+              <div style="color: #4ade80; margin-bottom: 8px; font-weight: 600;">Session Launched Successfully</div>
+              <p>${escapeHtml(data.message || 'Antigravity session is resuming.')}</p>
+            `;
+          }
+          if (cmdBox) cmdBox.style.display = 'none';
+        } else {
+          if (bodyEl) {
+            bodyEl.innerHTML = `
+              <div style="color: #fbbf24; margin-bottom: 8px; font-weight: 600;">Manual Launch Required</div>
+              <p style="margin-bottom: 10px;">${escapeHtml(data.instructions || data.error || 'Cannot resume directly from dashboard.')}</p>
+            `;
+          }
+          if (data.command && cmdBox && cmdText) {
+            cmdText.textContent = data.command;
+            cmdBox.style.display = 'block';
+          } else if (cmdBox) {
+            cmdBox.style.display = 'none';
+          }
+        }
+        openModal('conversationLaunchModal');
+      } catch (err) {
+        alert('Resume request failed: ' + err.message);
+      }
+    }
+
+    function copyLaunchModalCmd() {
+      const cmdText = document.getElementById('launchModalCmdText');
+      if (!cmdText) return;
+      navigator.clipboard.writeText(cmdText.textContent.trim()).then(() => {
+        alert('Command copied to clipboard!');
+      }).catch(err => {
+        console.error('Failed to copy command:', err);
+      });
+    }
+
+    async function exportActiveConversation(format = 'markdown') {
+      if (!activeConversationDetail || !activeConversationDetail.conversation_id) return;
+      const cid = activeConversationDetail.conversation_id;
+      const src = activeConversationDetail.source || 'desktop';
+      await triggerExportDownload(cid, src, format);
+    }
+
+    async function exportConversationPrompt(cid, src) {
+      await triggerExportDownload(cid, src, 'markdown');
+    }
+
+    async function triggerExportDownload(cid, src, format) {
+      try {
+        const res = await fetch('/api/conversations/export', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ conversation_id: cid, source: src, format: format })
+        });
+        const data = await res.json();
+        if (!data.ok) {
+          throw new Error(data.error || 'Export failed');
+        }
+
+        const ext = format === 'json' ? 'json' : 'md';
+        const filename = `antigravity-${src}-${cid.slice(0, 8)}.${ext}`;
+        const blob = new Blob([data.content], { type: format === 'json' ? 'application/json' : 'text/markdown' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      } catch (err) {
+        alert('Export error: ' + err.message);
       }
     }
 
