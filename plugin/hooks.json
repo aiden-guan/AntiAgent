@@ -13,5 +13,41 @@
         ]
       }
     ]
+  },
+  "antiagent-flow-state": {
+    "enabled": true,
+    "PreInvocation": [
+      {
+        "type": "command",
+        "command": "python3 -m antiagent.flow_hook pre-invocation",
+        "timeout": 10
+      }
+    ],
+    "PostInvocation": [
+      {
+        "type": "command",
+        "command": "python3 -m antiagent.flow_hook post-invocation",
+        "timeout": 10
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -m antiagent.flow_hook post-tool-use",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "type": "command",
+        "command": "python3 -m antiagent.flow_hook stop",
+        "timeout": 10
+      }
+    ]
   }
 }

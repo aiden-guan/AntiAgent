@@ -315,6 +315,51 @@ antiagent remote conversations <machine-name> list
 
 ---
 
+## Codex-Style Prompt Flow
+
+AntiAgent includes a high-productivity PTY bridge and lifecycle supervisor for the Google Antigravity CLI (`agy`), delivering an interactive prompt queue and steering system inspired by OpenAI Codex and OpenCode.
+
+### Launching
+
+Launch Antigravity CLI through AntiAgent:
+
+```bash
+antiagent agy [AGY_ARGS...]
+```
+
+Arbitrary arguments and flags are forwarded transparently to `agy` (e.g., `antiagent agy --model gemini-2.5-pro`, `antiagent agy --continue`, `antiagent agy --mode=plan`, `antiagent agy --resume <id>`).
+
+> [!NOTE]
+> **Bypassing the wrapper**: Running stock `agy` directly continues to launch stock Antigravity CLI directly without enhanced keyboard interception.
+
+### Enhanced Keyboard Semantics
+
+| Key | Context | Behavior |
+| :--- | :--- | :--- |
+| **`Tab`** | Agent actively busy / running | **Queue prompt**: Holds current instruction in FIFO queue and clears the editor so you can immediately type another turn. |
+| **`Tab`** | Agent safely idle | **Native Tab**: Preserves standard autocomplete and focus navigation. |
+| **`Enter`** | Agent safely idle | **Immediate Submit**: Submits user turn directly without latency. |
+| **`Enter`** | Agent actively busy / running | **Smart Enter (Queue)**: Queues prompt without submitting. |
+| **`Enter`** | Interactive Approval / Preview / Question modal with typed prompt | **Smart Enter (Queue & Protect)**: Queues prompt and **prevents Enter from leaking into the modal**. Never accidentally approves previews like `/teamwork-preview` or permission dialogs! |
+| **`Enter`** | Interactive Approval / Preview / Question modal with empty prompt | **Native Enter**: Preserves native approval / choice selection. |
+| **`Ctrl+S`** | Agent running + non-empty prompt | **Steer**: Captures steering instruction, performs a controlled single-shot interruption, waits for safe lifecycle transition, and injects steering prompt into the **same conversation**. |
+| **`Esc`** | Any | **Native hard interrupt / cancel**. |
+
+### Prompt Queue Commands
+
+```bash
+# Inspect queued, dispatching, and held prompts
+antiagent queue status
+
+# Clear prompts from the active queue
+antiagent queue clear
+
+# Resume held prompts after a session recovery
+antiagent queue resume
+```
+
+---
+
 ## ⚙️ Configuration & Safety Profiles
 
 AntiAgent supports three distinct safety profiles:
@@ -385,6 +430,10 @@ Sample output:
 
 | Command | Description |
 | :--- | :--- |
+| `antiagent agy [args...]` | Launch Antigravity CLI with prompt queue, smart Enter, and Ctrl+S steering |
+| `antiagent queue status` | View active prompt queue, interaction state, and held prompts |
+| `antiagent queue clear` | Clear queued prompts for active or specified conversation |
+| `antiagent queue resume` | Resume held prompts back into active queue following session recovery |
 | `antiagent remote list` | List all configured remote machines and probe status |
 | `antiagent remote add <name> <host>` | Register a new remote machine with SSH parameters |
 | `antiagent remote test <name>` | Verify SSH connectivity and report latency |

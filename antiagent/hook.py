@@ -21,7 +21,18 @@ def handle_pre_tool_use(payload: Dict[str, Any]) -> Dict[str, Any]:
     tool_name = tool_call.get("name", "")
     tool_args = tool_call.get("args", {})
     workspace_paths = payload.get("workspacePaths", [])
-    conversation_id = payload.get("conversationId", "")
+    conversation_id = payload.get("conversationId") or payload.get("conversation_id") or ""
+    if not conversation_id and isinstance(payload.get("session"), dict):
+        conversation_id = payload["session"].get("id", "")
+    if not conversation_id:
+        try:
+            from antiagent.engine.interaction_state import InteractionStateStore
+
+            conversation_id = InteractionStateStore.default().get_active_conversation_id() or ""
+        except Exception:
+            pass
+    if not conversation_id:
+        conversation_id = "default"
     step_idx = payload.get("stepIdx", -1)
     transcript_path = payload.get("transcriptPath")
     artifact_directory = payload.get("artifactDirectoryPath")
@@ -46,6 +57,58 @@ def handle_pre_tool_use(payload: Dict[str, Any]) -> Dict[str, Any]:
 
     evaluator = AntiAgentEvaluator(config, workspace_paths=workspace_paths)
     result = evaluator.evaluate(tool_name, tool_args, context=context)
+
+    # Update interaction state for prompt queue safety
+    if conversation_id:
+        try:
+            import time
+            from antiagent.constants import DECISION_FORCE_ASK
+            from antiagent.engine.interaction_state import (
+                ActiveSurface,
+                InteractionState,
+                InteractionStateStore,
+            )
+
+            store = InteractionStateStore.default()
+            store.set_active_conversation_id(conversation_id)
+            if result.decision in (DECISION_ASK, DECISION_FORCE_ASK):
+                store.update_state(
+                    conversation_id,
+                    state=InteractionState.AWAITING_APPROVAL,
+                    active_surface=ActiveSurface.APPROVAL,
+                    pending_approval=True,
+                    active_tool=tool_name,
+                    last_event=f"PreToolUse:{result.decision}",
+                    last_event_time=time.time(),
+                    step_idx=step_idx,
+                    fully_idle=False,
+                )
+            elif tool_name == "ask_question":
+                store.update_state(
+                    conversation_id,
+                    state=InteractionState.AWAITING_QUESTION,
+                    active_surface=ActiveSurface.QUESTION,
+                    pending_question=True,
+                    active_tool=tool_name,
+                    last_event="PreToolUse:ask_question",
+                    last_event_time=time.time(),
+                    step_idx=step_idx,
+                    fully_idle=False,
+                )
+            else:
+                store.update_state(
+                    conversation_id,
+                    state=InteractionState.RUNNING,
+                    active_surface=ActiveSurface.PROMPT,
+                    pending_approval=False,
+                    active_tool=tool_name,
+                    last_event=f"PreToolUse:{result.decision}",
+                    last_event_time=time.time(),
+                    step_idx=step_idx,
+                    fully_idle=False,
+                )
+        except Exception:
+            pass
 
     # Log to audit trail if enabled
     if config.audit_enabled:

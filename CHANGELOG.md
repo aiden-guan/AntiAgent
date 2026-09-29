@@ -3,6 +3,37 @@
 All notable changes to the **AntiAgent** project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.4.0] — 2026-09-28
+
+### Summary
+Introduced **Codex-Style Prompt Queue, State-Aware Smart Enter, and Ctrl+S Steering for Antigravity / AGY CLI**. AntiAgent now acts as an intelligent PTY bridge and lifecycle state supervisor for `agy`, transforming the terminal interaction model into a high-productivity agent workflow similar to Codex and OpenCode. Features include non-destructive FIFO prompt queueing via Tab and Smart Enter, preview/approval boundary protection (preventing accidental confirmation of dialogs like `/teamwork-preview`), single-shot Ctrl+S agent steering with controlled interruption, safe lifecycle-driven dispatch contracts, atomic state persistence, and native fallback preservation.
+
+### Architectural & Functional Highlights
+
+| Area / Component | Improvement |
+| :--- | :--- |
+| **Codex-Style FIFO Prompt Queue (`engine/prompt_queue.py`)** | Atomic, thread-safe, conversation-scoped FIFO prompt queue holding user instructions during active agent runs. Enforces generous limits (50 items, 100KB per prompt) and guarantees stale prompts from crashed/restarted sessions enter a held state rather than auto-replaying. |
+| **State-Aware Smart Enter & Tab Queueing (`engine/pty_bridge.py`)** | Enter behavior adjusts dynamically based on agent lifecycle state and active surface: immediate submission when idle, safe FIFO queueing when active or waiting in an interactive modal. Tab key queues non-empty prompts while busy while preserving native shell autocomplete and focus when idle. |
+| **Approval & Preview Protection** | Fixes critical boundary bug where pressing Enter while typing follow-up instructions accidentally accepted approval/preview screens (e.g. `/teamwork-preview`). Typed prompt text is safely intercepted and queued without propagating Enter to AGY; empty Enter preserves native modal navigation and approval. |
+| **Ctrl+S Controlled Steering Coordinator** | Enables rapid agent redirection during active runs. Captures steering instructions, executes exactly one controlled interrupt keystroke without Esc-spamming, awaits safe lifecycle transition, and injects the steering message into the same conversation context. Preserves native Ctrl+S in settings and idle states. |
+| **Antigravity Lifecycle State Integration (`flow_hook.py`)** | Dedicated lifecycle hook entrypoints (`pre-invocation`, `post-invocation`, `post-tool-use`, `stop`) maintaining canonical state in `InteractionStateStore` with atomic file persistence and temporary dispatch lease locking. `PreToolUse` verdicts (`ask`/`force_ask`) automatically flag approval boundaries. |
+| **Centralized Interactive Surface Detection (`engine/interaction_state.py`)** | Real-time terminal output scanning fallback detecting teamwork previews, question dialogs, approval dialogs, and settings panels with regex matching. |
+| **Reusable PTY Primitives (`engine/pty.py`)** | Extracted generic POSIX PTY process spawning, SIGWINCH terminal resizing, and guaranteed raw terminal restoration context managers shared between the interactive AGY wrapper and Remote Sessions. |
+| **Interactive CLI Suite (`antiagent agy` & `antiagent queue`)** | Added `antiagent agy [AGY_ARGS...]` with transparent argument forwarding, recursion prevention, and automatic hook verification. Added `antiagent queue status` and `antiagent queue clear` subcommands. |
+
+### Verification Proof
+- All 297 unit tests passed (`python3 -m unittest discover tests`) with 0 failures and 0 errors.
+- Added comprehensive test suites: `tests/test_interaction_state.py` (11 tests), `tests/test_prompt_queue.py` (24 tests), and `tests/test_pty_bridge.py` (28 tests).
+- Verified mandatory regression test: `test_enter_with_typed_prompt_during_teamwork_preview_queues_without_approving`.
+- Verified cross-process cache invalidation via nanosecond disk mtime tracking in `InteractionStateStore`.
+- Verified multi-terminal queue synchronization and bounded terminal-item retention pruning in `PromptQueue`.
+- Verified bracketed paste CRLF sanitization and escape sequence filtering in `PTYBridge`.
+- Verified transparent `antiagent agy [AGY_ARGS...]` argument forwarding without `argparse` collisions.
+- Verified rolling terminal observation buffer preventing chunk-boundary split misses.
+- Verified non-destructive queue inspection (`antiagent queue status`) and session recovery (`antiagent queue resume`).
+
+---
+
 ## [v0.3.0] — 2026-09-28
 
 ### Summary

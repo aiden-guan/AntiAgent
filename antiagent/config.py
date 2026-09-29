@@ -60,6 +60,13 @@ class AntiAgentConfig:
     pr_monitor_interval: int = 15
     pr_monitor_auto_fix: bool = False
 
+    # Codex-style Prompt Queue & Interaction Control
+    prompt_queue_enabled: bool = True
+    smart_enter_enabled: bool = True
+    steer_enabled: bool = True
+    queue_key: str = "tab"
+    steer_key: str = "ctrl+s"
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert config to dictionary."""
         return asdict(self)
@@ -173,6 +180,21 @@ def load_config(workspace_dir: Optional[str] = None) -> AntiAgentConfig:
 
     if os.getenv("ANTIAGENT_AUDIT_INCLUDE_TOOL_CALLS"):
         cfg.audit_include_tool_calls = os.getenv("ANTIAGENT_AUDIT_INCLUDE_TOOL_CALLS").lower() in ("true", "1", "yes")
+
+    if os.getenv("ANTIAGENT_PROMPT_QUEUE_ENABLED"):
+        cfg.prompt_queue_enabled = os.getenv("ANTIAGENT_PROMPT_QUEUE_ENABLED").lower() in ("true", "1", "yes")
+
+    if os.getenv("ANTIAGENT_SMART_ENTER_ENABLED"):
+        cfg.smart_enter_enabled = os.getenv("ANTIAGENT_SMART_ENTER_ENABLED").lower() in ("true", "1", "yes")
+
+    if os.getenv("ANTIAGENT_STEER_ENABLED"):
+        cfg.steer_enabled = os.getenv("ANTIAGENT_STEER_ENABLED").lower() in ("true", "1", "yes")
+
+    if os.getenv("ANTIAGENT_QUEUE_KEY"):
+        cfg.queue_key = os.getenv("ANTIAGENT_QUEUE_KEY").strip().lower()
+
+    if os.getenv("ANTIAGENT_STEER_KEY"):
+        cfg.steer_key = os.getenv("ANTIAGENT_STEER_KEY").strip().lower()
 
     return cfg
 

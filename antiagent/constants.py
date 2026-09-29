@@ -23,6 +23,7 @@ SAFE_READ_TOOLS = {
     "read_resource",
     "list_resources",
     "get_file_contents",
+    "ask_question",
     "issue_read",
     "pull_request_read",
     "list_issues",

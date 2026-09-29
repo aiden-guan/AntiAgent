@@ -30,10 +30,50 @@ class TestCLI(unittest.TestCase):
         self.assertIn("PreToolUse", guard)
         self.assertEqual(guard["PreToolUse"][0]["matcher"], "*")
 
+        # Verify antiagent-flow-state hook is also installed with all 4 lifecycle events
+        self.assertIn("antiagent-flow-state", data)
+        flow = data["antiagent-flow-state"]
+        self.assertTrue(flow["enabled"])
+        self.assertIn("PreInvocation", flow)
+        self.assertIn("PostInvocation", flow)
+        self.assertIn("PostToolUse", flow)
+        self.assertIn("Stop", flow)
+
         # 2. Uninstall
         uninstall_hook(is_global=False, workspace_path=self.test_dir)
         data_after = json.loads(hooks_file.read_text(encoding="utf-8"))
         self.assertNotIn("antiagent-guard", data_after)
+        self.assertNotIn("antiagent-flow-state", data_after)
+
+    def test_install_hook_non_destructive_merge_and_uninstall(self):
+        """Verify install_hook merges non-destructively with existing user hooks in hooks.json."""
+        agents_dir = Path(self.test_dir) / ".agents"
+        agents_dir.mkdir(parents=True, exist_ok=True)
+        hooks_file = agents_dir / "hooks.json"
+        initial_data = {
+            "my-custom-linter": {
+                "enabled": True,
+                "PreToolUse": [{"matcher": "run_command", "hooks": [{"type": "command", "command": "echo linter"}]}],
+            }
+        }
+        hooks_file.write_text(json.dumps(initial_data, indent=2), encoding="utf-8")
+
+        # Install antiagent hooks
+        install_hook(is_global=False, workspace_path=self.test_dir)
+        merged = json.loads(hooks_file.read_text(encoding="utf-8"))
+
+        # Pre-existing hook must be preserved!
+        self.assertIn("my-custom-linter", merged)
+        self.assertEqual(merged["my-custom-linter"]["enabled"], True)
+        self.assertIn("antiagent-guard", merged)
+        self.assertIn("antiagent-flow-state", merged)
+
+        # Uninstall only removes AntiAgent hooks
+        uninstall_hook(is_global=False, workspace_path=self.test_dir)
+        after_uninstall = json.loads(hooks_file.read_text(encoding="utf-8"))
+        self.assertIn("my-custom-linter", after_uninstall)
+        self.assertNotIn("antiagent-guard", after_uninstall)
+        self.assertNotIn("antiagent-flow-state", after_uninstall)
 
     def test_get_hook_command_quotes_spaces(self):
         from unittest.mock import patch
@@ -282,6 +322,88 @@ class TestRemoteCLI(unittest.TestCase):
         with patch("sys.stdout", new_callable=StringIO) as out:
             handle_remote_cli(argparse.Namespace(remote_command="remove", name="mac-mini"))
             self.assertIn("removed", out.getvalue())
+
+    def test_agy_args_transparent_forwarding(self):
+        """Verify antiagent agy transparently forwards flags like --continue, --model, --help."""
+        import sys
+        from unittest.mock import patch
+        from antiagent.cli import main
+
+        test_args = ["antiagent", "agy", "--model", "gemini-2.5-pro", "--continue", "--mode=plan"]
+        with patch.object(sys, "argv", test_args):
+            with patch("antiagent.cli.launch_agy_cli", return_value=0) as mock_launch:
+                with self.assertRaises(SystemExit) as cm:
+                    main()
+                self.assertEqual(cm.exception.code, 0)
+                mock_launch.assert_called_once_with(["--model", "gemini-2.5-pro", "--continue", "--mode=plan"])
+
+    def test_queue_cli_status_clear_resume(self):
+        """Verify queue status, clear, and resume subcommands execute cleanly."""
+        import argparse
+        from io import StringIO
+        from unittest.mock import patch
+        from antiagent.cli import handle_queue_command
+        from antiagent.engine.prompt_queue import PromptQueue
+
+        cid = "queue-cli-test"
+        q = PromptQueue(cid)
+        q.enqueue("hello from test")
+
+        # 1. status
+        with patch("sys.stdout", new_callable=StringIO) as out:
+            args = argparse.Namespace(queue_command="status", conversation_id=cid)
+            res = handle_queue_command(args)
+            self.assertEqual(res, 0)
+            self.assertIn("hello from test", out.getvalue())
+
+        # 2. clear
+        with patch("sys.stdout", new_callable=StringIO) as out:
+            args = argparse.Namespace(queue_command="clear", conversation_id=cid)
+            res = handle_queue_command(args)
+            self.assertEqual(res, 0)
+            self.assertIn("Cleared 1 prompt(s)", out.getvalue())
+
+        # 3. resume
+        with patch("sys.stdout", new_callable=StringIO) as out:
+            args = argparse.Namespace(queue_command="resume", conversation_id=cid)
+            res = handle_queue_command(args)
+            self.assertEqual(res, 0)
+            self.assertIn("Resumed", out.getvalue())
+
+    def test_resolve_real_agy_executable_env_var(self):
+        """Verify AGY_PATH and ANTIGRAVITY_PATH override resolution."""
+        import os
+        from unittest.mock import patch
+        from antiagent.cli import resolve_real_agy_executable
+
+        with patch.dict(os.environ, {"AGY_PATH": "/custom/bin/agy"}):
+            with patch("os.path.isfile", return_value=True), patch("os.access", return_value=True):
+                self.assertEqual(resolve_real_agy_executable(), "/custom/bin/agy")
+
+    def test_install_hook_quiet_mode(self):
+        """Verify install_hook(quiet=True) does not write output to stdout."""
+        from io import StringIO
+        from antiagent.cli import install_hook
+
+        with patch("sys.stdout", new_callable=StringIO) as out:
+            install_hook(is_global=False, workspace_path=self.test_dir, quiet=True)
+            self.assertEqual(out.getvalue(), "")
+
+    def test_launch_agy_cli_forwards_workspace_path(self):
+        """Verify launch_agy_cli loads configuration from specified workspace_path."""
+        from unittest.mock import MagicMock, patch
+        from antiagent.cli import launch_agy_cli
+
+        with patch("antiagent.cli.resolve_real_agy_executable", return_value="/bin/echo"):
+            with patch("antiagent.cli.load_config") as mock_load_cfg:
+                with patch("antiagent.engine.pty_bridge.PTYBridge") as mock_bridge:
+                    mock_instance = MagicMock()
+                    mock_instance.run.return_value = 0
+                    mock_bridge.return_value = mock_instance
+
+                    code = launch_agy_cli(["--continue"], workspace_path="/custom/ws")
+                    self.assertEqual(code, 0)
+                    mock_load_cfg.assert_called_once_with("/custom/ws")
 
 
 if __name__ == "__main__":

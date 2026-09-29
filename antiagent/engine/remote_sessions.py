@@ -925,40 +925,28 @@ class RemoteHostRegistry:
 
 def launch_interactive_ssh(argv: List[str], open_browser: bool = True) -> int:
     """Launch an interactive SSH terminal session with PTY handling and URL detection."""
+    from antiagent.engine.pty import (
+        is_pty_supported,
+        open_pty,
+        raw_terminal_context,
+        sync_window_size as pty_sync_window_size,
+    )
+
     # On Windows or non-terminal environments, pass directly to subprocess.call
-    if sys.platform == "win32" or not hasattr(sys.stdin, "isatty") or not sys.stdin.isatty():
+    if not is_pty_supported() or not hasattr(sys.stdin, "isatty") or not sys.stdin.isatty():
         return subprocess.call(argv)
 
     try:
-        import fcntl
-        import pty
-        import termios
-        import tty
-
-        master_fd, slave_fd = pty.openpty()
+        master_fd, slave_fd = open_pty()
     except Exception:
         return subprocess.call(argv)
 
-    def sync_window_size() -> None:
-        try:
-            buf = fcntl.ioctl(sys.stdin.fileno(), termios.TIOCGWINSZ, b"\x00" * 8)
-            fcntl.ioctl(slave_fd, termios.TIOCSWINSZ, buf)
-            fcntl.ioctl(master_fd, termios.TIOCSWINSZ, buf)
-        except Exception:
-            pass
+    def _sync_win() -> None:
+        pty_sync_window_size(sys.stdin.fileno(), [slave_fd, master_fd])
 
-    sync_window_size()
+    _sync_win()
     old_winch = signal.getsignal(signal.SIGWINCH)
-    signal.signal(signal.SIGWINCH, lambda sig, frame: sync_window_size())
-
-    has_setraw = False
-    old_mode = None
-    try:
-        old_mode = termios.tcgetattr(sys.stdin.fileno())
-        tty.setraw(sys.stdin.fileno())
-        has_setraw = True
-    except Exception:
-        pass
+    signal.signal(signal.SIGWINCH, lambda sig, frame: _sync_win())
 
     url_opened = False
     collected_buf = ""
@@ -973,48 +961,44 @@ def launch_interactive_ssh(argv: List[str], open_browser: bool = True) -> int:
         )
         os.close(slave_fd)
 
-        while proc.poll() is None:
-            r, _, _ = select.select([sys.stdin.fileno(), master_fd], [], [], 0.05)
-            if sys.stdin.fileno() in r:
-                try:
-                    data = os.read(sys.stdin.fileno(), 1024)
-                    if not data:
+        with raw_terminal_context():
+            while proc.poll() is None:
+                r, _, _ = select.select([sys.stdin.fileno(), master_fd], [], [], 0.05)
+                if sys.stdin.fileno() in r:
+                    try:
+                        data = os.read(sys.stdin.fileno(), 1024)
+                        if not data:
+                            break
+                        os.write(master_fd, data)
+                    except OSError:
                         break
-                    os.write(master_fd, data)
-                except OSError:
-                    break
-            if master_fd in r:
-                try:
-                    data = os.read(master_fd, 1024)
-                    if not data:
+                if master_fd in r:
+                    try:
+                        data = os.read(master_fd, 1024)
+                        if not data:
+                            break
+                        os.write(sys.stdout.fileno(), data)
+                        if not url_opened:
+                            collected_buf += data.decode("utf-8", errors="ignore")
+                            if len(collected_buf) > 4096:
+                                collected_buf = collected_buf[-4096:]
+                            match = _URL_PATTERN.search(collected_buf)
+                            if match:
+                                found_url = match.group(0)
+                                if is_safe_antigravity_url(found_url):
+                                    url_opened = True
+                                    msg = f"\r\n\033[1;32mRemote Control ready:\033[0m {found_url}\r\n"
+                                    os.write(sys.stdout.fileno(), msg.encode("utf-8"))
+                                    if open_browser:
+                                        try:
+                                            webbrowser.open(found_url)
+                                        except Exception:
+                                            pass
+                    except OSError:
                         break
-                    os.write(sys.stdout.fileno(), data)
-                    if not url_opened:
-                        collected_buf += data.decode("utf-8", errors="ignore")
-                        if len(collected_buf) > 4096:
-                            collected_buf = collected_buf[-4096:]
-                        match = _URL_PATTERN.search(collected_buf)
-                        if match:
-                            found_url = match.group(0)
-                            if is_safe_antigravity_url(found_url):
-                                url_opened = True
-                                msg = f"\r\n\033[1;32mRemote Control ready:\033[0m {found_url}\r\n"
-                                os.write(sys.stdout.fileno(), msg.encode("utf-8"))
-                                if open_browser:
-                                    try:
-                                        webbrowser.open(found_url)
-                                    except Exception:
-                                        pass
-                except OSError:
-                    break
         proc.wait()
         return proc.returncode
     finally:
-        if has_setraw and old_mode:
-            try:
-                termios.tcsetattr(sys.stdin.fileno(), termios.TCSADRAIN, old_mode)
-            except Exception:
-                pass
         signal.signal(signal.SIGWINCH, old_winch)
         try:
             os.close(master_fd)
