@@ -1511,6 +1511,454 @@
       align-items: center;
       gap: 4px;
     }
+
+    /* ==========================================================================
+       Revamped Layout, Telemetry HUD, View Switcher & Accordion / Focus Controls
+       ========================================================================== */
+
+    /* Quick Telemetry HUD Strip */
+    .telemetry-hud {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 18px;
+    }
+    @media (max-width: 1100px) {
+      .telemetry-hud { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    }
+    @media (max-width: 700px) {
+      .telemetry-hud { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 480px) {
+      .telemetry-hud { grid-template-columns: 1fr; }
+    }
+
+    .telemetry-card {
+      background: var(--card-bg);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 12px 16px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 8px;
+      cursor: pointer;
+      user-select: none;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 8px 24px -10px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+      transition: transform 0.2s var(--ease-spring), border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    .telemetry-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 16px;
+      background: radial-gradient(180px circle at top left, rgba(255, 255, 255, 0.08), transparent 70%);
+      pointer-events: none;
+    }
+    .telemetry-card:hover {
+      background: var(--card-bg-hover);
+      border-color: rgba(255, 255, 255, 0.25);
+      transform: translateY(-2px);
+      box-shadow: 0 14px 32px -8px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    }
+    .telemetry-card:active {
+      transform: scale(0.97);
+    }
+    .telemetry-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .telemetry-title {
+      font-size: 10.5px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .telemetry-title svg {
+      width: 13px;
+      height: 13px;
+      color: var(--text-muted);
+      flex-shrink: 0;
+    }
+    .telemetry-value-row {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 6px;
+    }
+    .telemetry-value {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: #ffffff;
+      font-variant-numeric: tabular-nums;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .telemetry-sub {
+      font-size: 11px;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* View Mode Navigation Bar & Layout Toolbar */
+    .view-control-bar {
+      margin-top: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .view-nav-wrapper {
+      background: rgba(12, 13, 17, 0.82);
+      backdrop-filter: blur(28px) saturate(180%);
+      -webkit-backdrop-filter: blur(28px) saturate(180%);
+      border: 1px solid var(--card-border);
+      border-radius: 18px;
+      padding: 6px 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      box-shadow: 0 12px 36px -10px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+      flex-wrap: wrap;
+    }
+    .view-tabs {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      position: relative;
+      user-select: none;
+      flex-wrap: wrap;
+    }
+    .view-tab {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 7px 13px;
+      border-radius: 11px;
+      font-size: 12.5px;
+      font-weight: 500;
+      color: var(--text-muted);
+      background: transparent;
+      border: 1px solid transparent;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.18s var(--ease-spring);
+      position: relative;
+      white-space: nowrap;
+    }
+    .view-tab svg {
+      width: 15px;
+      height: 15px;
+      color: var(--text-muted);
+      transition: color 0.18s ease;
+      flex-shrink: 0;
+    }
+    .view-tab:hover {
+      color: #ffffff;
+      background: rgba(255, 255, 255, 0.05);
+      border-color: rgba(255, 255, 255, 0.05);
+    }
+    .view-tab:hover svg {
+      color: #ffffff;
+    }
+    .view-tab:active {
+      transform: scale(0.97);
+    }
+    .view-tab.active {
+      color: #050507 !important;
+      background: #ffffff !important;
+      font-weight: 600;
+      box-shadow: 0 3px 12px rgba(0, 0, 0, 0.4), inset 0 1px 1px #ffffff;
+      border-color: #ffffff;
+    }
+    .view-tab.active svg {
+      color: #050507 !important;
+      stroke: #050507 !important;
+    }
+    .view-tab .tab-kbd {
+      font-size: 9.5px;
+      font-family: var(--font-mono);
+      opacity: 0.55;
+      border: 1px solid currentColor;
+      border-radius: 4px;
+      padding: 0 4px;
+      margin-left: 2px;
+      display: inline-block;
+    }
+
+    /* Layout Toolbar on right of tab bar */
+    .layout-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .view-search-box {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 5px 11px;
+      min-width: 170px;
+      transition: all 0.2s var(--ease-spring);
+    }
+    .view-search-box:focus-within {
+      border-color: rgba(255, 255, 255, 0.35);
+      background: rgba(0, 0, 0, 0.6);
+      box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.12);
+    }
+    .view-search-box input {
+      background: transparent;
+      border: none;
+      outline: none;
+      color: #ffffff;
+      font-size: 12px;
+      font-family: inherit;
+      width: 100%;
+    }
+    .view-search-box input::placeholder {
+      color: var(--text-dim);
+    }
+    .view-search-box svg {
+      width: 13px;
+      height: 13px;
+      color: var(--text-muted);
+      flex-shrink: 0;
+    }
+
+    /* Overview Quick Actions Bar */
+    .overview-quick-bar {
+      background: rgba(14, 15, 20, 0.55);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      padding: 10px 16px;
+      margin-top: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    /* Standardized Card Header & Accordion Actions */
+    .cards-layout-wrapper {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 20px;
+      margin-top: 18px;
+    }
+    @media (max-width: 960px) {
+      .cards-layout-wrapper {
+        grid-template-columns: 1fr;
+      }
+    }
+    .card-span-full {
+      grid-column: 1 / -1;
+    }
+
+    .card-header-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 20px;
+      cursor: pointer;
+      user-select: none;
+      transition: opacity 0.2s ease;
+    }
+    .card-title-left {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      flex-wrap: wrap;
+    }
+    .card-title-text {
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      color: #ffffff;
+    }
+    .card-header-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .card-action-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--card-border-subtle);
+      color: var(--text-muted);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.16s var(--ease-spring);
+    }
+    .card-action-btn:hover {
+      background: rgba(255, 255, 255, 0.12);
+      color: #ffffff;
+      border-color: rgba(255, 255, 255, 0.25);
+      transform: translateY(-1px);
+    }
+    .card-action-btn:active {
+      transform: scale(0.94);
+    }
+    .card-action-btn svg {
+      width: 14px;
+      height: 14px;
+      transition: transform 0.2s var(--ease-spring);
+    }
+    .card-collapsed-summary {
+      font-size: 11px;
+      color: var(--text-muted);
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--card-border-subtle);
+      border-radius: 9999px;
+      padding: 2px 10px;
+      display: none;
+      align-items: center;
+      gap: 5px;
+      font-weight: 500;
+    }
+    .card.card-collapsed {
+      padding-bottom: 12px !important;
+      border-color: var(--card-border-subtle);
+      box-shadow: 0 8px 24px -10px rgba(0, 0, 0, 0.6);
+    }
+    .card.card-collapsed .card-header-bar {
+      margin-bottom: 0 !important;
+    }
+    .card.card-collapsed .card-body {
+      display: none !important;
+    }
+    .card.card-collapsed .card-collapsed-summary {
+      display: inline-flex !important;
+    }
+    .card.card-collapsed .icon-chevron {
+      transform: rotate(180deg);
+    }
+
+    /* Fullscreen Focus Mode */
+    .focus-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(28px);
+      -webkit-backdrop-filter: blur(28px);
+      z-index: 490;
+      display: none;
+      opacity: 0;
+      transition: opacity 0.22s ease;
+    }
+    .focus-backdrop.active {
+      display: block;
+      opacity: 1;
+    }
+    .card.card-focused {
+      position: fixed !important;
+      inset: 24px !important;
+      z-index: 500 !important;
+      overflow-y: auto !important;
+      margin: 0 auto !important;
+      max-width: 1400px !important;
+      background: rgba(12, 13, 17, 0.98) !important;
+      border: 1px solid rgba(255, 255, 255, 0.25) !important;
+      box-shadow: 0 30px 90px rgba(0, 0, 0, 0.95), 0 0 0 1px rgba(255, 255, 255, 0.1) !important;
+      border-radius: 24px !important;
+      animation: focusCardIn 0.22s var(--ease-spring) forwards;
+    }
+    @keyframes focusCardIn {
+      from { transform: scale(0.97); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+    .focus-header-banner {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 8px 14px;
+      margin-bottom: 18px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+    .card.card-focused .focus-header-banner {
+      display: flex !important;
+    }
+
+    /* Density Modes */
+    body.density-compact .card {
+      padding: 16px;
+      border-radius: 16px;
+    }
+    body.density-compact .card-header-bar {
+      margin-bottom: 12px;
+    }
+    body.density-compact .hook-grid {
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    body.density-compact .hook-box {
+      padding: 12px;
+    }
+    body.density-compact .toggle-row {
+      padding: 8px 0;
+    }
+    body.density-compact .telemetry-card {
+      padding: 9px 12px;
+    }
+    body.density-compact .telemetry-value {
+      font-size: 16px;
+    }
+
+    /* Card view filter visibility */
+    .card-view-hidden {
+      display: none !important;
+    }
+    .card-user-hidden {
+      display: none !important;
+    }
+
+    /* Customize layout checklist */
+    .customize-card-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--card-border-subtle);
+      border-radius: 10px;
+      padding: 10px 14px;
+      transition: background-color 0.15s ease;
+    }
+    .customize-card-item:hover {
+      background: rgba(255, 255, 255, 0.06);
+    }
+
   </style>
 </head>
 <body>
@@ -1601,17 +2049,204 @@
       </div>
     </div>
 
-    <!-- Main Grid -->
-    <div class="dashboard-grid">
+    <!-- Telemetry HUD Strip: Vital System Metrics at a Glance -->
+    <div class="telemetry-hud" id="telemetryHud">
+      <!-- HUD Tile 1: Protection Stance -->
+      <div class="telemetry-card" onclick="switchView('security')" title="Click to view Security &amp; Safety Profile settings">
+        <div class="telemetry-header">
+          <span class="telemetry-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            <span>Safety Stance</span>
+          </span>
+          <span class="pip pip-emerald" id="hudHooksPip"></span>
+        </div>
+        <div class="telemetry-value-row">
+          <span class="telemetry-value" id="hudStanceVal">Balanced</span>
+        </div>
+        <div class="telemetry-sub" id="hudHooksSub">Checking hooks...</div>
+      </div>
+
+      <!-- HUD Tile 2: Real-Time Audit Intercepts -->
+      <div class="telemetry-card" onclick="switchView('audit')" title="Click to inspect Real-Time Audit Stream">
+        <div class="telemetry-header">
+          <span class="telemetry-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            <span>Audit Stream</span>
+          </span>
+          <span class="pip pip-active" id="hudAuditPip"></span>
+        </div>
+        <div class="telemetry-value-row">
+          <span class="telemetry-value" id="hudAuditCount">0</span>
+        </div>
+        <div class="telemetry-sub" id="hudAuditDenied">0 blocked threats</div>
+      </div>
+
+      <!-- HUD Tile 3: Agent Sessions -->
+      <div class="telemetry-card" onclick="switchView('conversations')" title="Click to view Antigravity Agent Conversations">
+        <div class="telemetry-header">
+          <span class="telemetry-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            <span>Agent Sessions</span>
+          </span>
+          <span class="pip pip-emerald"></span>
+        </div>
+        <div class="telemetry-value-row">
+          <span class="telemetry-value" id="hudConversationsCount">0</span>
+        </div>
+        <div class="telemetry-sub" id="hudConversationsSub">0 active sessions</div>
+      </div>
+
+      <!-- HUD Tile 4: Pull Request CI Monitor -->
+      <div class="telemetry-card" onclick="switchView('fleet')" title="Click to open PR &amp; CI Monitor">
+        <div class="telemetry-header">
+          <span class="telemetry-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><line x1="6" y1="9" x2="6" y2="21"/></svg>
+            <span>PR &amp; CI Guard</span>
+          </span>
+          <span class="pip pip-inactive" id="hudPRPip"></span>
+        </div>
+        <div class="telemetry-value-row">
+          <span class="telemetry-value" id="hudPRVal">Checking...</span>
+        </div>
+        <div class="telemetry-sub" id="hudPRSub">No active PR</div>
+      </div>
+
+      <!-- HUD Tile 5: Remote Fleet Machines -->
+      <div class="telemetry-card" onclick="switchView('fleet')" title="Click to manage Remote SSH Fleet">
+        <div class="telemetry-header">
+          <span class="telemetry-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+            <span>Remote Fleet</span>
+          </span>
+          <span class="pip pip-inactive" id="hudRemotesPip"></span>
+        </div>
+        <div class="telemetry-value-row">
+          <span class="telemetry-value" id="hudRemotesCount">0</span>
+        </div>
+        <div class="telemetry-sub" id="hudRemotesSub">0 machines configured</div>
+      </div>
+    </div>
+
+    <!-- View Mode Segmented Tab Navigation & Layout Toolbar -->
+    <div class="view-control-bar">
+      <div class="view-nav-wrapper">
+        <!-- Segmented Tab Navigation -->
+        <div class="view-tabs" id="viewTabsContainer">
+          <button class="view-tab active" data-view="overview" onclick="switchView('overview')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            <span>Overview</span>
+            <span class="tab-kbd">1</span>
+          </button>
+          <button class="view-tab" data-view="audit" onclick="switchView('audit')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            <span>Live Audit</span>
+            <span class="tab-kbd">2</span>
+          </button>
+          <button class="view-tab" data-view="conversations" onclick="switchView('conversations')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            <span>Agent Sessions</span>
+            <span class="tab-kbd">3</span>
+          </button>
+          <button class="view-tab" data-view="security" onclick="switchView('security')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            <span>Security &amp; Rules</span>
+            <span class="tab-kbd">4</span>
+          </button>
+          <button class="view-tab" data-view="sandbox" onclick="switchView('sandbox')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 2v7.31M14 9.3V1.99M8.5 2h7M14 9.3a6.5 6.5 0 1 1-4 0"/></svg>
+            <span>Safety Sandbox</span>
+            <span class="tab-kbd">5</span>
+          </button>
+          <button class="view-tab" data-view="fleet" onclick="switchView('fleet')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+            <span>Fleet &amp; PRs</span>
+            <span class="tab-kbd">6</span>
+          </button>
+          <button class="view-tab" data-view="all" onclick="switchView('all')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+            <span>All Cards</span>
+            <span class="tab-kbd">7</span>
+          </button>
+        </div>
+
+        <!-- Right Organization Toolbar -->
+        <div class="layout-toolbar">
+          <div class="view-search-box">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="dashboardSearchInput" placeholder="Filter cards (Cmd+K)..." oninput="handleDashboardSearch(this.value)">
+          </div>
+          <button id="btnToggleAllCards" class="btn btn-outline btn-sm" onclick="toggleAllCardsCollapse()" title="Collapse all cards to compact headers (or expand)">
+            <svg class="icon icon-toggle-all" viewBox="0 0 24 24" style="width: 14px; height: 14px;"><polyline points="18 15 12 9 6 15"/></svg>
+            <span id="btnToggleAllCardsText">Collapse All</span>
+          </button>
+          <button id="btnDensityToggle" class="btn btn-outline btn-sm" onclick="toggleDensity()" title="Toggle Comfortable / Compact spacing">
+            <svg class="icon" viewBox="0 0 24 24" style="width: 14px; height: 14px;"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
+            <span id="btnDensityToggleText">Compact</span>
+          </button>
+          <button class="btn btn-outline btn-sm" onclick="openCustomizeModal()" title="Customize which cards are visible and default start view">
+            <svg class="icon" viewBox="0 0 24 24" style="width: 14px; height: 14px;"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            <span>Customize</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Overview Quick Actions Ribbon -->
+      <div class="overview-quick-bar" id="overviewQuickBar">
+        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+          <span class="eyebrow-label" style="margin-right: 4px;">Quick Actions:</span>
+          <button class="btn btn-outline btn-sm" onclick="runDoctorCheck()" title="Run full Antigravity environment check">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+            <span>Run System Doctor</span>
+          </button>
+          <button class="btn btn-outline btn-sm" onclick="switchView('sandbox')" title="Test command and file security against heuristic rules">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M10 2v7.31M14 9.3V1.99M8.5 2h7M14 9.3a6.5 6.5 0 1 1-4 0"/></svg>
+            <span>Test Threat Simulation</span>
+          </button>
+          <button class="btn btn-outline btn-sm" onclick="toggleActivitySidebar()" title="Toggle live activity log sidebar (Cmd+B)">
+            <svg class="icon" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+            <span>Inspect Live Tool Calls</span>
+          </button>
+          <button class="btn btn-outline btn-sm" onclick="openUpdateModal()" title="Check for newer AntiAgent releases">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+            <span>Check Updates</span>
+          </button>
+        </div>
+        <div style="font-size: 11px; color: var(--text-dim); font-family: var(--font-mono);">
+          Press <kbd style="background: rgba(255,255,255,0.06); padding: 1px 4px; border-radius: 3px;">1-7</kbd> to switch views
+        </div>
+      </div>
+    </div>
+
+    <!-- Cards Container -->
+    <div class="cards-layout-wrapper" id="cardsLayoutWrapper">
+
       <!-- Card 1: Lifecycle Hooks & Safety Profile -->
-      <div class="card">
-        <div class="card-title">
+      <div class="card" id="hooksCard" data-card-id="hooksCard" data-views="overview security all">
+        <div class="card-header-bar" onclick="handleCardHeaderClick(event, 'hooksCard')">
           <div class="card-title-left">
             <svg class="card-title-icon" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-            <span>Lifecycle Hooks &amp; Stance</span>
+            <span class="card-title-text">Lifecycle Hooks &amp; Stance</span>
+            <span id="hooksCardSummaryPill" class="card-collapsed-summary">Balanced Profile</span>
           </div>
-          <span class="eyebrow-label">PreToolUse</span>
+          <div class="card-header-actions" onclick="event.stopPropagation()">
+            <span class="eyebrow-label">PreToolUse</span>
+            <button class="card-action-btn" onclick="toggleFocusCard('hooksCard')" title="Expand / Focus card full screen (Esc to exit)">
+              <svg class="icon icon-focus" viewBox="0 0 24 24"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+            </button>
+            <button class="card-action-btn" onclick="toggleCardCollapse('hooksCard')" title="Collapse or Expand card">
+              <svg class="icon icon-chevron" viewBox="0 0 24 24"><polyline points="18 15 12 9 6 15"/></svg>
+            </button>
+          </div>
         </div>
+        <div class="card-body" id="hooksCardBody">
+          <div class="focus-header-banner">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <svg class="icon" viewBox="0 0 24 24" style="stroke: #ffffff; width: 16px; height: 16px;"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+              <span style="font-weight: 600; color: #ffffff;">Focus Mode: Lifecycle Hooks &amp; Stance</span>
+              <span>• Press <kbd style="font-family: var(--font-mono); background: rgba(255,255,255,0.1); padding: 1px 5px; border-radius: 4px;">Esc</kbd> to return</span>
+            </div>
+            <button class="btn btn-outline btn-sm" onclick="exitFocusCard()">Exit Focus</button>
+          </div>
         <div class="hook-grid">
           <div class="hook-box">
             <h4>
@@ -1656,17 +2291,37 @@
           </div>
           <span id="saveIndicator" style="font-size: 12px; color: var(--success); display: none; font-weight: 600;">Saved</span>
         </div>
+
+        </div>
       </div>
 
       <!-- Card 2: Supervisor Engine & Provider -->
-      <div class="card">
-        <div class="card-title">
+      <div class="card" id="engineCard" data-card-id="engineCard" data-views="security all">
+        <div class="card-header-bar" onclick="handleCardHeaderClick(event, 'engineCard')">
           <div class="card-title-left">
             <svg class="card-title-icon" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/></svg>
-            <span>Supervisor Engine &amp; Provider</span>
+            <span class="card-title-text">Supervisor Engine &amp; Provider</span>
+            <span id="engineCardSummaryPill" class="card-collapsed-summary">Native • Gemini / Ollama</span>
           </div>
-          <span class="eyebrow-label">Tier 2 Evaluator</span>
+          <div class="card-header-actions" onclick="event.stopPropagation()">
+            <span class="eyebrow-label">Tier 2 Evaluator</span>
+            <button class="card-action-btn" onclick="toggleFocusCard('engineCard')" title="Expand / Focus card full screen (Esc to exit)">
+              <svg class="icon icon-focus" viewBox="0 0 24 24"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+            </button>
+            <button class="card-action-btn" onclick="toggleCardCollapse('engineCard')" title="Collapse or Expand card">
+              <svg class="icon icon-chevron" viewBox="0 0 24 24"><polyline points="18 15 12 9 6 15"/></svg>
+            </button>
+          </div>
         </div>
+        <div class="card-body" id="engineCardBody">
+          <div class="focus-header-banner">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <svg class="icon" viewBox="0 0 24 24" style="stroke: #ffffff; width: 16px; height: 16px;"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+              <span style="font-weight: 600; color: #ffffff;">Focus Mode: Supervisor Engine &amp; Provider</span>
+              <span>• Press <kbd style="font-family: var(--font-mono); background: rgba(255,255,255,0.1); padding: 1px 5px; border-radius: 4px;">Esc</kbd> to return</span>
+            </div>
+            <button class="btn btn-outline btn-sm" onclick="exitFocusCard()">Exit Focus</button>
+          </div>
         <div class="form-group">
           <label>Provider</label>
           <select id="selectProvider" class="form-control" onchange="onProviderChanged()">
@@ -1697,17 +2352,37 @@
         <button class="btn btn-primary" style="width: 100%; margin-top: 8px;" onclick="saveEngineConfig()">
           <span>Save Engine Settings</span>
         </button>
+
+        </div>
       </div>
 
       <!-- Card 3: Execution Rules & Toggles -->
-      <div class="card">
-        <div class="card-title">
+      <div class="card" id="rulesCard" data-card-id="rulesCard" data-views="overview security all">
+        <div class="card-header-bar" onclick="handleCardHeaderClick(event, 'rulesCard')">
           <div class="card-title-left">
             <svg class="card-title-icon" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-            <span>Autonomous Execution Rules</span>
+            <span class="card-title-text">Autonomous Execution Rules</span>
+            <span id="rulesCardSummaryPill" class="card-collapsed-summary">Auto-Review Active</span>
           </div>
-          <span class="eyebrow-label">Instant Guards</span>
+          <div class="card-header-actions" onclick="event.stopPropagation()">
+            <span class="eyebrow-label">Instant Guards</span>
+            <button class="card-action-btn" onclick="toggleFocusCard('rulesCard')" title="Expand / Focus card full screen (Esc to exit)">
+              <svg class="icon icon-focus" viewBox="0 0 24 24"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+            </button>
+            <button class="card-action-btn" onclick="toggleCardCollapse('rulesCard')" title="Collapse or Expand card">
+              <svg class="icon icon-chevron" viewBox="0 0 24 24"><polyline points="18 15 12 9 6 15"/></svg>
+            </button>
+          </div>
         </div>
+        <div class="card-body" id="rulesCardBody">
+          <div class="focus-header-banner">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <svg class="icon" viewBox="0 0 24 24" style="stroke: #ffffff; width: 16px; height: 16px;"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+              <span style="font-weight: 600; color: #ffffff;">Focus Mode: Autonomous Execution Rules</span>
+              <span>• Press <kbd style="font-family: var(--font-mono); background: rgba(255,255,255,0.1); padding: 1px 5px; border-radius: 4px;">Esc</kbd> to return</span>
+            </div>
+            <button class="btn btn-outline btn-sm" onclick="exitFocusCard()">Exit Focus</button>
+          </div>
         <div class="toggle-row">
           <div>
             <div class="toggle-label">"Approve for Me" Auto-Review</div>
@@ -1778,17 +2453,37 @@
             <span class="toggle-slider"></span>
           </label>
         </div>
+
+        </div>
       </div>
 
       <!-- Card 4: Custom Policy Regex Rules -->
-      <div class="card">
-        <div class="card-title">
+      <div class="card" id="customRegexCard" data-card-id="customRegexCard" data-views="security all">
+        <div class="card-header-bar" onclick="handleCardHeaderClick(event, 'customRegexCard')">
           <div class="card-title-left">
             <svg class="card-title-icon" viewBox="0 0 24 24"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
-            <span>Custom Policy Regex Rules</span>
+            <span class="card-title-text">Custom Policy Regex Rules</span>
+            <span id="customRegexCardSummaryPill" class="card-collapsed-summary">Whitelist &amp; Blacklist</span>
           </div>
-          <span class="eyebrow-label">Policy Whitelist &amp; Blacklist</span>
+          <div class="card-header-actions" onclick="event.stopPropagation()">
+            <span class="eyebrow-label">Policy Whitelist &amp; Blacklist</span>
+            <button class="card-action-btn" onclick="toggleFocusCard('customRegexCard')" title="Expand / Focus card full screen (Esc to exit)">
+              <svg class="icon icon-focus" viewBox="0 0 24 24"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+            </button>
+            <button class="card-action-btn" onclick="toggleCardCollapse('customRegexCard')" title="Collapse or Expand card">
+              <svg class="icon icon-chevron" viewBox="0 0 24 24"><polyline points="18 15 12 9 6 15"/></svg>
+            </button>
+          </div>
         </div>
+        <div class="card-body" id="customRegexCardBody">
+          <div class="focus-header-banner">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <svg class="icon" viewBox="0 0 24 24" style="stroke: #ffffff; width: 16px; height: 16px;"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+              <span style="font-weight: 600; color: #ffffff;">Focus Mode: Custom Policy Regex Rules</span>
+              <span>• Press <kbd style="font-family: var(--font-mono); background: rgba(255,255,255,0.1); padding: 1px 5px; border-radius: 4px;">Esc</kbd> to return</span>
+            </div>
+            <button class="btn btn-outline btn-sm" onclick="exitFocusCard()">Exit Focus</button>
+          </div>
         <div class="form-group">
           <label>Custom Allow Patterns (Whitelist — 1 regex per line)</label>
           <textarea id="customAllowInput" class="form-control" rows="3" placeholder="^make lint&#10;^bundle exec rake"></textarea>
@@ -1800,58 +2495,93 @@
         <button class="btn btn-outline" style="width: 100%;" onclick="saveCustomPatterns()">
           <span>Save Custom Regex Rules</span>
         </button>
-      </div>
-    </div>
 
-    <!-- Pull Request & CI Monitor Card -->
-    <div class="card" style="margin-top: 20px;" id="prMonitorCard">
-      <div class="card-title">
-        <div class="card-title-left">
-          <svg class="card-title-icon" viewBox="0 0 24 24"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><line x1="6" y1="9" x2="6" y2="21"/></svg>
-          <span>Pull Request &amp; CI Monitor</span>
-          <span id="prStatusBadge" class="status-badge badge-inactive" style="font-size: 11px; padding: 2px 8px;">Checking...</span>
-        </div>
-        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-          <button class="btn btn-outline btn-sm" onclick="fetchPRStatus()">
-            <svg class="icon" viewBox="0 0 24 24"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
-            <span>Refresh</span>
-          </button>
-          <button id="prWatchBtn" class="btn btn-primary btn-sm" onclick="toggleBackgroundPRMonitor()">
-            <svg class="icon" viewBox="0 0 24 24" style="stroke: #050507;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-            <span>Monitor PR</span>
-          </button>
-          <button id="prAutofixBtn" class="btn btn-outline btn-sm" style="display: none; color: var(--danger); border-color: var(--danger-border);" onclick="openFailureLogsModal()">
-            <svg class="icon" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-            <span>Failure Logs</span>
-          </button>
-          <button id="prMergeBtn" class="btn btn-sm btn-primary" style="display: none;" onclick="mergeActivePR()">
-            <svg class="icon" viewBox="0 0 24 24" style="stroke: #050507;"><path d="M18 15l-6-6-6 6"/></svg>
-            <span>Merge PR</span>
-          </button>
         </div>
       </div>
+
+      <!-- Card 5: Pull Request & CI Monitor Card -->
+      <div class="card" id="prMonitorCard" data-card-id="prMonitorCard" data-views="fleet all">
+        <div class="card-header-bar" onclick="handleCardHeaderClick(event, 'prMonitorCard')">
+          <div class="card-title-left">
+            <svg class="card-title-icon" viewBox="0 0 24 24"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><line x1="6" y1="9" x2="6" y2="21"/></svg>
+            <span class="card-title-text">Pull Request &amp; CI Monitor</span>
+            <span id="prStatusBadge" class="status-badge badge-inactive" style="font-size: 11px; padding: 2px 8px;">Checking...</span>
+            <span id="prMonitorCardSummaryPill" class="card-collapsed-summary">No active PR</span>
+          </div>
+          <div class="card-header-actions" onclick="event.stopPropagation()">
+            <button class="btn btn-outline btn-sm" onclick="fetchPRStatus()">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+              <span>Refresh</span>
+            </button>
+            <button id="prWatchBtn" class="btn btn-primary btn-sm" onclick="toggleBackgroundPRMonitor()">
+              <svg class="icon" viewBox="0 0 24 24" style="stroke: #050507;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              <span>Monitor PR</span>
+            </button>
+            <button id="prAutofixBtn" class="btn btn-outline btn-sm" style="display: none; color: var(--danger); border-color: var(--danger-border);" onclick="openFailureLogsModal()">
+              <svg class="icon" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+              <span>Failure Logs</span>
+            </button>
+            <button id="prMergeBtn" class="btn btn-sm btn-primary" style="display: none;" onclick="mergeActivePR()">
+              <svg class="icon" viewBox="0 0 24 24" style="stroke: #050507;"><path d="M18 15l-6-6-6 6"/></svg>
+              <span>Merge PR</span>
+            </button>
+            <button class="card-action-btn" onclick="toggleFocusCard('prMonitorCard')" title="Expand / Focus card full screen (Esc to exit)">
+              <svg class="icon icon-focus" viewBox="0 0 24 24"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+            </button>
+            <button class="card-action-btn" onclick="toggleCardCollapse('prMonitorCard')" title="Collapse or Expand card">
+              <svg class="icon icon-chevron" viewBox="0 0 24 24"><polyline points="18 15 12 9 6 15"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="card-body" id="prMonitorCardBody">
+          <div class="focus-header-banner">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <svg class="icon" viewBox="0 0 24 24" style="stroke: #ffffff; width: 16px; height: 16px;"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+              <span style="font-weight: 600; color: #ffffff;">Focus Mode: Pull Request &amp; CI Monitor</span>
+              <span>• Press <kbd style="font-family: var(--font-mono); background: rgba(255,255,255,0.1); padding: 1px 5px; border-radius: 4px;">Esc</kbd> to return</span>
+            </div>
+            <button class="btn btn-outline btn-sm" onclick="exitFocusCard()">Exit Focus</button>
+          </div>
       <div id="prInfoContainer" style="margin-top: 8px;">
         <div style="font-size: 13px; color: var(--text-muted); padding: 8px 0;">Loading pull request data...</div>
       </div>
-    </div>
 
-    <!-- Unified Antigravity Conversations Card -->
-    <div class="card" style="margin-top: 20px;" id="conversationsCard">
-      <div class="card-title">
-        <div class="card-title-left">
-          <svg class="card-title-icon" viewBox="0 0 24 24">
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-          </svg>
-          <span>Antigravity Conversations &amp; Native Context</span>
-          <span id="conversationsCardBadge" class="status-badge badge-active" style="font-size: 11px; padding: 2px 8px;">0 Sessions</span>
-        </div>
-        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-          <button class="btn btn-outline btn-sm" onclick="fetchConversations(true)" title="Rescan session directories and refresh cache">
-            <svg class="icon" viewBox="0 0 24 24"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
-            <span>Refresh</span>
-          </button>
         </div>
       </div>
+
+      <!-- Card 6: Unified Antigravity Conversations Card -->
+      <div class="card card-span-full" id="conversationsCard" data-card-id="conversationsCard" data-views="conversations all">
+        <div class="card-header-bar" onclick="handleCardHeaderClick(event, 'conversationsCard')">
+          <div class="card-title-left">
+            <svg class="card-title-icon" viewBox="0 0 24 24">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+            </svg>
+            <span class="card-title-text">Antigravity Conversations &amp; Native Context</span>
+            <span id="conversationsCardBadge" class="status-badge badge-active" style="font-size: 11px; padding: 2px 8px;">0 Sessions</span>
+            <span id="conversationsCardSummaryPill" class="card-collapsed-summary">0 Sessions</span>
+          </div>
+          <div class="card-header-actions" onclick="event.stopPropagation()">
+            <button class="btn btn-outline btn-sm" onclick="fetchConversations(true)" title="Rescan session directories and refresh cache">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+              <span>Refresh</span>
+            </button>
+            <button class="card-action-btn" onclick="toggleFocusCard('conversationsCard')" title="Expand / Focus card full screen (Esc to exit)">
+              <svg class="icon icon-focus" viewBox="0 0 24 24"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+            </button>
+            <button class="card-action-btn" onclick="toggleCardCollapse('conversationsCard')" title="Collapse or Expand card">
+              <svg class="icon icon-chevron" viewBox="0 0 24 24"><polyline points="18 15 12 9 6 15"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="card-body" id="conversationsCardBody">
+          <div class="focus-header-banner">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <svg class="icon" viewBox="0 0 24 24" style="stroke: #ffffff; width: 16px; height: 16px;"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+              <span style="font-weight: 600; color: #ffffff;">Focus Mode: Antigravity Conversations &amp; Transcripts</span>
+              <span>• Press <kbd style="font-family: var(--font-mono); background: rgba(255,255,255,0.1); padding: 1px 5px; border-radius: 4px;">Esc</kbd> to return</span>
+            </div>
+            <button class="btn btn-outline btn-sm" onclick="exitFocusCard()">Exit Focus</button>
+          </div>
 
       <!-- Controls & Filter Toolbar -->
       <div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; margin: 12px 0 16px;">
@@ -1893,46 +2623,84 @@
           <button id="conversationsNextBtn" class="btn btn-outline btn-sm" onclick="changeConversationsPage(1)">Next</button>
         </div>
       </div>
-    </div>
 
-    <!-- Remote Sessions (via SSH) Card -->
-    <div class="card" style="margin-top: 20px;" id="remoteSessionsCard">
-      <div class="card-title">
-        <div class="card-title-left">
-          <svg class="card-title-icon" viewBox="0 0 24 24">
-            <rect x="2" y="2" width="20" height="8" rx="2" ry="2"/>
-            <rect x="2" y="14" width="20" height="8" rx="2" ry="2"/>
-            <line x1="6" y1="6" x2="6.01" y2="6"/>
-            <line x1="6" y1="18" x2="6.01" y2="18"/>
-          </svg>
-          <span>Remote Sessions</span>
-          <span id="remotesCardBadge" class="status-badge badge-active" style="font-size: 11px; padding: 2px 8px;">0 Machines</span>
-        </div>
-        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-          <button class="btn btn-outline btn-sm" onclick="fetchRemotes(true)" title="Probe and refresh all remote machines">
-            <svg class="icon" viewBox="0 0 24 24"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
-            <span>Refresh</span>
-          </button>
-          <button class="btn btn-primary btn-sm" onclick="openAddMachineModal()">
-            <svg class="icon" viewBox="0 0 24 24" style="stroke: #050507;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            <span>Add Machine</span>
-          </button>
         </div>
       </div>
+
+      <!-- Card 7: Remote Sessions (via SSH) Card -->
+      <div class="card" id="remoteSessionsCard" data-card-id="remoteSessionsCard" data-views="fleet all">
+        <div class="card-header-bar" onclick="handleCardHeaderClick(event, 'remoteSessionsCard')">
+          <div class="card-title-left">
+            <svg class="card-title-icon" viewBox="0 0 24 24">
+              <rect x="2" y="2" width="20" height="8" rx="2" ry="2"/>
+              <rect x="2" y="14" width="20" height="8" rx="2" ry="2"/>
+              <line x1="6" y1="6" x2="6.01" y2="6"/>
+              <line x1="6" y1="18" x2="6.01" y2="18"/>
+            </svg>
+            <span class="card-title-text">Remote Sessions</span>
+            <span id="remotesCardBadge" class="status-badge badge-active" style="font-size: 11px; padding: 2px 8px;">0 Machines</span>
+            <span id="remoteSessionsCardSummaryPill" class="card-collapsed-summary">0 Machines</span>
+          </div>
+          <div class="card-header-actions" onclick="event.stopPropagation()">
+            <button class="btn btn-outline btn-sm" onclick="fetchRemotes(true)" title="Probe and refresh all remote machines">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+              <span>Refresh</span>
+            </button>
+            <button class="btn btn-primary btn-sm" onclick="openAddMachineModal()">
+              <svg class="icon" viewBox="0 0 24 24" style="stroke: #050507;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              <span>Add Machine</span>
+            </button>
+            <button class="card-action-btn" onclick="toggleFocusCard('remoteSessionsCard')" title="Expand / Focus card full screen (Esc to exit)">
+              <svg class="icon icon-focus" viewBox="0 0 24 24"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+            </button>
+            <button class="card-action-btn" onclick="toggleCardCollapse('remoteSessionsCard')" title="Collapse or Expand card">
+              <svg class="icon icon-chevron" viewBox="0 0 24 24"><polyline points="18 15 12 9 6 15"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="card-body" id="remoteSessionsCardBody">
+          <div class="focus-header-banner">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <svg class="icon" viewBox="0 0 24 24" style="stroke: #ffffff; width: 16px; height: 16px;"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+              <span style="font-weight: 600; color: #ffffff;">Focus Mode: Remote Machine Fleet</span>
+              <span>• Press <kbd style="font-family: var(--font-mono); background: rgba(255,255,255,0.1); padding: 1px 5px; border-radius: 4px;">Esc</kbd> to return</span>
+            </div>
+            <button class="btn btn-outline btn-sm" onclick="exitFocusCard()">Exit Focus</button>
+          </div>
       <div id="remotesContainer" style="margin-top: 8px;">
         <div style="font-size: 13px; color: var(--text-muted); padding: 8px 0;">Loading remote machines...</div>
       </div>
-    </div>
 
-    <!-- Live Safety Playground Card -->
-    <div class="card" style="margin-top: 20px;">
-      <div class="card-title">
-        <div class="card-title-left">
-          <svg class="card-title-icon" viewBox="0 0 24 24"><path d="M10 2v7.31M14 9.3V1.99M8.5 2h7M14 9.3a6.5 6.5 0 1 1-4 0"/></svg>
-          <span>Live Safety Playground</span>
         </div>
-        <span class="eyebrow-label">Simulate Intercepts</span>
       </div>
+
+      <!-- Card 8: Live Safety Playground Card -->
+      <div class="card card-span-full" id="threatSimulatorCard" data-card-id="threatSimulatorCard" data-views="sandbox all">
+        <div class="card-header-bar" onclick="handleCardHeaderClick(event, 'threatSimulatorCard')">
+          <div class="card-title-left">
+            <svg class="card-title-icon" viewBox="0 0 24 24"><path d="M10 2v7.31M14 9.3V1.99M8.5 2h7M14 9.3a6.5 6.5 0 1 1-4 0"/></svg>
+            <span class="card-title-text">Live Safety Playground</span>
+            <span id="threatSimulatorCardSummaryPill" class="card-collapsed-summary">Interactive Threat Simulator</span>
+          </div>
+          <div class="card-header-actions" onclick="event.stopPropagation()">
+            <span class="eyebrow-label">Simulate Intercepts</span>
+            <button class="card-action-btn" onclick="toggleFocusCard('threatSimulatorCard')" title="Expand / Focus card full screen (Esc to exit)">
+              <svg class="icon icon-focus" viewBox="0 0 24 24"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+            </button>
+            <button class="card-action-btn" onclick="toggleCardCollapse('threatSimulatorCard')" title="Collapse or Expand card">
+              <svg class="icon icon-chevron" viewBox="0 0 24 24"><polyline points="18 15 12 9 6 15"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="card-body" id="threatSimulatorCardBody">
+          <div class="focus-header-banner">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <svg class="icon" viewBox="0 0 24 24" style="stroke: #ffffff; width: 16px; height: 16px;"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+              <span style="font-weight: 600; color: #ffffff;">Focus Mode: Safety Playground &amp; Threat Simulator</span>
+              <span>• Press <kbd style="font-family: var(--font-mono); background: rgba(255,255,255,0.1); padding: 1px 5px; border-radius: 4px;">Esc</kbd> to return</span>
+            </div>
+            <button class="btn btn-outline btn-sm" onclick="exitFocusCard()">Exit Focus</button>
+          </div>
       <div class="quick-preset-chips">
         <span class="chip" onclick="setSim('run_command', 'ls -la')">ls -la</span>
         <span class="chip" onclick="setSim('run_command', 'git status')">git status</span>
@@ -1968,26 +2736,44 @@
         <div id="verdictBadge" class="verdict-tag verdict-allow">ALLOW</div>
         <div id="verdictReason" style="font-size: 13px; color: var(--text); margin-top: 4px; font-family: var(--font-mono); line-height: 1.5;"></div>
       </div>
-    </div>
 
-    <!-- Real-Time Audit Stream Card -->
-    <div class="card audit-section">
-      <div class="card-title">
-        <div class="card-title-left">
-          <svg class="card-title-icon" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-          <span>Real-Time Audit Stream</span>
-        </div>
-        <div style="display: flex; gap: 8px;">
-          <button class="btn btn-outline btn-sm" onclick="loadAudit()">
-            <svg class="icon" viewBox="0 0 24 24"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
-            <span>Refresh</span>
-          </button>
-          <button class="btn btn-outline btn-sm" onclick="clearAudit()">
-            <svg class="icon" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-            <span>Clear</span>
-          </button>
         </div>
       </div>
+
+      <!-- Card 9: Real-Time Audit Stream Card -->
+      <div class="card card-span-full audit-section" id="auditSectionCard" data-card-id="auditSectionCard" data-views="overview audit all">
+        <div class="card-header-bar" onclick="handleCardHeaderClick(event, 'auditSectionCard')">
+          <div class="card-title-left">
+            <svg class="card-title-icon" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            <span class="card-title-text">Real-Time Audit Stream</span>
+            <span id="auditSectionCardSummaryPill" class="card-collapsed-summary">0 Events Logged</span>
+          </div>
+          <div class="card-header-actions" onclick="event.stopPropagation()">
+            <button class="btn btn-outline btn-sm" onclick="loadAudit()">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+              <span>Refresh</span>
+            </button>
+            <button class="btn btn-outline btn-sm" onclick="clearAudit()">
+              <svg class="icon" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+              <span>Clear</span>
+            </button>
+            <button class="card-action-btn" onclick="toggleFocusCard('auditSectionCard')" title="Expand / Focus card full screen (Esc to exit)">
+              <svg class="icon icon-focus" viewBox="0 0 24 24"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+            </button>
+            <button class="card-action-btn" onclick="toggleCardCollapse('auditSectionCard')" title="Collapse or Expand card">
+              <svg class="icon icon-chevron" viewBox="0 0 24 24"><polyline points="18 15 12 9 6 15"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="card-body" id="auditSectionCardBody">
+          <div class="focus-header-banner">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <svg class="icon" viewBox="0 0 24 24" style="stroke: #ffffff; width: 16px; height: 16px;"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+              <span style="font-weight: 600; color: #ffffff;">Focus Mode: Real-Time Audit Stream</span>
+              <span>• Press <kbd style="font-family: var(--font-mono); background: rgba(255,255,255,0.1); padding: 1px 5px; border-radius: 4px;">Esc</kbd> to return</span>
+            </div>
+            <button class="btn btn-outline btn-sm" onclick="exitFocusCard()">Exit Focus</button>
+          </div>
       <div style="overflow-x: auto;">
         <table class="audit-table">
           <thead>
@@ -2006,7 +2792,11 @@
           </tbody>
         </table>
       </div>
+
+        </div>
+      </div>
     </div>
+
   </main>
 
   <!-- Activity Sidebar & Overlay -->
@@ -2821,6 +3611,62 @@
 
       <div style="display: flex; justify-content: flex-end;">
         <button class="btn btn-primary btn-sm" onclick="closeModal('conversationLaunchModal')">Done</button>
+      </div>
+    </div>
+  </div>
+
+  
+  <!-- Fullscreen Focus Backdrop -->
+  <div id="focusBackdrop" class="focus-backdrop" onclick="exitFocusCard()"></div>
+
+  <!-- Customize Layout & Card Visibility Modal -->
+  <div id="customizeLayoutModal" class="modal-overlay" style="display: none;">
+    <div class="modal-card modal-card-lg" style="max-width: 580px;">
+      <div class="modal-title" style="display: flex; align-items: center; justify-content: space-between;">
+        <div style="display: flex; align-items: center; gap: 9px;">
+          <svg class="icon" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+          <span>Customize Dashboard Layout</span>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="closeModal('customizeLayoutModal')">✕</button>
+      </div>
+      <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 18px; line-height: 1.5;">
+        Organize AntiAgent to fit your workflow. Toggle which cards are visible, set your preferred default landing view, and choose your display density.
+      </p>
+
+      <div class="form-group">
+        <label>Default Startup View</label>
+        <select id="selectDefaultView" class="form-control" onchange="setDefaultView(this.value)">
+          <option value="overview">Overview (Telemetry HUD &amp; Core Controls)</option>
+          <option value="audit">Real-Time Audit Stream</option>
+          <option value="conversations">Agent Conversations &amp; Transcripts</option>
+          <option value="security">Security Engine &amp; Policy Rules</option>
+          <option value="sandbox">Safety Sandbox &amp; Simulator</option>
+          <option value="fleet">Remote Fleet &amp; GitHub PRs</option>
+          <option value="all">All Cards Grid</option>
+        </select>
+      </div>
+
+      <div class="form-group" style="margin-top: 14px;">
+        <label>Layout Spacing Density</label>
+        <div class="segmented-control" style="margin-bottom: 0;">
+          <button id="densityComfortableBtn" class="segmented-btn active" onclick="setUiDensity('comfortable')">Comfortable (Spacious)</button>
+          <button id="densityCompactBtn" class="segmented-btn" onclick="setUiDensity('compact')">Compact (Laptop Friendly)</button>
+        </div>
+      </div>
+
+      <div style="margin-top: 20px;">
+        <label style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+          <span>Visible Cards &amp; Tools</span>
+          <button class="btn btn-outline btn-sm" style="padding: 2px 8px; font-size: 11px;" onclick="resetCardVisibility()">Show All</button>
+        </label>
+        <div id="customizeCardCheckboxes" style="display: flex; flex-direction: column; gap: 8px;">
+          <!-- Dynamically populated checkboxes -->
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--card-border-subtle);">
+        <button class="btn btn-outline btn-sm" onclick="resetLayoutDefaults()">Reset to Defaults</button>
+        <button class="btn btn-primary btn-sm" onclick="closeModal('customizeLayoutModal')">Done</button>
       </div>
     </div>
   </div>
@@ -6244,6 +7090,588 @@
     loadAudit();
     loadSidebarAudit();
     setInterval(loadAudit, 3000);
+
+    const _origFetchStatus = fetchStatus;
+    fetchStatus = async function() {
+      const res = await _origFetchStatus();
+      updateTelemetryHUD(res);
+      return res;
+    };
+
+    const _origLoadAudit = loadAudit;
+    loadAudit = async function() {
+      const res = await _origLoadAudit();
+      updateTelemetryHUD();
+      return res;
+    };
+
+    const _origFetchConversations = fetchConversations;
+    fetchConversations = async function(forceRefresh = false) {
+      const res = await _origFetchConversations(forceRefresh);
+      updateTelemetryHUD();
+      return res;
+    };
+
+    const _origFetchRemotes = fetchRemotes;
+    fetchRemotes = async function(forceProbe = false) {
+      const res = await _origFetchRemotes(forceProbe);
+      updateTelemetryHUD();
+      return res;
+    };
+
+    /* ==========================================================================
+       Revamped Layout, View Switcher, Accordion & Focus Mode Engine
+       ========================================================================== */
+
+    const CARD_METADATA = [
+      { id: 'hooksCard', name: 'Lifecycle Hooks & Stance', icon: 'shield', desc: 'PreToolUse guards & safety profile stance' },
+      { id: 'engineCard', name: 'Supervisor Engine & Provider', icon: 'cpu', desc: 'LLM supervisor provider (Native, Gemini, Ollama)' },
+      { id: 'rulesCard', name: 'Autonomous Execution Rules', icon: 'check-square', desc: 'Auto-approve rules & persistent audit toggles' },
+      { id: 'customRegexCard', name: 'Custom Policy Regex Rules', icon: 'code', desc: 'Custom command allow and deny patterns' },
+      { id: 'prMonitorCard', name: 'Pull Request & CI Monitor', icon: 'git-pull-request', desc: 'GitHub PR CI checks and failure log inspector' },
+      { id: 'conversationsCard', name: 'Antigravity Conversations', icon: 'message-square', desc: 'Agent session inspector and transcript viewer' },
+      { id: 'remoteSessionsCard', name: 'Remote SSH Sessions', icon: 'server', desc: 'SSH remote machine fleet management' },
+      { id: 'threatSimulatorCard', name: 'Live Safety Playground', icon: 'terminal', desc: 'Interactive rule sandbox & threat evaluator' },
+      { id: 'auditSectionCard', name: 'Real-Time Audit Stream', icon: 'activity', desc: 'Live intercepted tool call log stream' }
+    ];
+
+    let currentView = 'overview';
+    let collapsedCards = new Set();
+    let hiddenCards = new Set();
+    let focusedCardId = null;
+    let uiDensity = 'comfortable';
+
+    // Switch View Mode (Tabs 1-7)
+    function switchView(viewName, scrollTarget = null) {
+      exitFocusCard();
+      currentView = viewName;
+      localStorage.setItem('antiagent_active_view', viewName);
+
+      // Update URL hash without jumping
+      if (history.replaceState) {
+        history.replaceState(null, null, '#' + viewName);
+      }
+
+      // Update tab active buttons
+      document.querySelectorAll('.view-tab').forEach(btn => {
+        if (btn.getAttribute('data-view') === viewName) {
+          btn.classList.add('active');
+        } else {
+          btn.classList.remove('active');
+        }
+      });
+
+      // Show/Hide Overview Quick Actions Bar
+      const quickBar = document.getElementById('overviewQuickBar');
+      if (quickBar) {
+        quickBar.style.display = (viewName === 'overview') ? 'flex' : 'none';
+      }
+
+      // Filter cards
+      CARD_METADATA.forEach(meta => {
+        const card = document.getElementById(meta.id);
+        if (!card) return;
+
+        // If card was hidden by user in customize modal, keep it hidden in "all" view
+        const isUserHidden = hiddenCards.has(meta.id);
+        if (isUserHidden) {
+          card.classList.add('card-user-hidden');
+        } else {
+          card.classList.remove('card-user-hidden');
+        }
+
+        // View matching
+        const views = (card.getAttribute('data-views') || '').split(' ');
+        if (viewName === 'all') {
+          card.classList.remove('card-view-hidden');
+        } else if (views.includes(viewName)) {
+          card.classList.remove('card-view-hidden');
+        } else {
+          card.classList.add('card-view-hidden');
+        }
+      });
+
+      // Reset any active search
+      const searchInput = document.getElementById('dashboardSearchInput');
+      if (searchInput && searchInput.value) {
+        searchInput.value = '';
+      }
+
+      if (scrollTarget) {
+        const target = document.getElementById(scrollTarget);
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }
+    }
+
+    // Toggle single card collapse/expand
+    function toggleCardCollapse(cardId, forceState = null) {
+      const card = document.getElementById(cardId);
+      if (!card) return;
+
+      const willCollapse = (forceState !== null) ? forceState : !card.classList.contains('card-collapsed');
+      if (willCollapse) {
+        card.classList.add('card-collapsed');
+        collapsedCards.add(cardId);
+      } else {
+        card.classList.remove('card-collapsed');
+        collapsedCards.delete(cardId);
+      }
+
+      try {
+        localStorage.setItem('antiagent_collapsed_cards', JSON.stringify(Array.from(collapsedCards)));
+      } catch (e) {}
+
+      updateToggleAllButton();
+    }
+
+    // Handle clicking anywhere on the card header
+    function handleCardHeaderClick(event, cardId) {
+      // Ignore if user clicked a button, input, select, textarea, or link
+      const target = event.target;
+      if (target.closest('button') || target.closest('input') || target.closest('select') || target.closest('textarea') || target.closest('a') || target.closest('.toggle-switch')) {
+        return;
+      }
+      toggleCardCollapse(cardId);
+    }
+
+    // Toggle Fullscreen Focus Mode
+    function toggleFocusCard(cardId) {
+      if (focusedCardId === cardId) {
+        exitFocusCard();
+        return;
+      }
+
+      // Exit any previous focus
+      exitFocusCard();
+
+      const card = document.getElementById(cardId);
+      if (!card) return;
+
+      // Ensure card is expanded when entering focus
+      if (card.classList.contains('card-collapsed')) {
+        toggleCardCollapse(cardId, false);
+      }
+
+      card.classList.add('card-focused');
+      focusedCardId = cardId;
+
+      const backdrop = document.getElementById('focusBackdrop');
+      if (backdrop) {
+        backdrop.classList.add('active');
+      }
+      document.body.style.overflow = 'hidden';
+    }
+
+    // Exit Focus Mode
+    function exitFocusCard() {
+      if (!focusedCardId) return;
+      const card = document.getElementById(focusedCardId);
+      if (card) {
+        card.classList.remove('card-focused');
+      }
+      focusedCardId = null;
+
+      const backdrop = document.getElementById('focusBackdrop');
+      if (backdrop) {
+        backdrop.classList.remove('active');
+      }
+      document.body.style.overflow = '';
+    }
+
+    // Collapse All / Expand All toggle
+    function toggleAllCardsCollapse() {
+      const allCards = document.querySelectorAll('#cardsLayoutWrapper .card:not(.card-view-hidden):not(.card-user-hidden)');
+      let anyExpanded = false;
+      allCards.forEach(c => {
+        if (!c.classList.contains('card-collapsed')) {
+          anyExpanded = true;
+        }
+      });
+
+      const shouldCollapse = anyExpanded;
+      CARD_METADATA.forEach(meta => {
+        toggleCardCollapse(meta.id, shouldCollapse);
+      });
+      updateToggleAllButton();
+    }
+
+    function updateToggleAllButton() {
+      const btn = document.getElementById('btnToggleAllCards');
+      const text = document.getElementById('btnToggleAllCardsText');
+      const icon = document.querySelector('.icon-toggle-all');
+      if (!btn || !text) return;
+
+      const allCards = document.querySelectorAll('#cardsLayoutWrapper .card:not(.card-view-hidden):not(.card-user-hidden)');
+      let anyExpanded = false;
+      allCards.forEach(c => {
+        if (!c.classList.contains('card-collapsed')) {
+          anyExpanded = true;
+        }
+      });
+
+      if (anyExpanded) {
+        text.textContent = 'Collapse All';
+        if (icon) icon.style.transform = 'rotate(0deg)';
+      } else {
+        text.textContent = 'Expand All';
+        if (icon) icon.style.transform = 'rotate(180deg)';
+      }
+    }
+
+    // Density Toggle (Comfortable vs Compact)
+    function toggleDensity() {
+      const next = (uiDensity === 'comfortable') ? 'compact' : 'comfortable';
+      setUiDensity(next);
+    }
+
+    function setUiDensity(density) {
+      uiDensity = density;
+      try {
+        localStorage.setItem('antiagent_ui_density', density);
+      } catch (e) {}
+
+      if (density === 'compact') {
+        document.body.classList.add('density-compact');
+      } else {
+        document.body.classList.remove('density-compact');
+      }
+
+      // Update button text
+      const btnText = document.getElementById('btnDensityToggleText');
+      if (btnText) {
+        btnText.textContent = (density === 'compact') ? 'Comfortable' : 'Compact';
+      }
+
+      // Update modal buttons
+      const comfBtn = document.getElementById('densityComfortableBtn');
+      const compBtn = document.getElementById('densityCompactBtn');
+      if (comfBtn && compBtn) {
+        if (density === 'compact') {
+          compBtn.classList.add('active');
+          comfBtn.classList.remove('active');
+        } else {
+          comfBtn.classList.add('active');
+          compBtn.classList.remove('active');
+        }
+      }
+    }
+
+    // Customize Layout Modal
+    function openCustomizeModal() {
+      renderCustomizeCheckboxes();
+      const selectDefault = document.getElementById('selectDefaultView');
+      if (selectDefault) {
+        selectDefault.value = localStorage.getItem('antiagent_default_view') || 'overview';
+      }
+      openModal('customizeLayoutModal');
+    }
+
+    function renderCustomizeCheckboxes() {
+      const container = document.getElementById('customizeCardCheckboxes');
+      if (!container) return;
+
+      let html = '';
+      CARD_METADATA.forEach(meta => {
+        const isChecked = !hiddenCards.has(meta.id);
+        html += `
+          <div class="customize-card-item">
+            <div>
+              <div style="font-size: 13px; font-weight: 600; color: #ffffff;">${meta.name}</div>
+              <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">${meta.desc}</div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleCardVisibility('${meta.id}', this.checked)">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        `;
+      });
+      container.innerHTML = html;
+    }
+
+    function toggleCardVisibility(cardId, isVisible) {
+      if (isVisible) {
+        hiddenCards.delete(cardId);
+      } else {
+        hiddenCards.add(cardId);
+      }
+      try {
+        localStorage.setItem('antiagent_hidden_cards', JSON.stringify(Array.from(hiddenCards)));
+      } catch (e) {}
+
+      const card = document.getElementById(cardId);
+      if (card) {
+        if (isVisible) {
+          card.classList.remove('card-user-hidden');
+        } else {
+          card.classList.add('card-user-hidden');
+        }
+      }
+    }
+
+    function resetCardVisibility() {
+      hiddenCards.clear();
+      try {
+        localStorage.removeItem('antiagent_hidden_cards');
+      } catch (e) {}
+      CARD_METADATA.forEach(m => {
+        const card = document.getElementById(m.id);
+        if (card) card.classList.remove('card-user-hidden');
+      });
+      renderCustomizeCheckboxes();
+    }
+
+    function setDefaultView(val) {
+      try {
+        localStorage.setItem('antiagent_default_view', val);
+      } catch (e) {}
+    }
+
+    function resetLayoutDefaults() {
+      resetCardVisibility();
+      collapsedCards.clear();
+      try {
+        localStorage.removeItem('antiagent_collapsed_cards');
+        localStorage.removeItem('antiagent_default_view');
+      } catch (e) {}
+      CARD_METADATA.forEach(m => {
+        const card = document.getElementById(m.id);
+        if (card) card.classList.remove('card-collapsed');
+      });
+      setUiDensity('comfortable');
+      switchView('overview');
+      closeModal('customizeLayoutModal');
+    }
+
+    // Dashboard Search / Jump Filter
+    function handleDashboardSearch(query) {
+      const q = (query || '').trim().toLowerCase();
+      if (!q) {
+        // Restore view filtering
+        switchView(currentView);
+        return;
+      }
+
+      CARD_METADATA.forEach(meta => {
+        const card = document.getElementById(meta.id);
+        if (!card) return;
+
+        const text = (card.textContent || '').toLowerCase();
+        if (text.includes(q)) {
+          card.classList.remove('card-view-hidden');
+          // uncollapse to reveal match
+          if (card.classList.contains('card-collapsed')) {
+            toggleCardCollapse(meta.id, false);
+          }
+        } else {
+          card.classList.add('card-view-hidden');
+        }
+      });
+    }
+
+    // Live Telemetry HUD & Summary Pills update
+    function updateTelemetryHUD(statusData = null) {
+      // 1. Safety Stance & Hooks
+      const stanceVal = document.getElementById('hudStanceVal');
+      const hooksSub = document.getElementById('hudHooksSub');
+      const hooksPip = document.getElementById('hudHooksPip');
+      const hooksSummary = document.getElementById('hooksCardSummaryPill');
+      const rulesSummary = document.getElementById('rulesCardSummaryPill');
+
+      if (statusData) {
+        const profName = (statusData.profile || 'balanced').charAt(0).toUpperCase() + (statusData.profile || 'balanced').slice(1);
+        if (stanceVal) stanceVal.textContent = profName;
+
+        let activeHooks = [];
+        if (statusData.workspace_active) activeHooks.push('Workspace');
+        if (statusData.global_active) activeHooks.push('Global');
+        const hooksText = activeHooks.length > 0 ? (activeHooks.join(' & ') + ' Active') : 'Inactive';
+
+        if (hooksSub) hooksSub.textContent = hooksText;
+        if (hooksPip) {
+          hooksPip.className = activeHooks.length > 0 ? 'pip pip-emerald' : 'pip pip-inactive';
+        }
+        if (hooksSummary) {
+          hooksSummary.textContent = `${profName} • ${hooksText}`;
+        }
+        if (rulesSummary) {
+          rulesSummary.textContent = statusData.auto_review ? 'Auto-Review Active' : 'Manual Approval';
+        }
+      }
+
+      // 2. Audit count & blocked threats
+      const auditCount = document.getElementById('hudAuditCount');
+      const auditDenied = document.getElementById('hudAuditDenied');
+      const auditSummary = document.getElementById('auditSectionCardSummaryPill');
+      const auditBody = document.getElementById('auditBody');
+
+      if (auditBody) {
+        const rows = auditBody.querySelectorAll('tr:not(.empty-row)');
+        let deniedCount = 0;
+        rows.forEach(r => {
+          if (r.textContent.includes('DENY') || r.textContent.includes('BLOCKED')) {
+            deniedCount++;
+          }
+        });
+        const total = rows.length;
+        if (auditCount) auditCount.textContent = total;
+        if (auditDenied) auditDenied.textContent = `${deniedCount} blocked threats`;
+        if (auditSummary) auditSummary.textContent = `${total} events • ${deniedCount} blocked`;
+      }
+
+      // 3. Conversations
+      const convCount = document.getElementById('hudConversationsCount');
+      const convSub = document.getElementById('hudConversationsSub');
+      const convSummary = document.getElementById('conversationsCardSummaryPill');
+      const convCardBadge = document.getElementById('conversationsCardBadge');
+
+      if (convCardBadge) {
+        const badgeText = convCardBadge.textContent || '0 Sessions';
+        const num = badgeText.replace(/[^0-9]/g, '') || '0';
+        if (convCount) convCount.textContent = num;
+        if (convSub) convSub.textContent = `${num} total sessions`;
+        if (convSummary) convSummary.textContent = `${num} Sessions`;
+      }
+
+      // 4. Remote machines
+      const remotesCount = document.getElementById('hudRemotesCount');
+      const remotesSub = document.getElementById('hudRemotesSub');
+      const remotesSummary = document.getElementById('remoteSessionsCardSummaryPill');
+      const remotesBadge = document.getElementById('remotesCardBadge');
+
+      if (remotesBadge) {
+        const badgeText = remotesBadge.textContent || '0 Machines';
+        const num = badgeText.replace(/[^0-9]/g, '') || '0';
+        if (remotesCount) remotesCount.textContent = num;
+        if (remotesSub) remotesSub.textContent = `${num} machines configured`;
+        if (remotesSummary) remotesSummary.textContent = `${num} Machines`;
+      }
+
+      // 5. PR Status
+      const prVal = document.getElementById('hudPRVal');
+      const prSub = document.getElementById('hudPRSub');
+      const prPip = document.getElementById('hudPRPip');
+      const prSummary = document.getElementById('prMonitorCardSummaryPill');
+      const prBadge = document.getElementById('prStatusBadge');
+
+      if (prBadge) {
+        const text = prBadge.textContent || 'Checking...';
+        if (prVal) prVal.textContent = text;
+        if (prSub) prSub.textContent = 'GitHub CI Guard';
+        if (prPip) {
+          prPip.className = text.includes('Passing') || text.includes('Active') ? 'pip pip-emerald' : 'pip pip-inactive';
+        }
+        if (prSummary) prSummary.textContent = text;
+      }
+    }
+
+    // Upgrade scrollToConversations & scrollToRemoteSessions to switch tabs
+    const origScrollToConversations = window.scrollToConversations;
+    window.scrollToConversations = function() {
+      switchView('conversations');
+      toggleCardCollapse('conversationsCard', false);
+      const card = document.getElementById('conversationsCard');
+      if (card) {
+        card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    };
+
+    const origScrollToRemoteSessions = window.scrollToRemoteSessions;
+    window.scrollToRemoteSessions = function() {
+      switchView('fleet');
+      toggleCardCollapse('remoteSessionsCard', false);
+      const card = document.getElementById('remoteSessionsCard');
+      if (card) {
+        card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    };
+
+    // Keyboard shortcuts: 1-7 for views, Cmd+K for search, Esc to exit focus/modals
+    window.addEventListener('keydown', (e) => {
+      // Ignore if typing in input, textarea, or select
+      const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
+      const isInput = (activeTag === 'input' || activeTag === 'textarea' || activeTag === 'select');
+
+      if (e.key === 'Escape') {
+        if (focusedCardId) {
+          e.preventDefault();
+          exitFocusCard();
+          return;
+        }
+        const openModalElem = document.querySelector('.modal-overlay[style*="display: flex"]');
+        if (openModalElem) {
+          openModalElem.style.display = 'none';
+          return;
+        }
+      }
+
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        const searchInput = document.getElementById('dashboardSearchInput');
+        if (searchInput) {
+          searchInput.focus();
+          searchInput.select();
+        }
+        return;
+      }
+
+      if (!isInput && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        const key = e.key;
+        if (key === '1') switchView('overview');
+        else if (key === '2') switchView('audit');
+        else if (key === '3') switchView('conversations');
+        else if (key === '4') switchView('security');
+        else if (key === '5') switchView('sandbox');
+        else if (key === '6') switchView('fleet');
+        else if (key === '7') switchView('all');
+      }
+    });
+
+    // Initialize Layout & Stored Preferences
+    function initRevampedLayout() {
+      // 1. Restore density
+      try {
+        const storedDensity = localStorage.getItem('antiagent_ui_density') || 'comfortable';
+        setUiDensity(storedDensity);
+      } catch (e) {}
+
+      // 2. Restore collapsed cards
+      try {
+        const storedCollapsed = JSON.parse(localStorage.getItem('antiagent_collapsed_cards') || '[]');
+        storedCollapsed.forEach(id => {
+          toggleCardCollapse(id, true);
+        });
+      } catch (e) {}
+
+      // 3. Restore hidden cards
+      try {
+        const storedHidden = JSON.parse(localStorage.getItem('antiagent_hidden_cards') || '[]');
+        hiddenCards = new Set(storedHidden);
+      } catch (e) {}
+
+      // 4. Restore active view from hash or storage
+      let initialView = 'overview';
+      if (window.location.hash) {
+        const hash = window.location.hash.replace('#', '');
+        const validViews = ['overview', 'audit', 'conversations', 'security', 'sandbox', 'fleet', 'all'];
+        if (validViews.includes(hash)) {
+          initialView = hash;
+        }
+      } else {
+        try {
+          initialView = localStorage.getItem('antiagent_active_view') || localStorage.getItem('antiagent_default_view') || 'overview';
+        } catch (e) {}
+      }
+      switchView(initialView);
+      updateTelemetryHUD();
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      initRevampedLayout();
+    });
+
   </script>
 </body>
 </html>

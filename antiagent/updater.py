@@ -165,6 +165,47 @@ def select_recommended_asset(assets: List[Dict[str, Any]]) -> Optional[Dict[str,
     return assets[0]
 
 
+def is_generic_installer_body(body: str) -> bool:
+    """Check if GitHub release body only contains download links/installer boilerplate without actual feature notes."""
+    if not body or not body.strip():
+        return True
+    lower = body.lower()
+    # If body contains actual changelog headers, it's not generic boilerplate
+    if (
+        "### summary" in lower
+        or "### what's new" in lower
+        or "### architectural & functional highlights" in lower
+        or "### features" in lower
+        or "### improvements" in lower
+        or "### highlights" in lower
+    ):
+        return False
+    # If it starts with or consists mainly of download table / install commands
+    if "which download is right for you" in lower or ("1-line terminal installs" in lower and "summary" not in lower):
+        return True
+    return False
+
+
+def get_remote_release_notes(version: str, repo: str = GITHUB_REPO) -> str:
+    """Fetch release notes for version from the remote repository's CHANGELOG.md."""
+    clean_ver = version.strip().lstrip("vV")
+    url = f"https://raw.githubusercontent.com/{repo}/main/CHANGELOG.md"
+    req = urllib.request.Request(
+        url,
+        headers={"User-Agent": f"AntiAgent/{__version__} (Updater)"}
+    )
+    try:
+        with safe_urlopen(req, timeout=5.0) as resp:
+            content = resp.read().decode("utf-8")
+            pattern = rf"##\s+\[v?{re.escape(clean_ver)}\][^\n]*\n([\s\S]*?)(?=\n##\s+\[|\Z)"
+            m = re.search(pattern, content)
+            if m:
+                return m.group(1).strip()
+    except Exception:
+        pass
+    return ""
+
+
 def get_local_release_notes(version: str = __version__) -> str:
     """Extract release notes for version from CHANGELOG.md if available."""
     try:
@@ -173,17 +214,50 @@ def get_local_release_notes(version: str = __version__) -> str:
             Path(__file__).parent / "CHANGELOG.md",
             Path.cwd() / "CHANGELOG.md",
         ]
+        clean_ver = version.strip().lstrip("vV")
         for p in candidates:
             if p.is_file():
                 content = p.read_text(encoding="utf-8")
                 # Look for section ## [vX.Y.Z] or ## [X.Y.Z]
-                pattern = rf"##\s+\[v?{re.escape(version)}\][^\n]*\n([\s\S]*?)(?=\n##\s+\[|\Z)"
+                pattern = rf"##\s+\[v?{re.escape(clean_ver)}\][^\n]*\n([\s\S]*?)(?=\n##\s+\[|\Z)"
                 match = re.search(pattern, content)
                 if match:
                     return match.group(1).strip()
     except Exception:
         pass
     return ""
+
+
+def get_best_release_notes(version: str, github_body: str = "", repo: str = GITHUB_REPO) -> str:
+    """Resolve the true 'What's New' release notes for a version.
+
+    Prioritizes real feature highlights & changelog over installer boilerplate.
+    """
+    clean_ver = version.strip().lstrip("vV")
+
+    # 1. Check local CHANGELOG.md first
+    local_notes = get_local_release_notes(clean_ver)
+
+    # 2. If not local, check remote CHANGELOG.md from GitHub
+    changelog_notes = local_notes
+    if not changelog_notes:
+        changelog_notes = get_remote_release_notes(clean_ver, repo=repo)
+
+    # 3. If github_body contains genuine custom feature notes, keep it
+    if github_body and not is_generic_installer_body(github_body):
+        return github_body.strip()
+
+    # 4. If we have changelog notes, use them (and if github_body has install options, append them cleanly)
+    if changelog_notes:
+        if github_body and is_generic_installer_body(github_body):
+            return f"{changelog_notes}\n\n---\n\n{github_body.strip()}"
+        return changelog_notes
+
+    # 5. Fallback to github_body or default message
+    if github_body and github_body.strip():
+        return github_body.strip()
+
+    return f"AntiAgent v{clean_ver} release with security improvements, bug fixes, and performance updates."
 
 
 def check_for_updates(current_version: str = __version__, repo: str = GITHUB_REPO) -> Dict[str, Any]:
@@ -217,9 +291,7 @@ def check_for_updates(current_version: str = __version__, repo: str = GITHUB_REP
             })
 
         recommended = select_recommended_asset(assets_list)
-        release_notes = data.get("body") or ""
-        if not release_notes.strip():
-            release_notes = get_local_release_notes(latest_version or current_version)
+        release_notes = get_best_release_notes(latest_version or current_version, data.get("body") or "", repo=repo)
 
         return {
             "ok": True,

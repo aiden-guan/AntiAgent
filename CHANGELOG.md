@@ -3,6 +3,34 @@
 All notable changes to the **AntiAgent** project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.4.1] — 2026-09-28
+
+### Summary
+Comprehensive **Dashboard UI Revamp, High-Telemetry System HUD, View Mode Workspace Navigation, Card Accordion / Focus Engine, Dynamic Release Notes Resolution, and Layout Customization**. Solves excessive vertical scrolling and visual clutter by transforming the AntiAgent Dashboard into an organized, responsive mission control center. Resolves the update dialog showing generic installer boilerplate instead of actual release notes by automatically extracting feature highlights from the changelog locally or remotely.
+
+### Architectural & Functional Highlights
+
+| Area / Component | Improvement |
+| :--- | :--- |
+| **Telemetry HUD Strip (`telemetry-hud`)** | 5-tile responsive glassmorphic telemetry bar providing instant bird's-eye metrics without vertical scrolling: Safety Stance & Hooks, Real-Time Audit Intercepts & Denied count, Agent Sessions count, PR & CI Guard status, and Remote Fleet machine count. Clicking any tile jumps directly to its dedicated view. |
+| **Workspace View Navigation (`view-tabs`)** | High-performance segmented tab navigation dividing tools into 7 focused workspaces: `Overview [1]`, `Live Audit [2]`, `Agent Sessions [3]`, `Security & Rules [4]`, `Safety Sandbox [5]`, `Fleet & PRs [6]`, and `All Cards [7]`. Includes URL hash synchronization (`#overview`, `#audit`, etc.) and instant keyboard navigation (`1-7`). |
+| **Standardized Card Accordion & Collapse System** | Every dashboard card features an interactive header bar with one-click accordion collapsing. When collapsed, cards compress to a 44px compact bar displaying a dynamic summary badge (e.g. `Balanced • Active`, `24 events • 0 blocked`, `0 machines`), saving 80% vertical space while retaining live state awareness. Card collapse states are permanently remembered via `localStorage`. |
+| **Distraction-Free Fullscreen Focus Mode (`⛶`)** | Maximize any card into an immersive, viewport-filling Focus Mode with blurred glass backdrop, generous spacing, dedicated top exit ribbon, and full keyboard control (`Esc` to dismiss). Ideal for reading deep conversation transcripts, inspecting live audit JSON payloads, or running threat simulations. |
+| **Global Layout & Card Customization Modal** | Added `#customizeLayoutModal` allowing users to toggle individual card visibility (e.g. hide SSH remotes or GitHub PRs when not needed), select default landing views, choose UI spacing density (Comfortable vs Compact for laptops), and reset to defaults. Persisted across sessions via `localStorage`. |
+| **Overview Quick Actions Ribbon** | Sleek action ribbon on the Overview tab providing instant one-click shortcuts to Run System Doctor, Test Threat Simulation, Inspect Live Tool Calls Sidebar, and Check for Updates. |
+| **Instant Search & Jump Filter (`Cmd+K`)** | Dedicated search box filtering cards and expanding matching content in real time. Bound to `Cmd+K` / `Ctrl+K`. |
+| **Dynamic "What's New in Update" Resolution** | Fixed updater dialog displaying generic download instructions instead of actual version changes. `antiagent.updater` now detects generic installer bodies and extracts true feature notes from `CHANGELOG.md` (both locally and via GitHub raw API). Enhanced CI release workflow to automatically embed release notes into GitHub releases. |
+
+### Verification Proof
+- All 300 unit tests passed (`python3 -m unittest discover tests`) with 0 failures and 0 errors.
+- Added comprehensive unit test in `tests/test_dashboard.py` (`test_revamped_ui_structure`) verifying Telemetry HUD, View Tabs (1-7), Layout Toolbar, Card Focus & Collapse actions across all 9 cards, and Customization Modal.
+- Added unit tests in `tests/test_updater.py` (`test_get_best_release_notes_replaces_installer_boilerplate`, `test_get_best_release_notes_keeps_custom_notes`) verifying release notes resolution.
+- Validated complete HTML well-formedness with zero unclosed or mismatched tags using custom Python HTML parser.
+- Validated JavaScript syntax and execution with Node.js (`node --check`).
+- Verified 100% preservation of all 213 pre-existing element IDs and interactive APIs.
+
+---
+
 ## [v0.4.0] — 2026-09-28
 
 ### Summary

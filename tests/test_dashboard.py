@@ -39,6 +39,50 @@ class TestDashboardServer(unittest.TestCase):
             content = resp.read().decode("utf-8")
             self.assertIn("AntiAgent Dashboard", content)
 
+    def test_revamped_ui_structure(self):
+        url = f"http://127.0.0.1:{self.port}/"
+        with urllib.request.urlopen(url) as resp:
+            self.assertEqual(resp.status, 200)
+            content = resp.read().decode("utf-8")
+            # 1. Telemetry HUD Strip
+            self.assertIn("telemetryHud", content)
+            self.assertIn("hudStanceVal", content)
+            self.assertIn("hudAuditCount", content)
+            self.assertIn("hudConversationsCount", content)
+            self.assertIn("hudPRVal", content)
+            self.assertIn("hudRemotesCount", content)
+
+            # 2. View Mode Navigation Bar & Tabs
+            self.assertIn("viewTabsContainer", content)
+            self.assertIn('data-view="overview"', content)
+            self.assertIn('data-view="audit"', content)
+            self.assertIn('data-view="conversations"', content)
+            self.assertIn('data-view="security"', content)
+            self.assertIn('data-view="sandbox"', content)
+            self.assertIn('data-view="fleet"', content)
+            self.assertIn('data-view="all"', content)
+
+            # 3. Layout Toolbar & Search
+            self.assertIn("dashboardSearchInput", content)
+            self.assertIn("btnToggleAllCards", content)
+            self.assertIn("btnDensityToggle", content)
+            self.assertIn("openCustomizeModal", content)
+
+            # 4. Standardized Cards with Collapsible and Focus Capabilities
+            for card_id in [
+                "hooksCard", "engineCard", "rulesCard", "customRegexCard",
+                "prMonitorCard", "conversationsCard", "remoteSessionsCard",
+                "threatSimulatorCard", "auditSectionCard"
+            ]:
+                self.assertIn(f'id="{card_id}"', content)
+                self.assertIn(f"toggleFocusCard('{card_id}')", content)
+                self.assertIn(f"toggleCardCollapse('{card_id}')", content)
+
+            # 5. Focus Backdrop & Customization Modal
+            self.assertIn("focusBackdrop", content)
+            self.assertIn("customizeLayoutModal", content)
+            self.assertIn("selectDefaultView", content)
+
     def test_api_status(self):
         url = f"http://127.0.0.1:{self.port}/api/status"
         with urllib.request.urlopen(url) as resp:

@@ -369,6 +369,34 @@ class TestUpdaterEngine(unittest.TestCase):
         self.assertTrue(extracted_bin.exists())
         self.assertTrue(bool(extracted_bin.stat().st_mode & 0o111))
 
+    def test_get_best_release_notes_replaces_installer_boilerplate(self):
+        from antiagent.updater import get_best_release_notes, is_generic_installer_body
+        installer_boilerplate = (
+            "### 📥 Which download is right for you?\n\n"
+            "| Package | Operating System |\n"
+            "| AntiAgent.dmg | macOS |\n\n"
+            "### ⚡ 1-Line Terminal Installs\n"
+            "- macOS: curl ...\n"
+        )
+        self.assertTrue(is_generic_installer_body(installer_boilerplate))
+
+        # When installer boilerplate is passed, get_best_release_notes pulls from CHANGELOG
+        notes_v40 = get_best_release_notes("0.4.0", installer_boilerplate)
+        self.assertIn("Codex-Style", notes_v40)
+        self.assertIn("Prompt Queue", notes_v40)
+        self.assertIn("Which download is right for you", notes_v40)
+
+        notes_v41 = get_best_release_notes("0.4.1", installer_boilerplate)
+        self.assertIn("Dashboard UI Revamp", notes_v41)
+        self.assertIn("Telemetry HUD", notes_v41)
+
+    def test_get_best_release_notes_keeps_custom_notes(self):
+        from antiagent.updater import get_best_release_notes, is_generic_installer_body
+        custom_notes = "### Summary\nBrand new features and bug fixes!"
+        self.assertFalse(is_generic_installer_body(custom_notes))
+        notes = get_best_release_notes("0.99.0", custom_notes)
+        self.assertEqual(notes, custom_notes)
+
 
 if __name__ == "__main__":
     unittest.main()

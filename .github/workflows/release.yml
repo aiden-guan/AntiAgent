@@ -64,6 +64,9 @@ jobs:
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
       - name: Download macOS Artifacts
         uses: actions/download-artifact@v4
         with:
@@ -76,10 +79,50 @@ jobs:
           name: windows-artifacts
           path: dist
 
+      - name: Extract Release Notes from CHANGELOG
+        id: extract_notes
+        run: |
+          python3 -c '
+          import re, sys
+          from pathlib import Path
+
+          tag = "${{ github.ref_name }}".lstrip("v")
+          changelog = Path("CHANGELOG.md").read_text(encoding="utf-8")
+          pattern = rf"##\s+\[v?{re.escape(tag)}\][^\n]*\n([\s\S]*?)(?=\n##\s+\[|\Z)"
+          m = re.search(pattern, changelog)
+          notes = m.group(1).strip() if m else f"### What'\''s New in ${{ github.ref_name }}\n\nSee full changelog at https://github.com/aiden-guan/AntiAgent/blob/main/CHANGELOG.md"
+
+          installer_table = """
+          ---
+
+          ### 📥 Which download is right for you?
+
+          | Package | Operating System | Description |
+          | :--- | :--- | :--- |
+          | **`AntiAgent.dmg`** | **macOS** | **Recommended for Mac**. Drag-and-drop installer to `/Applications`. |
+          | **`AntiAgent-Windows.zip`** | **Windows (Public Beta)** | **Recommended for Windows (Beta)**. Extract and double-click `AntiAgent.bat`. |
+          | **`AntiAgent.pkg`** | **macOS** | Standard auto-launching installer package for enterprise / MDM. |
+          | **`AntiAgent.zip`** | **macOS** | Standalone portable `.app` bundle archive. |
+
+          > ℹ️ **Windows Support (Public Beta)**: The Windows standalone app mode is currently in Public Beta. If you encounter any platform-specific quirks or edge cases, please submit an issue on GitHub!
+
+          ---
+
+          ### ⚡ 1-Line Terminal Installs
+          - **macOS**: `curl -fsSL https://raw.githubusercontent.com/aiden-guan/AntiAgent/main/install.sh | bash`
+          - **Windows (PowerShell)**: `irm https://raw.githubusercontent.com/aiden-guan/AntiAgent/main/install.ps1 | iex`
+          - **Cross-Platform CLI**: `pip install antiagent && antiagent install --global`
+          """
+
+          full_body = f"{notes}\n\n{installer_table.strip()}\n"
+          Path("RELEASE_BODY.md").write_text(full_body, encoding="utf-8")
+          '
+
       - name: Create Release and Upload Assets
         uses: softprops/action-gh-release@v2
         with:
           name: AntiAgent ${{ github.ref_name }}
+          body_path: RELEASE_BODY.md
           files: |
             dist/AntiAgent.dmg
             dist/AntiAgent.pkg
@@ -87,22 +130,4 @@ jobs:
             dist/AntiAgent-Windows.zip
           draft: false
           prerelease: false
-          generate_release_notes: true
-          body: |
-            ### 📥 Which download is right for you?
-
-            | Package | Operating System | Description |
-            | :--- | :--- | :--- |
-            | **`AntiAgent.dmg`** | **macOS** | **Recommended for Mac**. Drag-and-drop installer to `/Applications`. |
-            | **`AntiAgent-Windows.zip`** | **Windows (Public Beta)** | **Recommended for Windows (Beta)**. Extract and double-click `AntiAgent.bat`. |
-            | **`AntiAgent.pkg`** | **macOS** | Standard auto-launching installer package for enterprise / MDM. |
-            | **`AntiAgent.zip`** | **macOS** | Standalone portable `.app` bundle archive. |
-
-            > ℹ️ **Windows Support (Public Beta)**: The Windows standalone app mode is currently in Public Beta. If you encounter any platform-specific quirks or edge cases, please submit an issue on GitHub!
-
-            ---
-
-            ### ⚡ 1-Line Terminal Installs
-            - **macOS**: `curl -fsSL https://raw.githubusercontent.com/aiden-guan/AntiAgent/main/install.sh | bash`
-            - **Windows (PowerShell)**: `irm https://raw.githubusercontent.com/aiden-guan/AntiAgent/main/install.ps1 | iex`
-            - **Cross-Platform CLI**: `pip install antiagent && antiagent install --global`
+          generate_release_notes: false
