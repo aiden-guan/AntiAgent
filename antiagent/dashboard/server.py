@@ -711,6 +711,17 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
                 )
                 if res.returncode == 0:
                     chosen_path = res.stdout.strip()
+            elif sys.platform.startswith("linux"):
+                try:
+                    res = subprocess.run(
+                        ["zenity", "--file-selection", "--directory", "--title=Select Project Folder for AntiAgent:"],
+                        capture_output=True,
+                        text=True,
+                    )
+                    if res.returncode == 0:
+                        chosen_path = res.stdout.strip()
+                except Exception:
+                    pass
 
             if not chosen_path:
                 # Universal fallback via tkinter if available

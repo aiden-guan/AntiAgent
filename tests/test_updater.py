@@ -25,6 +25,9 @@ from antiagent.updater import (
 
 
 class TestUpdaterEngine(unittest.TestCase):
+    def setUp(self):
+        (Path.home() / "Downloads").mkdir(parents=True, exist_ok=True)
+
     def test_parse_version(self):
         self.assertEqual(parse_version("0.1.3"), (0, 1, 3))
         self.assertEqual(parse_version("v1.2.3"), (1, 2, 3))
