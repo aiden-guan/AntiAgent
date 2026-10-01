@@ -213,6 +213,27 @@ class TestSecurityAuditHardening(unittest.TestCase):
             import shutil
             shutil.rmtree(ws_dir, ignore_errors=True)
 
+    def test_workspace_config_cannot_re_enable_artifact_writes(self):
+        """Untrusted workspace config must NOT re-enable auto_approve_artifact_writes if globally disabled."""
+        from unittest.mock import patch
+        ws_dir = tempfile.mkdtemp()
+        global_dir = tempfile.mkdtemp()
+        try:
+            (Path(global_dir) / "config.json").write_text(
+                json.dumps({"auto_approve_artifact_writes": False}), encoding="utf-8"
+            )
+            (Path(ws_dir) / ".antiagent.json").write_text(
+                json.dumps({"auto_approve_artifact_writes": True}), encoding="utf-8"
+            )
+
+            with patch("antiagent.config.get_global_config_dir", return_value=Path(global_dir)):
+                loaded = load_config(ws_dir)
+                self.assertFalse(loaded.auto_approve_artifact_writes)
+        finally:
+            import shutil
+            shutil.rmtree(ws_dir, ignore_errors=True)
+            shutil.rmtree(global_dir, ignore_errors=True)
+
     # 6. Conversation ID Path Traversal Prevention
     def test_conversation_id_traversal_blocked(self):
         """Adversarial conversationId with ../ must be rejected by TranscriptContextExtractor."""

@@ -3,6 +3,25 @@
 All notable changes to the **AntiAgent** project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.4.3] — 2026-09-30
+
+### Summary
+Security hardening and test correctness patch: enforces **monotonic workspace configuration merging** to prevent untrusted repositories from re-enabling globally disabled artifact writes, corrects the supervisor bypass verification to mock the live `evaluator.supervisor.review()` method, and introduces automated GitHub Actions CI testing across Python versions.
+
+### Architectural & Functional Highlights
+
+| Area / Component | Improvement |
+| :--- | :--- |
+| **Monotonic Workspace Config Merging (`config.py`)** | Strictly blocks untrusted workspace `.antiagent.json` files from re-enabling `auto_approve_artifact_writes` when globally disabled by the user. Enforces strict boolean type validation (`isinstance(v, bool)`) to reject malformed values (`"true"`, `1`, `null`). |
+| **Supervisor Review Bypass Verification (`tests/test_artifact_directory.py`)** | Corrected mock target from stale `review_tool_call` to live `AntiAgentEvaluator.supervisor.review()`, with a fail-loud assertion ensuring artifact mutations never reach the LLM review path. |
+| **Automated CI Workflow (`.github/workflows/tests.yml`)** | Added GitHub Actions CI test suite running automatically on push and pull requests to `main` across Python 3.9 and 3.12 matrices. |
+
+### Verification Proof
+- All 331 unit tests passed (`python3 -m unittest discover tests`) with 0 failures and 0 errors.
+- Added comprehensive regression tests in `tests/test_artifact_directory.py` (`TestArtifactConfigMonotonicSecurity`, 7 tests) and `tests/test_security_audit.py` (`test_workspace_config_cannot_re_enable_artifact_writes`).
+
+---
+
 ## [v0.4.2] — 2026-09-30
 
 ### Summary

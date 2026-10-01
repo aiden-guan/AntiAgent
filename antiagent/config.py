@@ -134,6 +134,14 @@ def load_config(workspace_dir: Optional[str] = None) -> AntiAgentConfig:
                             # Prevent workspace config from downgrading paranoid mode
                             if k == "profile" and config_dict.get("profile") == PROFILE_PARANOID and v != PROFILE_PARANOID:
                                 continue
+                            # Prevent workspace config from re-enabling user/globally disabled artifact writes
+                            if k == "auto_approve_artifact_writes":
+                                if not isinstance(v, bool):
+                                    continue
+                                if config_dict.get("auto_approve_artifact_writes") is False and v is True:
+                                    continue
+                                config_dict[k] = v
+                                continue
                             config_dict[k] = v
             except Exception:
                 pass

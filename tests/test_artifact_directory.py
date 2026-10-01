@@ -12,6 +12,7 @@ Verifies:
 7. Windows case-insensitivity and path containment.
 """
 
+import json
 import os
 import shutil
 import tempfile
@@ -19,7 +20,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from antiagent.config import AntiAgentConfig
+from antiagent.config import AntiAgentConfig, load_config
 from antiagent.constants import (
     DECISION_ALLOW,
     DECISION_ASK,
@@ -175,8 +176,10 @@ class TestArtifactDirectoryEvaluator(unittest.TestCase):
             workspace_paths=[self.workspace],
             trusted_artifact_paths=[self.artifact_root],
         )
-        # Mock LLMSupervisor to ensure it is NEVER called
-        evaluator.supervisor.review_tool_call = MagicMock()
+        # Mock LLMSupervisor.review to ensure it is NEVER called (fails loudly if invoked)
+        evaluator.supervisor.review = MagicMock(
+            side_effect=AssertionError("LLMSupervisor.review() was invoked for a deterministic artifact write!")
+        )
 
         target = os.path.join(self.artifact_root, "scratch", "test_fix_generator.py")
         result = evaluator.evaluate(
@@ -185,7 +188,7 @@ class TestArtifactDirectoryEvaluator(unittest.TestCase):
         )
         self.assertEqual(result.decision, DECISION_ALLOW)
         self.assertIn("Auto-approved agent artifact mutation", result.reason)
-        evaluator.supervisor.review_tool_call.assert_not_called()
+        evaluator.supervisor.review.assert_not_called()
 
     def test_evaluator_paranoid_profile_preserves_artifact_auto_approval(self):
         """Even under paranoid profile, routine artifact writes in the agent's scratch dir are allowed."""
@@ -338,6 +341,102 @@ class TestWindowsArtifactPathContainment(unittest.TestCase):
         # Target with prefix collision
         target_prefix = Path("c:/users/admin/.gemini/antigravity/brain/d0d717e3-97f7-49ee-a0b1-5ce92363f6ba-evil/scratch/test.py")
         self.assertFalse(FSGuard._is_path_contained(target_prefix, root, is_windows=True))
+
+
+class TestArtifactConfigMonotonicSecurity(unittest.TestCase):
+    """Regression tests verifying workspace config cannot weaken global auto_approve_artifact_writes."""
+
+    def setUp(self):
+        self.test_dir = tempfile.mkdtemp(dir=os.getcwd())
+        self.global_dir = Path(self.test_dir) / "global"
+        self.ws_dir = Path(self.test_dir) / "workspace"
+        self.global_dir.mkdir(parents=True, exist_ok=True)
+        self.ws_dir.mkdir(parents=True, exist_ok=True)
+
+    def tearDown(self):
+        if os.path.isdir(self.test_dir):
+            shutil.rmtree(self.test_dir, ignore_errors=True)
+
+    def _load_with_dirs(self, global_cfg=None, ws_cfg=None):
+        if global_cfg is not None:
+            (self.global_dir / "config.json").write_text(json.dumps(global_cfg), encoding="utf-8")
+        if ws_cfg is not None:
+            (self.ws_dir / ".antiagent.json").write_text(json.dumps(ws_cfg), encoding="utf-8")
+        with patch("antiagent.config.get_global_config_dir", return_value=self.global_dir):
+            return load_config(str(self.ws_dir))
+
+    def test_1_global_false_cannot_be_re_enabled_by_workspace(self):
+        """1. Global false + workspace true => false."""
+        cfg = self._load_with_dirs(
+            global_cfg={"auto_approve_artifact_writes": False},
+            ws_cfg={"auto_approve_artifact_writes": True},
+        )
+        self.assertFalse(cfg.auto_approve_artifact_writes)
+
+    def test_2_workspace_can_disable_global_true(self):
+        """2. Global true + workspace false => false."""
+        cfg = self._load_with_dirs(
+            global_cfg={"auto_approve_artifact_writes": True},
+            ws_cfg={"auto_approve_artifact_writes": False},
+        )
+        self.assertFalse(cfg.auto_approve_artifact_writes)
+
+    def test_3_workspace_true_with_no_global_override(self):
+        """3. No global setting + workspace true => true."""
+        cfg = self._load_with_dirs(
+            global_cfg={},
+            ws_cfg={"auto_approve_artifact_writes": True},
+        )
+        self.assertTrue(cfg.auto_approve_artifact_writes)
+
+    def test_4_workspace_false_with_no_global_override(self):
+        """4. No global setting + workspace false => false."""
+        cfg = self._load_with_dirs(
+            global_cfg={},
+            ws_cfg={"auto_approve_artifact_writes": False},
+        )
+        self.assertFalse(cfg.auto_approve_artifact_writes)
+
+    def test_5_environment_true_overrides_file_config(self):
+        """5. Global false + workspace false + env true => true."""
+        with patch.dict(os.environ, {"ANTIAGENT_AUTO_APPROVE_ARTIFACT_WRITES": "true"}):
+            cfg = self._load_with_dirs(
+                global_cfg={"auto_approve_artifact_writes": False},
+                ws_cfg={"auto_approve_artifact_writes": False},
+            )
+            self.assertTrue(cfg.auto_approve_artifact_writes)
+
+    def test_6_environment_false_overrides_file_config(self):
+        """6. Global true + workspace true + env false => false."""
+        with patch.dict(os.environ, {"ANTIAGENT_AUTO_APPROVE_ARTIFACT_WRITES": "false"}):
+            cfg = self._load_with_dirs(
+                global_cfg={"auto_approve_artifact_writes": True},
+                ws_cfg={"auto_approve_artifact_writes": True},
+            )
+            self.assertFalse(cfg.auto_approve_artifact_writes)
+
+    def test_7_malformed_workspace_value_does_not_weaken_security(self):
+        """7. Non-boolean values (string, int, null, etc.) in workspace config are ignored."""
+        malformed_values = ["true", "True", "1", 1, None, ["true"], {"enabled": True}]
+        for val in malformed_values:
+            cfg = self._load_with_dirs(
+                global_cfg={"auto_approve_artifact_writes": False},
+                ws_cfg={"auto_approve_artifact_writes": val},
+            )
+            self.assertFalse(
+                cfg.auto_approve_artifact_writes,
+                f"Malformed value {val!r} unexpectedly weakened global false setting.",
+            )
+
+        for val in ["false", 0, None, ["false"]]:
+            cfg = self._load_with_dirs(
+                global_cfg={},
+                ws_cfg={"auto_approve_artifact_writes": val},
+            )
+            self.assertTrue(
+                cfg.auto_approve_artifact_writes,
+                f"Malformed value {val!r} unexpectedly modified default setting.",
+            )
 
 
 if __name__ == "__main__":
