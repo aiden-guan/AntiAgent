@@ -155,9 +155,10 @@ class TestCLI(unittest.TestCase):
         from unittest.mock import patch, MagicMock
         from antiagent.cli import handle_update_cli
 
-        args = argparse.Namespace(check=False, download=False, pip=True, asset=None)
+        args = argparse.Namespace(check=False, download=False, pip=True, asset=None, version=None, break_system_packages=False)
         mock_mgr = MagicMock()
         mock_mgr.status = "success"
+        mock_mgr.verified_version = "0.1.4"
         mock_mgr.logs = ["Success!"]
         with patch("antiagent.updater.PipUpgradeManager", return_value=mock_mgr):
             handle_update_cli(args)

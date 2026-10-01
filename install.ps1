@@ -37,17 +37,10 @@ if (-not (Test-Path $installDir)) {
     New-Item -ItemType Directory -Path $installDir -Force | Out-Null
 }
 
-# 3. Install AntiAgent via pip
-Write-Host "⬇️ Installing AntiAgent package..." -ForegroundColor Cyan
-# pip writes warnings to stderr; under "Stop", Windows PowerShell 5.1 turns that into
-# a terminating error and aborts the installer before the hook is registered.
+# 3. Install AntiAgent via pip from authoritative GitHub release
+Write-Host "⬇️ Installing AntiAgent package from GitHub repository..." -ForegroundColor Cyan
 $ErrorActionPreference = "Continue"
-& $pythonCmd -m pip install --upgrade antiagent 2>$null
-if ($LASTEXITCODE -ne 0) {
-    # Fallback to the GitHub source archive (does not require git to be installed)
-    Write-Host "ℹ️ Installing from GitHub repository..." -ForegroundColor Yellow
-    & $pythonCmd -m pip install --upgrade "https://github.com/aiden-guan/AntiAgent/archive/refs/heads/main.zip"
-}
+& $pythonCmd -m pip install --upgrade "https://github.com/aiden-guan/AntiAgent/archive/refs/heads/main.zip"
 & $pythonCmd -c "import antiagent" 2>$null
 $importOk = ($LASTEXITCODE -eq 0)
 $ErrorActionPreference = "Stop"

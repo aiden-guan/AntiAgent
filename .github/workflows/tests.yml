@@ -10,12 +10,16 @@ on:
 
 jobs:
   test:
-    name: Test (Python ${{ matrix.python-version }})
-    runs-on: ubuntu-latest
+    name: Test (${{ matrix.os }} - Python ${{ matrix.python-version }})
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
+        os: [ubuntu-latest]
         python-version: ["3.9", "3.12"]
+        include:
+          - os: macos-latest
+            python-version: "3.12"
 
     steps:
       - name: Check out repository
@@ -34,3 +38,27 @@ jobs:
       - name: Run test suite
         run: |
           python -m unittest discover tests
+
+  package-check:
+    name: Package Build & Smoke Install
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build sdist and wheel
+        run: |
+          python -m pip install --upgrade pip build
+          python -m build
+
+      - name: Smoke-install in clean virtual environment
+        run: |
+          python -m venv test_env
+          test_env/bin/pip install dist/*.whl
+          test_env/bin/python -c "import antiagent; print('Installed version:', antiagent.__version__)"
+          test_env/bin/antiagent --help

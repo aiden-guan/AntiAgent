@@ -3,6 +3,30 @@
 All notable changes to the **AntiAgent** project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.4.4] — 2026-10-01
+
+### Summary
+End-to-end overhaul of the AntiAgent updater and in-app restart architecture (closes **#4**). Resolves unreliable pip upgrades and false-positive dashboard reloads by introducing an authoritative installation mode detection layer, version-pinned GitHub release tarball installations with PEP 668 managed-environment handling, staged atomic macOS desktop bundle replacements with automatic rollback, normalized CLI restart orchestration, and a unified restart API with process-instance verification.
+
+### Architectural & Functional Highlights
+
+| Area / Component | Improvement |
+| :--- | :--- |
+| **Runtime Install Mode Detection (`runtime.py`)** | Introduced `InstallMode` enum (`MACOS_BUNDLE`, `PIP`, `EDITABLE_SOURCE`, `WINDOWS_PORTABLE`). Identifies the active running bundle context rather than guessing based on disk directory presence. Isolates `/Applications` from `~/Applications` to update only the active instance. |
+| **Version-Pinned Pip Upgrades (`updater.py`)** | Replaced bare unpinned PyPI pip invocations with authoritative, version-pinned GitHub release tarball targets (`sys.executable -m pip install --upgrade <tarball>`). Added live stdout/stderr log streaming (`subprocess.Popen`), safe PEP 668 handling (no default `--break-system-packages`), and fresh-interpreter post-install verification. |
+| **Staged macOS Bundle Updates (`relauncher.py`)** | Replaced live `ditto` bundle overwrites with staged extraction, pre-swap bundle validation (verifying bundle ID `com.antiagent.desktop`, version, and executable), detached process termination, atomic bundle swap, and automatic rollback on failure. Fixed permissions, cleared quarantine, and signed ad-hoc. |
+| **Normalized Restart Coordinator (`runtime.py`, `dashboard/server.py`)** | Replaced brittle raw `sys.argv` string reconstruction with `DashboardLaunchContext.to_argv()`. Eliminates duplicate `dashboard` arguments while reliably preserving `--host`, `--port`, `--workspace`, and `--no-open`, releasing the listening socket cleanly prior to spawn. |
+| **Unified Restart API (`dashboard/server.py`)** | Unified `/api/update/restart` and `/api/update/relaunch_app` to return structured plans containing `server_instance_id`, `mode`, `target_version`, and `desktop_relaunch`. Added random startup `server_instance_id` (UUID4) to `/api/status`. |
+| **Deterministic Client-Side Verification (`index.html`)** | Rewrote `restartAndReloadDashboard()` and `evaluateRestartState()`. Removed the arbitrary 12-poll false-positive reload; requires `server_instance_id != initial_id` AND `version == target_version` before refreshing. Shows actionable manual recovery diagnostics with exact commands upon timeout. |
+| **Wheel Packaging & CI Automation (`pyproject.toml`, workflows)** | Configured `dynamic = ["version"]` referencing `antiagent.__version__`, ensured dashboard HTML assets are packaged in wheels, added `build-python` artifact build and clean venv smoke test in `release.yml`, and added macOS test runners in `tests.yml`. |
+
+### Verification Proof
+- All 345 unit and integration tests passed (`python3 -m unittest discover tests`) with 0 failures and 0 errors.
+- Added comprehensive test suites: `tests/test_runtime.py`, `tests/test_relauncher.py`, `tests/test_restart_integration.py`, and `tests/test_restart_verification_js.py`.
+- Closes GitHub Issue [#4](https://github.com/aiden-guan/AntiAgent/issues/4).
+
+---
+
 ## [v0.4.3] — 2026-09-30
 
 ### Summary

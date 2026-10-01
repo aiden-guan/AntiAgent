@@ -276,20 +276,114 @@ class TestUpdaterEngine(unittest.TestCase):
     def test_pip_upgrade_manager(self):
         upgrader = PipUpgradeManager()
         mock_proc = MagicMock()
-        mock_proc.stdout = io.StringIO("Successfully installed antiagent-0.1.4\n")
+        mock_proc.stdout = io.StringIO("Successfully installed antiagent-0.5.0\n")
         mock_proc.returncode = 0
         mock_proc.wait.return_value = 0
 
-        with patch("subprocess.Popen", return_value=mock_proc):
-            started = upgrader.start_upgrade()
-            self.assertTrue(started)
-            for _ in range(20):
-                if upgrader.status in ("success", "error"):
-                    break
-                time.sleep(0.05)
-            st = upgrader.get_status()
-            self.assertEqual(st["status"], "success")
-            self.assertIn("Successfully installed", st["logs"])
+        with tempfile.NamedTemporaryFile(suffix=".tar.gz") as fake_tarball:
+            with patch("subprocess.Popen", return_value=mock_proc) as mock_popen, \
+                 patch.object(upgrader, "_verify_fresh_process_version", return_value=(True, "0.5.0")):
+                started = upgrader.start_upgrade(target_version="0.5.0", tarball_url=fake_tarball.name)
+                self.assertTrue(started)
+                for _ in range(30):
+                    if upgrader.status in ("success", "error"):
+                        break
+                    time.sleep(0.05)
+                st = upgrader.get_status()
+                self.assertEqual(st["status"], "success")
+                self.assertEqual(st["verified_version"], "0.5.0")
+                self.assertIn("Successfully installed and verified", st["logs"])
+
+                # Verify command called was sys.executable -m pip install --upgrade <tarball>
+                # NOT bare "pip install --upgrade antiagent"
+                mock_popen.assert_called_once()
+                call_args = mock_popen.call_args[0][0]
+                self.assertEqual(call_args[:4], [sys.executable, "-m", "pip", "install"])
+                self.assertIn("--upgrade", call_args)
+                self.assertIn(fake_tarball.name, call_args)
+                self.assertNotIn("antiagent", call_args[call_args.index("--upgrade") + 1:])
+
+    def test_pip_upgrade_manager_version_mismatch_fails(self):
+        """If pip exits 0 but a fresh interpreter still imports the old version, treat as failure."""
+        upgrader = PipUpgradeManager()
+        mock_proc = MagicMock()
+        mock_proc.stdout = io.StringIO("Successfully installed antiagent-0.5.0\n")
+        mock_proc.returncode = 0
+        mock_proc.wait.return_value = 0
+
+        with tempfile.NamedTemporaryFile(suffix=".tar.gz") as fake_tarball:
+            with patch("subprocess.Popen", return_value=mock_proc), \
+                 patch.object(upgrader, "_verify_fresh_process_version", return_value=(False, "0.4.3")):
+                started = upgrader.start_upgrade(target_version="0.5.0", tarball_url=fake_tarball.name)
+                self.assertTrue(started)
+                for _ in range(30):
+                    if upgrader.status in ("success", "error"):
+                        break
+                    time.sleep(0.05)
+                st = upgrader.get_status()
+                self.assertEqual(st["status"], "error")
+                self.assertIn("Post-install verification failed", st["error"])
+                self.assertIn("0.4.3", st["error"])
+
+    def test_pip_upgrade_pep668_default_fails_safely(self):
+        """PEP 668 externally managed environment should not use --break-system-packages by default."""
+        upgrader = PipUpgradeManager()
+        mock_proc = MagicMock()
+        mock_proc.stdout = io.StringIO("error: externally-managed-environment\n")
+        mock_proc.returncode = 1
+        mock_proc.wait.return_value = 1
+
+        with tempfile.NamedTemporaryFile(suffix=".tar.gz") as fake_tarball:
+            with patch("subprocess.Popen", return_value=mock_proc) as mock_popen:
+                started = upgrader.start_upgrade(
+                    target_version="0.5.0",
+                    tarball_url=fake_tarball.name,
+                    allow_break_system_packages=False,
+                )
+                self.assertTrue(started)
+                for _ in range(30):
+                    if upgrader.status in ("success", "error"):
+                        break
+                    time.sleep(0.05)
+                st = upgrader.get_status()
+                self.assertEqual(st["status"], "error")
+                self.assertIn("PEP 668", st["error"])
+                # Ensure --break-system-packages was NOT passed
+                for call in mock_popen.call_args_list:
+                    self.assertNotIn("--break-system-packages", call[0][0])
+
+    def test_pip_upgrade_pep668_explicit_opt_in(self):
+        """When user explicitly allows --break-system-packages, retry with that flag."""
+        upgrader = PipUpgradeManager()
+        # First call fails with PEP 668, second call succeeds
+        mock_proc_fail = MagicMock()
+        mock_proc_fail.stdout = io.StringIO("error: externally-managed-environment\n")
+        mock_proc_fail.returncode = 1
+        mock_proc_fail.wait.return_value = 1
+
+        mock_proc_ok = MagicMock()
+        mock_proc_ok.stdout = io.StringIO("Successfully installed antiagent-0.5.0\n")
+        mock_proc_ok.returncode = 0
+        mock_proc_ok.wait.return_value = 0
+
+        with tempfile.NamedTemporaryFile(suffix=".tar.gz") as fake_tarball:
+            with patch("subprocess.Popen", side_effect=[mock_proc_fail, mock_proc_fail, mock_proc_ok]) as mock_popen, \
+                 patch.object(upgrader, "_verify_fresh_process_version", return_value=(True, "0.5.0")):
+                started = upgrader.start_upgrade(
+                    target_version="0.5.0",
+                    tarball_url=fake_tarball.name,
+                    allow_break_system_packages=True,
+                )
+                self.assertTrue(started)
+                for _ in range(30):
+                    if upgrader.status in ("success", "error"):
+                        break
+                    time.sleep(0.05)
+                st = upgrader.get_status()
+                self.assertEqual(st["status"], "success")
+                # Last call should have included --break-system-packages
+                last_call_args = mock_popen.call_args_list[-1][0][0]
+                self.assertIn("--break-system-packages", last_call_args)
 
     def test_in_place_self_updater_already_up_to_date(self):
         updater = InPlaceSelfUpdater()

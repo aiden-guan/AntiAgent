@@ -5561,60 +5561,172 @@
       }
     }
 
+    function evaluateRestartState(initialState, currentState) {
+      if (!currentState || !currentState.ok) {
+        return { success: false, reason: 'server_unreachable' };
+      }
+      const sameInstance = Boolean(
+        initialState.server_instance_id &&
+        currentState.server_instance_id &&
+        currentState.server_instance_id === initialState.server_instance_id
+      );
+      if (sameInstance) {
+        return { success: false, reason: 'same_server_instance' };
+      }
+      const target = initialState.target_version;
+      if (target) {
+        if (currentState.version !== target && compareVersions(currentState.version, target) < 0) {
+          return { success: false, reason: 'version_not_updated' };
+        }
+      } else {
+        if (compareVersions(currentState.version, initialState.version) <= 0) {
+          return { success: false, reason: 'version_not_updated' };
+        }
+      }
+      return { success: true, reason: 'verified' };
+    }
+
     async function restartAndReloadDashboard() {
       const reloadBtn = document.getElementById('oneClickReloadBtn');
       const reloadBtnLabel = document.getElementById('oneClickReloadBtnText');
       const notice = document.getElementById('oneClickRestartNotice');
+      const errArea = document.getElementById('oneClickErrorArea');
+      const errMsg = document.getElementById('oneClickErrorMessage');
+
       if (reloadBtn) reloadBtn.disabled = true;
       if (reloadBtnLabel) reloadBtnLabel.innerHTML = 'Restarting AntiAgent...';
       if (notice) {
         notice.style.display = 'block';
-        notice.textContent = 'Restarting background services and reconnecting to latest version...';
+        notice.textContent = 'Scheduling restart and preparing reconnection...';
+      }
+      if (errArea) errArea.style.display = 'none';
+
+      // 1. Establish pre-restart baseline
+      const initialVersion = (currentConfig && currentConfig.version) || '0.0.0';
+      let initialServerId = currentConfig && currentConfig.server_instance_id;
+      if (!initialServerId) {
+        try {
+          const stRes = await fetch('/api/status', { cache: 'no-store' });
+          if (stRes.ok) {
+            const stData = await stRes.json();
+            initialServerId = stData.server_instance_id;
+          }
+        } catch (_) {}
       }
 
+      // 2. Discover expected target version
+      let targetVersion = '';
       try {
-        await fetch('/api/update/restart', { method: 'POST' });
-      } catch (e) {
-        // Expected if server is terminating for restart
+        const sRes = await fetch('/api/update/self_update_status', { cache: 'no-store' });
+        if (sRes.ok) {
+          const sData = await sRes.json();
+          targetVersion = sData.target_version || '';
+        }
+      } catch (_) {}
+
+      // 3. Dispatch restart request and validate response
+      let restartPlan = null;
+      try {
+        const resp = await fetch('/api/update/restart', { method: 'POST', cache: 'no-store' });
+        if (!resp.ok) {
+          const errData = await resp.json().catch(() => ({}));
+          throw new Error(errData.error || `Server returned HTTP ${resp.status}`);
+        }
+        restartPlan = await resp.json();
+        if (restartPlan && restartPlan.target_version) {
+          targetVersion = restartPlan.target_version;
+        }
+      } catch (err) {
+        if (notice) notice.style.display = 'none';
+        if (errArea) errArea.style.display = 'block';
+        if (errMsg) errMsg.textContent = `Restart request failed: ${err.message}`;
+        if (reloadBtn) {
+          reloadBtn.disabled = false;
+          if (reloadBtnLabel) reloadBtnLabel.textContent = 'Retry Restart';
+        }
+        return;
       }
 
-      // Poll until the server is back up and responding
+      const initialState = {
+        version: initialVersion,
+        server_instance_id: initialServerId,
+        target_version: targetVersion,
+      };
+
+      if (notice) {
+        notice.textContent = `Restarting AntiAgent to activate v${targetVersion || 'new'}... Waiting for new server instance...`;
+      }
+
+      // 4. Poll until new server instance is confirmed running the target version
       let attempts = 0;
-      const curVer = (currentConfig && currentConfig.version) || '0.3.0';
+      const maxAttempts = 50; // 25 seconds at 500ms
+      let serverDownObserved = false;
+
       const pollTimer = setInterval(async () => {
         attempts++;
         try {
           const res = await fetch('/api/status', { cache: 'no-store' });
           if (res.ok) {
             const data = await res.json();
-            if (data.version && compareVersions(data.version, curVer) > 0) {
+            const evalResult = evaluateRestartState(initialState, {
+              ok: true,
+              version: data.version,
+              server_instance_id: data.server_instance_id,
+              server_down_observed: serverDownObserved,
+            });
+
+            if (evalResult.success) {
               clearInterval(pollTimer);
-              if (notice) notice.textContent = `Reconnected successfully running v${data.version}! Reloading...`;
+              if (notice) {
+                notice.textContent = `Reconnected successfully running AntiAgent v${data.version}! Reloading...`;
+              }
               setTimeout(() => {
                 window.location.reload();
               }, 400);
               return;
-            } else if (attempts >= 12) {
-              clearInterval(pollTimer);
-              window.location.reload();
-              return;
             }
+          } else {
+            serverDownObserved = true;
           }
-        } catch (err) {
-          // Server is restarting
+        } catch (_) {
+          // Connection error: server is shutting down/restarting (normal behavior)
+          serverDownObserved = true;
         }
 
-        if (attempts >= 30) {
+        // On timeout, fail explicitly with diagnostics instead of falsely claiming success
+        if (attempts >= maxAttempts) {
           clearInterval(pollTimer);
-          if (notice) {
-            notice.innerHTML = 'Reconnection took longer than expected. If AntiAgent did not restart automatically, quit AntiAgent from <code>/Applications</code> or your dock and reopen it, then refresh this page.';
+
+          let curReachableVer = initialVersion;
+          try {
+            const probeRes = await fetch('/api/status', { cache: 'no-store' });
+            if (probeRes.ok) {
+              const probeData = await probeRes.json();
+              curReachableVer = probeData.version || curReachableVer;
+            }
+          } catch (_) {}
+
+          if (notice) notice.style.display = 'none';
+          if (errArea) errArea.style.display = 'block';
+
+          const mode = (restartPlan && restartPlan.mode) || 'standard';
+          const expectedApp = (restartPlan && restartPlan.expected_app_path) || '/Applications/AntiAgent.app';
+
+          let recoveryMsg = `Restart verification timed out after ${maxAttempts * 0.5}s.<br>`;
+          recoveryMsg += `Current version: <strong>v${curReachableVer}</strong> | Expected: <strong>v${targetVersion || 'newer'}</strong><br>`;
+          if (mode === 'macos_bundle') {
+            recoveryMsg += `Manual recovery: Please quit AntiAgent from the Dock or Menubar and reopen <code>${expectedApp}</code>, then refresh this page.`;
+          } else {
+            recoveryMsg += `Manual recovery: Please terminate the running dashboard process in your terminal and restart with <code>antiagent dashboard</code>.`;
           }
+
+          if (errMsg) errMsg.innerHTML = recoveryMsg;
           if (reloadBtn) {
             reloadBtn.disabled = false;
             if (reloadBtnLabel) reloadBtnLabel.textContent = 'Retry Restart';
           }
         }
-      }, 400);
+      }, 500);
     }
 
     // Pull Request & CI Monitor Logic

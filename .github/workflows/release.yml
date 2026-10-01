@@ -59,8 +59,57 @@ jobs:
           path: |
             dist/AntiAgent-Windows.zip
 
+  build-python:
+    name: Build & Smoke-Install Python Package
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install build tools
+        run: |
+          python -m pip install --upgrade pip build
+
+      - name: Validate version matches Git tag
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          python3 -c '
+          import os, sys
+          from antiagent import __version__
+          ref = os.environ.get("GITHUB_REF_NAME", "").lstrip("v")
+          if ref and __version__ != ref:
+              print(f"ERROR: Version mismatch! antiagent.__version__={__version__} but Git tag={ref}")
+              sys.exit(1)
+          print(f"Version verified: {__version__} == {ref}")
+          '
+
+      - name: Build sdist and wheel
+        run: |
+          python -m build --outdir dist
+
+      - name: Smoke-install wheel in clean environment
+        run: |
+          python -m venv test_env
+          test_env/bin/pip install dist/*.whl
+          INSTALLED_VER=$(test_env/bin/python -c "import antiagent; print(antiagent.__version__)")
+          echo "Installed version in clean environment: $INSTALLED_VER"
+          test_env/bin/antiagent --help
+
+      - name: Upload Python Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-artifacts
+          path: |
+            dist/*.whl
+            dist/*.tar.gz
+
   release:
-    needs: [build-macos, build-windows]
+    needs: [build-macos, build-windows, build-python]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     steps:
@@ -77,6 +126,12 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: windows-artifacts
+          path: dist
+
+      - name: Download Python Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: python-artifacts
           path: dist
 
       - name: Extract Release Notes from CHANGELOG
@@ -103,6 +158,7 @@ jobs:
           | **`AntiAgent-Windows.zip`** | **Windows (Public Beta)** | **Recommended for Windows (Beta)**. Extract and double-click `AntiAgent.bat`. |
           | **`AntiAgent.pkg`** | **macOS** | Standard auto-launching installer package for enterprise / MDM. |
           | **`AntiAgent.zip`** | **macOS** | Standalone portable `.app` bundle archive. |
+          | **`*.whl` / `*.tar.gz`** | **Cross-Platform** | Official Python package distribution archives. |
 
           > ℹ️ **Windows Support (Public Beta)**: The Windows standalone app mode is currently in Public Beta. If you encounter any platform-specific quirks or edge cases, please submit an issue on GitHub!
 
@@ -111,7 +167,7 @@ jobs:
           ### ⚡ 1-Line Terminal Installs
           - **macOS**: `curl -fsSL https://raw.githubusercontent.com/aiden-guan/AntiAgent/main/install.sh | bash`
           - **Windows (PowerShell)**: `irm https://raw.githubusercontent.com/aiden-guan/AntiAgent/main/install.ps1 | iex`
-          - **Cross-Platform CLI**: `pip install antiagent && antiagent install --global`
+          - **Cross-Platform CLI**: `pip install https://github.com/aiden-guan/AntiAgent/archive/refs/tags/${{ github.ref_name }}.tar.gz && antiagent install --global`
           """
 
           full_body = f"{notes}\n\n{installer_table.strip()}\n"
@@ -128,6 +184,8 @@ jobs:
             dist/AntiAgent.pkg
             dist/AntiAgent.zip
             dist/AntiAgent-Windows.zip
+            dist/*.whl
+            dist/*.tar.gz
           draft: false
           prerelease: false
           generate_release_notes: false

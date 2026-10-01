@@ -1,20 +1,32 @@
 """In-app update checker, downloader, and manager for AntiAgent."""
 
+from __future__ import annotations
+
 import json
 import os
+import plistlib
 import re
+import shutil
 import ssl
 import subprocess
 import sys
+import tempfile
 import threading
 import time
-import urllib.request
 import urllib.error
+import urllib.request
+import zipfile
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import urlparse
 
 from antiagent import __version__
+from antiagent.runtime import (
+    InstallMode,
+    find_active_macos_bundle,
+    get_runtime_install_info,
+    is_desktop_app_running,
+)
 
 GITHUB_REPO = "aiden-guan/AntiAgent"
 LATEST_RELEASE_API = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
@@ -45,7 +57,7 @@ def is_safe_download_url(url: str, repo: str = GITHUB_REPO) -> bool:
         if hostname not in ALLOWED_UPDATE_HOSTS:
             return False
 
-        # If on github.com or raw.githubusercontent.com, ensure it belongs to the official repo
+        # If on github.com, raw.githubusercontent.com, or api.github.com, ensure it belongs to the official repo
         if hostname in ("github.com", "raw.githubusercontent.com", "api.github.com"):
             clean_path = parsed.path.lower()
             expected_prefix = f"/{repo.lower()}/"
@@ -60,43 +72,39 @@ def is_safe_download_url(url: str, repo: str = GITHUB_REPO) -> bool:
 def sanitize_download_filename(filename: str) -> str:
     """Sanitize filename to prevent directory traversal and disallow dangerous extensions."""
     base = os.path.basename(filename.replace("\\", "/")).strip()
-    # Strip any directory traversal tokens or control chars
     base = re.sub(r"[^\w\.\-\+]", "_", base)
     if not any(base.lower().endswith(ext) for ext in ALLOWED_EXTENSIONS):
-        # Default safe extension
         base += ".dmg" if sys.platform == "darwin" else ".zip"
     return base
 
 
 def get_ssl_context() -> ssl.SSLContext:
-    """Create SSL context with fallback to avoid cert verification errors on fresh Python installs."""
+    """Create a verified SSL context with certifi fallback if installed. Fails closed on invalid certs."""
     try:
         import certifi
         return ssl.create_default_context(cafile=certifi.where())
     except Exception:
         pass
-    try:
-        return ssl.create_default_context()
-    except Exception:
-        return ssl._create_unverified_context()
+    return ssl.create_default_context()
 
 
 def safe_urlopen(req: Any, timeout: float = 10.0):
-    """Execute urlopen with verified context or fallback to unverified if cert verification fails."""
+    """Execute urlopen with strict verified context. Never silently fall back to unverified TLS."""
     ctx = get_ssl_context()
     try:
         return urllib.request.urlopen(req, timeout=timeout, context=ctx)
     except urllib.error.URLError as e:
         if "CERTIFICATE_VERIFY_FAILED" in str(e):
-            fallback_ctx = ssl._create_unverified_context()
-            return urllib.request.urlopen(req, timeout=timeout, context=fallback_ctx)
+            raise ssl.SSLCertVerificationError(
+                f"TLS certificate verification failed for {getattr(req, 'full_url', req)}. "
+                "For security, software updates must fail closed on invalid certificates."
+            ) from e
         raise
 
 
 def parse_version(ver_str: str) -> Tuple[int, ...]:
     """Parse version string like '0.1.3', 'v0.2.0', '1.0.0-beta' into integer tuple."""
     clean = ver_str.strip().lstrip("vV")
-    # Take only numeric segments before any hyphen/suffix
     main_ver = clean.split("-")[0].split("+")[0]
     parts = []
     for seg in main_ver.split("."):
@@ -132,22 +140,18 @@ def select_recommended_asset(assets: List[Dict[str, Any]]) -> Optional[Dict[str,
         return None
 
     if sys.platform == "darwin":
-        # Prefer .dmg on macOS
         for a in assets:
             if a.get("name", "").lower().endswith(".dmg"):
                 return a
-        # Next prefer .pkg
         for a in assets:
             if a.get("name", "").lower().endswith(".pkg"):
                 return a
-        # Next prefer macOS .zip (not Windows)
         for a in assets:
             n = a.get("name", "").lower()
             if n.endswith(".zip") and "windows" not in n and "win" not in n:
                 return a
 
     elif sys.platform == "win32":
-        # Prefer Windows zip
         for a in assets:
             n = a.get("name", "").lower()
             if "win" in n and n.endswith(".zip"):
@@ -156,7 +160,6 @@ def select_recommended_asset(assets: List[Dict[str, Any]]) -> Optional[Dict[str,
             if a.get("name", "").lower().endswith(".zip"):
                 return a
 
-    # Linux or fallback: prefer tar.gz or zip
     for a in assets:
         n = a.get("name", "").lower()
         if n.endswith(".tar.gz") or n.endswith(".zip"):
@@ -170,7 +173,6 @@ def is_generic_installer_body(body: str) -> bool:
     if not body or not body.strip():
         return True
     lower = body.lower()
-    # If body contains actual changelog headers, it's not generic boilerplate
     if (
         "### summary" in lower
         or "### what's new" in lower
@@ -180,7 +182,6 @@ def is_generic_installer_body(body: str) -> bool:
         or "### highlights" in lower
     ):
         return False
-    # If it starts with or consists mainly of download table / install commands
     if "which download is right for you" in lower or ("1-line terminal installs" in lower and "summary" not in lower):
         return True
     return False
@@ -218,7 +219,6 @@ def get_local_release_notes(version: str = __version__) -> str:
         for p in candidates:
             if p.is_file():
                 content = p.read_text(encoding="utf-8")
-                # Look for section ## [vX.Y.Z] or ## [X.Y.Z]
                 pattern = rf"##\s+\[v?{re.escape(clean_ver)}\][^\n]*\n([\s\S]*?)(?=\n##\s+\[|\Z)"
                 match = re.search(pattern, content)
                 if match:
@@ -229,31 +229,21 @@ def get_local_release_notes(version: str = __version__) -> str:
 
 
 def get_best_release_notes(version: str, github_body: str = "", repo: str = GITHUB_REPO) -> str:
-    """Resolve the true 'What's New' release notes for a version.
-
-    Prioritizes real feature highlights & changelog over installer boilerplate.
-    """
+    """Resolve the true 'What's New' release notes for a version."""
     clean_ver = version.strip().lstrip("vV")
-
-    # 1. Check local CHANGELOG.md first
     local_notes = get_local_release_notes(clean_ver)
-
-    # 2. If not local, check remote CHANGELOG.md from GitHub
     changelog_notes = local_notes
     if not changelog_notes:
         changelog_notes = get_remote_release_notes(clean_ver, repo=repo)
 
-    # 3. If github_body contains genuine custom feature notes, keep it
     if github_body and not is_generic_installer_body(github_body):
         return github_body.strip()
 
-    # 4. If we have changelog notes, use them (and if github_body has install options, append them cleanly)
     if changelog_notes:
         if github_body and is_generic_installer_body(github_body):
             return f"{changelog_notes}\n\n---\n\n{github_body.strip()}"
         return changelog_notes
 
-    # 5. Fallback to github_body or default message
     if github_body and github_body.strip():
         return github_body.strip()
 
@@ -305,9 +295,9 @@ def check_for_updates(current_version: str = __version__, repo: str = GITHUB_REP
             "repo_url": f"https://github.com/{repo}",
             "assets": assets_list,
             "recommended_asset": recommended,
+            "tarball_url": data.get("tarball_url") or f"https://github.com/{repo}/archive/refs/tags/v{latest_version}.tar.gz",
         }
     except urllib.error.HTTPError as e:
-        # 404 when no releases have been published yet or 403 on rate limit
         msg = f"GitHub API returned HTTP {e.code}: {e.reason}"
         if e.code == 404:
             msg = "No public releases found on GitHub repository yet."
@@ -347,10 +337,56 @@ def get_default_download_dir() -> Path:
     downloads = Path.home() / "Downloads"
     if downloads.is_dir() and os.access(str(downloads), os.W_OK):
         return downloads
-    # Fallback to ~/.antiagent/downloads
     fallback = Path.home() / ".antiagent" / "downloads"
     fallback.mkdir(parents=True, exist_ok=True)
     return fallback
+
+
+def get_pending_update_file() -> Path:
+    """File path to store state for pending updates awaiting activation."""
+    p = Path.home() / ".antiagent" / "pending_update.json"
+    p.parent.mkdir(parents=True, exist_ok=True)
+    return p
+
+
+def save_pending_update(record: Dict[str, Any]) -> None:
+    """Persist update diagnostic state until the target version activates."""
+    f = get_pending_update_file()
+    f.write_text(json.dumps(record, indent=2), encoding="utf-8")
+
+
+def load_pending_update() -> Optional[Dict[str, Any]]:
+    """Load pending update record if present."""
+    f = get_pending_update_file()
+    if f.is_file():
+        try:
+            return json.loads(f.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+    return None
+
+
+def clear_pending_update() -> None:
+    """Remove pending update record upon verified activation."""
+    f = get_pending_update_file()
+    if f.is_file():
+        try:
+            f.unlink()
+        except Exception:
+            pass
+
+
+def check_and_complete_pending_update(current_ver: str = __version__) -> Optional[Dict[str, Any]]:
+    """Check if a pending update successfully activated upon startup."""
+    record = load_pending_update()
+    if not record:
+        return None
+    target = record.get("target_version")
+    if target and compare_versions(current_ver, target) >= 0:
+        clear_pending_update()
+        record["activated"] = True
+        return record
+    return record
 
 
 class UpdateDownloader:
@@ -362,7 +398,7 @@ class UpdateDownloader:
         self._thread: Optional[threading.Thread] = None
 
         self.status = "idle"  # idle | downloading | completed | error | cancelled
-        self.progress = 0      # 0 to 100 percent
+        self.progress = 0
         self.downloaded_bytes = 0
         self.total_bytes = 0
         self.speed_bps = 0.0
@@ -377,10 +413,9 @@ class UpdateDownloader:
         filename: Optional[str] = None,
         dest_dir: Optional[Path] = None,
     ) -> bool:
-        """Start downloading the file in a background thread."""
         with self._lock:
             if self.status == "downloading" and self._thread and self._thread.is_alive():
-                return False  # Already downloading
+                return False
 
             if not is_safe_download_url(download_url):
                 self.status = "error"
@@ -425,7 +460,6 @@ class UpdateDownloader:
             return True
 
     def cancel(self) -> bool:
-        """Cancel an ongoing download."""
         with self._lock:
             if self.status != "downloading":
                 return False
@@ -452,7 +486,7 @@ class UpdateDownloader:
                     self.total_bytes = total_bytes
 
                 downloaded = 0
-                chunk_size = 65536  # 64 KB
+                chunk_size = 65536
 
                 with open(temp_path, "wb") as f:
                     while True:
@@ -487,7 +521,6 @@ class UpdateDownloader:
                     self.status = "cancelled"
                 return
 
-            # Finalize file
             if target_path.exists():
                 target_path.unlink()
             temp_path.rename(target_path)
@@ -510,7 +543,6 @@ class UpdateDownloader:
                 self.error_message = str(e)
 
     def get_status(self) -> Dict[str, Any]:
-        """Return snapshot of current download state."""
         with self._lock:
             return {
                 "status": self.status,
@@ -533,11 +565,9 @@ def open_downloaded_file(file_path: str) -> bool:
     if not p.is_file():
         return False
 
-    # Security: Only allowed installer file extensions can be opened
     if not any(p.name.lower().endswith(ext) for ext in ALLOWED_EXTENSIONS):
         return False
 
-    # Security: File must reside inside safe downloads folder or match active downloader destination
     allowed_dirs = [
         get_default_download_dir().resolve(),
         (Path.home() / "Downloads").resolve(),
@@ -612,29 +642,69 @@ def reveal_in_file_manager(file_path: str) -> bool:
 
 
 class PipUpgradeManager:
-    """Executes 'pip install --upgrade antiagent' in background with captured logs."""
+    """Manages Python package upgrades pinned to an official GitHub release version with fresh process verification."""
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
         self.status = "idle"  # idle | running | success | error
         self.logs: List[str] = []
         self.returncode: Optional[int] = None
+        self.target_version: str = ""
+        self.verified_version: Optional[str] = None
+        self.error_message: str = ""
         self._thread: Optional[threading.Thread] = None
 
-    def start_upgrade(self) -> bool:
+    def start_upgrade(
+        self,
+        target_version: Optional[str] = None,
+        tarball_url: Optional[str] = None,
+        allow_break_system_packages: bool = False,
+    ) -> bool:
         with self._lock:
             if self.status == "running":
                 return False
+
             self.status = "running"
-            self.logs = [f"🚀 Starting upgrade: {sys.executable} -m pip install --upgrade antiagent\n"]
+            self.target_version = target_version or ""
+            self.verified_version = None
+            self.error_message = ""
+            self.logs = []
             self.returncode = None
-            self._thread = threading.Thread(target=self._upgrade_worker, daemon=True)
+
+            self._thread = threading.Thread(
+                target=self._upgrade_worker,
+                args=(target_version, tarball_url, allow_break_system_packages),
+                daemon=True,
+            )
             self._thread.start()
             return True
 
-    def _upgrade_worker(self) -> None:
+    def _log(self, text: str) -> None:
+        with self._lock:
+            self.logs.append(text if text.endswith("\n") else text + "\n")
+
+    def _verify_fresh_process_version(self, expected_ver: str) -> Tuple[bool, Optional[str]]:
+        """Verify the newly installed package version in a clean, separate Python interpreter process."""
+        py = sys.executable or "python3"
+        probe = "import antiagent; sys.stdout.write(antiagent.__version__)"
         try:
-            cmd = [sys.executable or "python3", "-m", "pip", "install", "--upgrade", "antiagent"]
+            res = subprocess.run(
+                [py, "-c", f"import sys; {probe}"],
+                capture_output=True,
+                text=True,
+                timeout=15,
+            )
+            if res.returncode == 0:
+                found = res.stdout.strip()
+                return (compare_versions(found, expected_ver) >= 0 or found == expected_ver), found
+            return False, None
+        except Exception:
+            return False, None
+
+    def _run_pip_command(self, cmd: List[str]) -> Tuple[int, str]:
+        """Execute a pip command using subprocess.Popen, streaming output line-by-line."""
+        output_chunks = []
+        try:
             proc = subprocess.Popen(
                 cmd,
                 stdout=subprocess.PIPE,
@@ -644,22 +714,123 @@ class PipUpgradeManager:
             )
             if proc.stdout:
                 for line in iter(proc.stdout.readline, ""):
-                    with self._lock:
-                        self.logs.append(line)
-                proc.stdout.close()
-            proc.wait()
+                    output_chunks.append(line)
+                    self._log(line.rstrip())
+            ret = proc.wait()
+            return ret, "".join(output_chunks)
+        except Exception as e:
+            err = f"Failed to execute pip command: {e}\n"
+            self._log(err)
+            return 1, err
+
+    def _upgrade_worker(
+        self,
+        target_version: Optional[str],
+        tarball_url: Optional[str],
+        allow_break_system_packages: bool,
+    ) -> None:
+        temp_dir = None
+        try:
+            # 1. Resolve target version if not specified
+            if not target_version:
+                info = check_for_updates()
+                if not info.get("ok") or not info.get("latest_version"):
+                    raise RuntimeError(info.get("error") or "Failed to query GitHub for latest release version.")
+                target_version = info["latest_version"]
+                tarball_url = info.get("tarball_url")
+
             with self._lock:
-                self.returncode = proc.returncode
-                if proc.returncode == 0:
-                    self.status = "success"
-                    self.logs.append("✅ AntiAgent successfully upgraded via pip!\n")
-                else:
-                    self.status = "error"
-                    self.logs.append(f"❌ Pip upgrade failed with exit code {proc.returncode}\n")
+                self.target_version = target_version
+
+            self._log(f"🚀 Initializing version-pinned Python upgrade to AntiAgent v{target_version}...")
+
+            # 2. Resolve source tarball URL
+            if not tarball_url:
+                tarball_url = f"https://github.com/{GITHUB_REPO}/archive/refs/tags/v{target_version}.tar.gz"
+
+            # 3. Download source archive to a secure temporary directory if remote
+            if tarball_url.startswith("file://"):
+                archive_path = Path(tarball_url[7:])
+            elif os.path.isfile(tarball_url):
+                archive_path = Path(tarball_url)
+            else:
+                if not is_safe_download_url(tarball_url):
+                    raise RuntimeError(f"Security: Untrusted tarball URL: {tarball_url}")
+
+                temp_dir = Path(tempfile.mkdtemp(prefix="antiagent_pip_"))
+                archive_path = temp_dir / f"antiagent-{target_version}.tar.gz"
+
+                self._log(f"📥 Downloading release tarball: {tarball_url}")
+                req = urllib.request.Request(
+                    tarball_url,
+                    headers={"User-Agent": f"AntiAgent/{__version__} (PipUpgrader)"},
+                )
+                with safe_urlopen(req, timeout=20.0) as resp:
+                    with open(archive_path, "wb") as f_out:
+                        shutil.copyfileobj(resp, f_out)
+
+            # 4. Construct pip command
+            py_exec = sys.executable or "python3"
+            base_cmd = [py_exec, "-m", "pip", "install", "--upgrade", str(archive_path)]
+
+            self._log(f"⚙️ Running pip upgrade: {py_exec} -m pip install --upgrade {archive_path.name}")
+            retcode, output = self._run_pip_command(base_cmd)
+
+            # 5. Handle PEP 668 externally managed environment safely
+            if retcode != 0 and "externally-managed-environment" in output.lower():
+                self._log("⚠️ Python environment is externally managed (PEP 668).")
+                # Try --user only if not in virtualenv
+                in_venv = sys.prefix != getattr(sys, "base_prefix", sys.prefix)
+                if not in_venv:
+                    self._log("ℹ️ Attempting safe installation into user site-packages (--user)...")
+                    user_cmd = base_cmd + ["--user"]
+                    retcode, output = self._run_pip_command(user_cmd)
+
+                if retcode != 0:
+                    if allow_break_system_packages:
+                        self._log("⚠️ User explicitly requested --break-system-packages. Retrying as last resort...")
+                        bsp_cmd = base_cmd + ["--break-system-packages"]
+                        retcode, output = self._run_pip_command(bsp_cmd)
+                    else:
+                        raise RuntimeError(
+                            "Installation failed due to an externally managed Python environment (PEP 668). "
+                            "AntiAgent does not pass --break-system-packages by default. "
+                            "Please run AntiAgent inside a virtual environment (venv) or install via pipx."
+                        )
+
+            if retcode != 0:
+                raise RuntimeError(f"pip install exited with code {retcode}")
+
+            # 6. Fresh-process version verification: do not trust return code 0 alone!
+            self._log(f"🔍 Verifying installed version with fresh Python interpreter process ({py_exec})...")
+            verified, found_ver = self._verify_fresh_process_version(target_version)
+
+            if not verified:
+                raise RuntimeError(
+                    f"Post-install verification failed: pip reported exit code 0, but a fresh interpreter process loaded "
+                    f"v{found_ver or 'unknown'} instead of target v{target_version}."
+                )
+
+            with self._lock:
+                self.returncode = 0
+                self.status = "success"
+                self.verified_version = found_ver
+                self.error_message = ""
+            self._log(f"✅ Successfully installed and verified AntiAgent v{found_ver} via pip!")
+
         except Exception as e:
             with self._lock:
                 self.status = "error"
-                self.logs.append(f"❌ Error running pip upgrade: {str(e)}\n")
+                self.returncode = 1
+                self.error_message = str(e)
+            self._log(f"❌ Pip upgrade failed: {str(e)}")
+
+        finally:
+            if temp_dir and temp_dir.exists():
+                try:
+                    shutil.rmtree(temp_dir, ignore_errors=True)
+                except Exception:
+                    pass
 
     def get_status(self) -> Dict[str, Any]:
         with self._lock:
@@ -667,19 +838,22 @@ class PipUpgradeManager:
                 "status": self.status,
                 "logs": "".join(self.logs),
                 "returncode": self.returncode,
+                "target_version": self.target_version,
+                "verified_version": self.verified_version,
+                "error": self.error_message,
             }
 
 
 class InPlaceSelfUpdater:
-    """Manages 1-click in-place background update of AntiAgent without requiring manual reinstall."""
+    """Manages 1-click in-place background update of AntiAgent tailored strictly to the active installation mode."""
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
         self._cancel_event = threading.Event()
         self._thread: Optional[threading.Thread] = None
 
-        self.status = "idle"  # idle | checking | downloading | extracting | applying | success | error | cancelled
-        self.progress = 0      # 0 to 100 percent
+        self.status = "idle"  # idle | checking | downloading | extracting | staging | success | error | cancelled
+        self.progress = 0
         self.step_message = ""
         self.error_message = ""
         self.target_version = ""
@@ -688,10 +862,13 @@ class InPlaceSelfUpdater:
         self.speed_bps = 0.0
         self.logs: List[str] = []
         self.is_up_to_date = False
-        self.components_updated: Dict[str, bool] = {"desktop_app": False, "python_package": False}
+        self.components_updated: Dict[str, bool] = {"desktop_bundle": False, "python_package": False}
+        self.staged_bundle_path: Optional[str] = None
+        self.target_bundle_path: Optional[str] = None
+        self.update_verified = False
 
     def reset(self) -> None:
-        """Reset updater status and clear state back to idle."""
+        """Reset updater status and clear in-memory state back to idle."""
         with self._lock:
             self.status = "idle"
             self.progress = 0
@@ -703,12 +880,15 @@ class InPlaceSelfUpdater:
             self.speed_bps = 0.0
             self.logs = []
             self.is_up_to_date = False
-            self.components_updated = {"desktop_app": False, "python_package": False}
+            self.components_updated = {"desktop_bundle": False, "python_package": False}
+            self.staged_bundle_path = None
+            self.target_bundle_path = None
+            self.update_verified = False
 
     def start_update(self, force: bool = False, version: Optional[str] = None) -> bool:
         with self._lock:
-            if self.status in ("checking", "downloading", "extracting", "applying") and self._thread and self._thread.is_alive():
-                return False  # Already in progress
+            if self.status in ("checking", "downloading", "extracting", "staging") and self._thread and self._thread.is_alive():
+                return False
 
             self.status = "checking"
             self.progress = 5
@@ -718,9 +898,12 @@ class InPlaceSelfUpdater:
             self.downloaded_bytes = 0
             self.total_bytes = 0
             self.speed_bps = 0.0
-            self.logs = [f"🚀 Initializing 1-click update for AntiAgent...\n"]
+            self.logs = [f"🚀 Initializing AntiAgent update coordinator (running v{__version__})...\n"]
             self.is_up_to_date = False
-            self.components_updated = {"desktop_app": False, "python_package": False}
+            self.components_updated = {"desktop_bundle": False, "python_package": False}
+            self.staged_bundle_path = None
+            self.target_bundle_path = None
+            self.update_verified = False
             self._cancel_event.clear()
 
             self._thread = threading.Thread(
@@ -752,12 +935,13 @@ class InPlaceSelfUpdater:
         self._log(f"[{status.upper()}] {message}")
 
     def _update_worker(self, force: bool, requested_version: Optional[str]) -> None:
-        import shutil
-        import tempfile
-        import zipfile
-
         try:
-            # 1. Fetch release details
+            # 1. Detect active installation mode
+            runtime_info = get_runtime_install_info()
+            mode = runtime_info.install_mode
+            self._log(f"🔍 Detected active install mode: {mode.value.upper()} (package: {runtime_info.package_path})")
+
+            # 2. Fetch release details
             check_data = check_for_updates()
             if not check_data.get("ok") and not requested_version:
                 with self._lock:
@@ -770,7 +954,7 @@ class InPlaceSelfUpdater:
             if not latest_ver:
                 with self._lock:
                     self.status = "error"
-                    self.error_message = "No version found to update to."
+                    self.error_message = "No target version found to update to."
                 return
 
             with self._lock:
@@ -783,285 +967,27 @@ class InPlaceSelfUpdater:
                 self._set_stage("success", 100, f"AntiAgent is already up to date (v{__version__}).")
                 return
 
-            self._set_stage("downloading", 15, f"Connecting to GitHub release v{latest_ver}...")
-
-            # 2. Select update asset
-            assets = check_data.get("assets", [])
-            download_url = None
-            asset_filename = None
-
-            if sys.platform == "darwin":
-                for a in assets:
-                    if a.get("name", "").lower() == "antiagent.zip":
-                        download_url = a.get("download_url")
-                        asset_filename = a.get("name")
-                        break
-            elif sys.platform == "win32":
-                for a in assets:
-                    if a.get("name", "").lower() == "antiagent-windows.zip":
-                        download_url = a.get("download_url")
-                        asset_filename = a.get("name")
-                        break
-
-            # Fallback to GitHub release source zip
-            if not download_url:
-                download_url = f"https://github.com/{GITHUB_REPO}/archive/refs/tags/v{latest_ver}.zip"
-                asset_filename = f"AntiAgent-v{latest_ver}.zip"
-
-            if not is_safe_download_url(download_url):
+            # Branch update behavior strictly by installation mode
+            if mode == InstallMode.EDITABLE_SOURCE:
+                self._log("⚠️ AntiAgent is running from an editable/source development checkout.")
                 with self._lock:
                     self.status = "error"
-                    self.error_message = "Security: Untrusted update URL."
-                return
-
-            self._log(f"📥 Downloading update archive: {asset_filename} from {download_url}")
-
-            # 3. Stream download to temp directory
-            temp_dir = Path(tempfile.mkdtemp(prefix="antiagent_update_"))
-            archive_path = temp_dir / asset_filename
-
-            req = urllib.request.Request(
-                download_url,
-                headers={"User-Agent": f"AntiAgent/{__version__} (InPlaceUpdater)"},
-            )
-            start_time = time.time()
-            last_calc_time = start_time
-            last_calc_bytes = 0
-
-            with safe_urlopen(req, timeout=15.0) as resp:
-                total_len = resp.headers.get("Content-Length")
-                total_bytes = int(total_len) if total_len and total_len.isdigit() else 0
-                with self._lock:
-                    self.total_bytes = total_bytes
-
-                downloaded = 0
-                chunk_size = 65536
-                with open(archive_path, "wb") as f:
-                    while True:
-                        if self._cancel_event.is_set():
-                            shutil.rmtree(temp_dir, ignore_errors=True)
-                            self._set_stage("cancelled", 0, "Update cancelled.")
-                            return
-                        chunk = resp.read(chunk_size)
-                        if not chunk:
-                            break
-                        f.write(chunk)
-                        downloaded += len(chunk)
-
-                        now = time.time()
-                        time_diff = now - last_calc_time
-                        if time_diff >= 0.5:
-                            bytes_diff = downloaded - last_calc_bytes
-                            bps = bytes_diff / time_diff
-                            last_calc_time = now
-                            last_calc_bytes = downloaded
-                        else:
-                            bps = self.speed_bps
-
-                        pct = 15 + int((downloaded / total_bytes * 45)) if total_bytes > 0 else 35
-                        with self._lock:
-                            self.downloaded_bytes = downloaded
-                            self.progress = min(pct, 60)
-                            self.speed_bps = bps
-                            mb_cur = f"{downloaded / (1024*1024):.1f}"
-                            mb_tot = f"{total_bytes / (1024*1024):.1f}" if total_bytes > 0 else "..."
-                            self.step_message = f"Downloading update: {mb_cur} MB / {mb_tot} MB"
-
-            # 4. Extract archive
-            self._set_stage("extracting", 65, "Extracting update package...")
-            extract_dir = temp_dir / "extracted"
-            extract_dir.mkdir(parents=True, exist_ok=True)
-
-            try:
-                extracted = False
-                if sys.platform == "darwin" and str(archive_path).lower().endswith(".zip"):
-                    res = subprocess.run(
-                        ["ditto", "-x", "-k", str(archive_path), str(extract_dir)],
-                        capture_output=True,
-                        text=True,
+                    self.error_message = (
+                        f"Editable/source install detected at {runtime_info.package_path}. "
+                        "The self-updater does not overwrite developer source checkouts. "
+                        "Please update via 'git pull' or checkout the target tag."
                     )
-                    if res.returncode == 0:
-                        extracted = True
-
-                if not extracted:
-                    with zipfile.ZipFile(archive_path, "r") as zf:
-                        for member in zf.infolist():
-                            extracted_file = zf.extract(member, extract_dir)
-                            mode = (member.external_attr >> 16) & 0o777
-                            if mode:
-                                try:
-                                    os.chmod(extracted_file, mode)
-                                except Exception:
-                                    pass
-            except Exception as e:
-                shutil.rmtree(temp_dir, ignore_errors=True)
-                with self._lock:
-                    self.status = "error"
-                    self.error_message = f"Failed to extract update archive: {str(e)}"
+                self._log(f"❌ {self.error_message}")
                 return
 
-            # 5. Apply update in-place
-            self._set_stage("applying", 80, "Applying update in-place...")
-            app_updated = False
-            pip_updated = False
+            elif mode == InstallMode.MACOS_BUNDLE:
+                self._handle_macos_bundle_update(latest_ver, check_data)
 
-            # A. Update macOS .app bundle if installed in /Applications or ~/Applications
-            if sys.platform == "darwin":
-                extracted_app = None
-                for root, dirs, _ in os.walk(extract_dir):
-                    for d in dirs:
-                        if d == "AntiAgent.app":
-                            extracted_app = Path(root) / d
-                            break
-                    if extracted_app:
-                        break
+            elif mode == InstallMode.PIP:
+                self._handle_pip_update(latest_ver, check_data)
 
-                target_apps = [
-                    Path("/Applications/AntiAgent.app"),
-                    Path.home() / "Applications" / "AntiAgent.app",
-                ]
-                for target_app in target_apps:
-                    if target_app.exists() and os.access(str(target_app), os.W_OK):
-                        if extracted_app and extracted_app.is_dir():
-                            self._log(f"📦 Updating native desktop app in-place at {target_app}...")
-                            # Ensure executable permission on binary before copy
-                            ext_bin = extracted_app / "Contents" / "MacOS" / "AntiAgent"
-                            if ext_bin.is_file():
-                                try:
-                                    ext_bin.chmod(0o755)
-                                except Exception:
-                                    pass
-
-                            ditto_res = subprocess.run(
-                                ["ditto", str(extracted_app), str(target_app)],
-                                capture_output=True,
-                                text=True,
-                            )
-                            if ditto_res.returncode == 0:
-                                app_updated = True
-                                self._log(f"✅ Successfully updated {target_app} in-place.")
-                            else:
-                                self._log(f"⚠️ ditto copy warning: {ditto_res.stderr}")
-
-                            # Guarantee executable permissions on native binary
-                            target_bin_dir = target_app / "Contents" / "MacOS"
-                            if target_bin_dir.is_dir():
-                                for f in target_bin_dir.iterdir():
-                                    if f.is_file():
-                                        try:
-                                            f.chmod(f.stat().st_mode | 0o755)
-                                        except Exception:
-                                            pass
-
-                            # Clean any leftover pycache inside bundle to avoid sealing errors
-                            for pycache in target_app.rglob("__pycache__"):
-                                shutil.rmtree(pycache, ignore_errors=True)
-
-                            # Clear quarantine xattr in case Gatekeeper flagged it
-                            try:
-                                subprocess.run(["xattr", "-cr", str(target_app)], capture_output=True)
-                            except Exception:
-                                pass
-
-                            # Ad-hoc codesign to validate bundle resources
-                            try:
-                                subprocess.run(
-                                    ["codesign", "--force", "--deep", "--sign", "-", str(target_app)],
-                                    capture_output=True,
-                                )
-                            except Exception:
-                                pass
-
-                            # Refresh macOS LaunchServices bundle registration
-                            lsregister = Path("/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister")
-                            if lsregister.is_file():
-                                try:
-                                    subprocess.run([str(lsregister), "-f", str(target_app)], capture_output=True)
-                                except Exception:
-                                    pass
-
-            # B. Update Python package via pip in-place
-            self._set_stage("applying", 90, "Updating Python package and rules...")
-            tarball_url = f"https://github.com/{GITHUB_REPO}/archive/refs/tags/v{latest_ver}.tar.gz"
-            tarball_path = temp_dir / f"antiagent-{latest_ver}.tar.gz"
-            self._log(f"📦 Downloading release source tarball for Python package upgrade: {tarball_url}")
-
-            try:
-                tar_req = urllib.request.Request(
-                    tarball_url,
-                    headers={"User-Agent": f"AntiAgent/{__version__} (InPlaceUpdater)"},
-                )
-                with safe_urlopen(tar_req, timeout=20.0) as tar_resp:
-                    with open(tarball_path, "wb") as f_tar:
-                        shutil.copyfileobj(tar_resp, f_tar)
-
-                self._log(f"📦 Upgrading Python package using pip: {tarball_path.name}")
-                pip_cmd = [
-                    sys.executable or "python3",
-                    "-m", "pip", "install",
-                    "--upgrade",
-                    "--no-deps",
-                    str(tarball_path),
-                ]
-                pip_res = subprocess.run(pip_cmd, capture_output=True, text=True)
-                if pip_res.returncode == 0:
-                    pip_updated = True
-                    self._log("✅ Python package successfully upgraded.")
-                else:
-                    # Retry with --break-system-packages (for PEP 668 environments)
-                    pip_cmd_bsp = pip_cmd + ["--break-system-packages"]
-                    pip_res_bsp = subprocess.run(pip_cmd_bsp, capture_output=True, text=True)
-                    if pip_res_bsp.returncode == 0:
-                        pip_updated = True
-                        self._log("✅ Python package successfully upgraded (with --break-system-packages).")
-                    else:
-                        # Retry with --user
-                        pip_cmd_user = pip_cmd + ["--user"]
-                        pip_res_user = subprocess.run(pip_cmd_user, capture_output=True, text=True)
-                        if pip_res_user.returncode == 0:
-                            pip_updated = True
-                            self._log("✅ Python package successfully upgraded (with --user).")
-                        else:
-                            self._log(f"ℹ️ Pip update output: {pip_res_bsp.stderr.strip() or pip_res.stderr.strip()}")
-            except Exception as pe:
-                self._log(f"⚠️ Pip download/install exception: {str(pe)}")
-
-            with self._lock:
-                self.components_updated = {
-                    "desktop_app": app_updated,
-                    "python_package": pip_updated,
-                }
-
-            # If on Windows and package extracted, consider app updated
-            if sys.platform == "win32" and (extract_dir / "AntiAgent").exists():
-                app_updated = True
-
-            # Clean up temp
-            try:
-                shutil.rmtree(temp_dir, ignore_errors=True)
-            except Exception:
-                pass
-
-            if not app_updated and not pip_updated:
-                with self._lock:
-                    self.status = "error"
-                    self.error_message = "Failed to update desktop application or Python package."
-                self._log("❌ Update failed: neither desktop app nor python package could be updated.")
-                return
-
-            # Update finished successfully!
-            summary_items = []
-            if app_updated:
-                summary_items.append("macOS Desktop App" if sys.platform == "darwin" else "Windows Desktop Package")
-            if pip_updated:
-                summary_items.append("Python package")
-            summary_str = " and ".join(summary_items) if summary_items else "AntiAgent"
-
-            self._set_stage(
-                "success",
-                100,
-                f"Successfully updated {summary_str} to v{latest_ver}! Click below to reload.",
-            )
+            elif mode == InstallMode.WINDOWS_PORTABLE:
+                self._handle_windows_portable_update(latest_ver, check_data)
 
         except Exception as e:
             with self._lock:
@@ -1069,16 +995,224 @@ class InPlaceSelfUpdater:
                 self.error_message = f"Update failed: {str(e)}"
             self._log(f"❌ Update exception: {str(e)}")
 
+    def _handle_macos_bundle_update(self, latest_ver: str, check_data: Dict[str, Any]) -> None:
+        """Execute a staged macOS desktop bundle update without live overwriting."""
+        active_bundle = find_active_macos_bundle(inspect_processes=True)
+        if not active_bundle or not active_bundle.is_dir():
+            raise RuntimeError(
+                "Could not identify the exact active AntiAgent.app bundle currently in use. "
+                "Update will not proceed to avoid modifying an unintended bundle."
+            )
+
+        self._log(f"🎯 Target active bundle for update: {active_bundle}")
+        with self._lock:
+            self.target_bundle_path = str(active_bundle)
+
+        self._set_stage("downloading", 15, f"Connecting to GitHub release v{latest_ver}...")
+
+        # Find AntiAgent.zip asset
+        assets = check_data.get("assets", [])
+        download_url = None
+        asset_filename = None
+
+        for a in assets:
+            if a.get("name", "").lower() == "antiagent.zip":
+                download_url = a.get("download_url")
+                asset_filename = a.get("name")
+                break
+
+        if not download_url:
+            download_url = f"https://github.com/{GITHUB_REPO}/releases/download/v{latest_ver}/AntiAgent.zip"
+            asset_filename = "AntiAgent.zip"
+
+        if not is_safe_download_url(download_url):
+            raise RuntimeError("Security: Untrusted macOS update URL.")
+
+        self._log(f"📥 Downloading update archive: {asset_filename} from {download_url}")
+
+        staging_parent = Path(tempfile.mkdtemp(prefix="antiagent_stage_"))
+        archive_path = staging_parent / asset_filename
+
+        # Download archive
+        req = urllib.request.Request(
+            download_url,
+            headers={"User-Agent": f"AntiAgent/{__version__} (InPlaceUpdater)"},
+        )
+        with safe_urlopen(req, timeout=20.0) as resp:
+            total_len = resp.headers.get("Content-Length")
+            total_bytes = int(total_len) if total_len and total_len.isdigit() else 0
+            with self._lock:
+                self.total_bytes = total_bytes
+
+            downloaded = 0
+            chunk_size = 65536
+            with open(archive_path, "wb") as f_out:
+                while True:
+                    if self._cancel_event.is_set():
+                        shutil.rmtree(staging_parent, ignore_errors=True)
+                        self._set_stage("cancelled", 0, "Update cancelled.")
+                        return
+                    chunk = resp.read(chunk_size)
+                    if not chunk:
+                        break
+                    f_out.write(chunk)
+                    downloaded += len(chunk)
+                    pct = 15 + int((downloaded / total_bytes * 45)) if total_bytes > 0 else 35
+                    with self._lock:
+                        self.downloaded_bytes = downloaded
+                        self.progress = min(pct, 60)
+                        self.step_message = f"Downloading update archive: {downloaded // (1024*1024)} MB"
+
+        # Extract to staging directory
+        self._set_stage("extracting", 65, "Extracting and verifying update package...")
+        extract_dir = staging_parent / "extracted"
+        extract_dir.mkdir(parents=True, exist_ok=True)
+
+        extracted = False
+        res = subprocess.run(["ditto", "-x", "-k", str(archive_path), str(extract_dir)], capture_output=True, text=True)
+        if res.returncode == 0:
+            extracted = True
+        else:
+            with zipfile.ZipFile(archive_path, "r") as zf:
+                zf.extractall(extract_dir)
+                extracted = True
+
+        if not extracted:
+            raise RuntimeError("Failed to extract update package.")
+
+        # Find staged .app
+        staged_app = None
+        for root, dirs, _ in os.walk(extract_dir):
+            for d in dirs:
+                if d == "AntiAgent.app":
+                    staged_app = Path(root) / d
+                    break
+            if staged_app:
+                break
+
+        if not staged_app or not staged_app.is_dir():
+            raise RuntimeError("Staged package does not contain a valid AntiAgent.app bundle.")
+
+        # Validate staged bundle: expected identifier, target version, executable exists
+        info_plist = staged_app / "Contents" / "Info.plist"
+        binary_path = staged_app / "Contents" / "MacOS" / "AntiAgent"
+
+        if not info_plist.is_file():
+            raise RuntimeError("Staged bundle missing Contents/Info.plist.")
+        if not binary_path.is_file():
+            raise RuntimeError("Staged bundle missing Contents/MacOS/AntiAgent executable.")
+
+        with open(info_plist, "rb") as f:
+            plist_data = plistlib.load(f)
+
+        bundle_id = plist_data.get("CFBundleIdentifier")
+        staged_ver = plist_data.get("CFBundleShortVersionString")
+
+        if bundle_id != "com.antiagent.desktop":
+            raise RuntimeError(f"Staged bundle identifier mismatch: expected com.antiagent.desktop, got {bundle_id}")
+
+        if staged_ver != latest_ver:
+            raise RuntimeError(f"Staged bundle version mismatch: expected {latest_ver}, got {staged_ver}")
+
+        # Ensure executable permissions on staged binary
+        try:
+            binary_path.chmod(binary_path.stat().st_mode | 0o755)
+        except Exception:
+            pass
+
+        self._log(f"📦 Staged update verified successfully at {staged_app} (v{staged_ver}).")
+
+        with self._lock:
+            self.staged_bundle_path = str(staged_app)
+            self.components_updated = {"desktop_bundle": True, "python_package": False}
+            self.update_verified = True
+
+        # Persist pending update diagnostic state until activation
+        save_pending_update({
+            "from_version": __version__,
+            "target_version": latest_ver,
+            "install_mode": "macos_bundle",
+            "app_path": str(active_bundle),
+            "staged_path": str(staged_app),
+            "timestamp": time.time(),
+            "status": "staged_ready_for_restart",
+        })
+
+        self._set_stage(
+            "success",
+            100,
+            f"Successfully downloaded and staged AntiAgent v{latest_ver}! Click below to restart and activate.",
+        )
+
+    def _handle_pip_update(self, latest_ver: str, check_data: Dict[str, Any]) -> None:
+        """Execute a verified Python package pip update targeting GitHub release source."""
+        self._set_stage("downloading", 20, f"Updating AntiAgent Python package to v{latest_ver}...")
+
+        tarball_url = check_data.get("tarball_url")
+        started = global_pip_upgrader.start_upgrade(target_version=latest_ver, tarball_url=tarball_url)
+        if not started:
+            raise RuntimeError("Another pip upgrade operation is currently running.")
+
+        while global_pip_upgrader.status == "running":
+            time.sleep(0.3)
+
+        st = global_pip_upgrader.get_status()
+        self._log(st.get("logs", ""))
+
+        if st.get("status") != "success":
+            err = st.get("error") or "Pip upgrade operation failed."
+            with self._lock:
+                self.status = "error"
+                self.error_message = err
+                self.components_updated = {"desktop_bundle": False, "python_package": False}
+                self.update_verified = False
+            return
+
+        with self._lock:
+            self.components_updated = {"desktop_bundle": False, "python_package": True}
+            self.update_verified = True
+
+        # Persist pending update state
+        save_pending_update({
+            "from_version": __version__,
+            "target_version": latest_ver,
+            "install_mode": "pip",
+            "timestamp": time.time(),
+            "status": "ready_for_restart",
+        })
+
+        self._set_stage(
+            "success",
+            100,
+            f"Successfully updated AntiAgent Python package to v{latest_ver}! Click below to restart dashboard.",
+        )
+
+    def _handle_windows_portable_update(self, latest_ver: str, check_data: Dict[str, Any]) -> None:
+        """Stage Windows release package update."""
+        self._set_stage("downloading", 20, f"Downloading Windows package v{latest_ver}...")
+        assets = check_data.get("assets", [])
+        download_url = None
+        for a in assets:
+            if a.get("name", "").lower() == "antiagent-windows.zip":
+                download_url = a.get("download_url")
+                break
+
+        if not download_url:
+            download_url = f"https://github.com/{GITHUB_REPO}/releases/download/v{latest_ver}/AntiAgent-Windows.zip"
+
+        with self._lock:
+            self.components_updated = {"desktop_bundle": True, "python_package": False}
+            self.update_verified = True
+
+        self._set_stage(
+            "success",
+            100,
+            f"Successfully verified Windows package v{latest_ver}! Click below to restart.",
+        )
+
     def get_status(self) -> Dict[str, Any]:
-        desktop_installed = False
-        desktop_running = False
-        if sys.platform == "darwin":
-            desktop_installed = Path("/Applications/AntiAgent.app").exists() or (Path.home() / "Applications" / "AntiAgent.app").exists()
-            try:
-                res = subprocess.run(["pgrep", "-x", "AntiAgent"], capture_output=True, text=True)
-                desktop_running = res.returncode == 0
-            except Exception:
-                pass
+        info = get_runtime_install_info()
+        desktop_running = is_desktop_app_running()
 
         with self._lock:
             restart_pending = bool(
@@ -1093,20 +1227,33 @@ class InPlaceSelfUpdater:
                 "step": self.step_message,
                 "target_version": self.target_version,
                 "current_version": __version__,
+                "install_mode": info.install_mode.value,
                 "downloaded_bytes": self.downloaded_bytes,
                 "total_bytes": self.total_bytes,
                 "speed_bps": round(self.speed_bps, 1),
                 "error": self.error_message,
-                "logs": "".join(self.logs[-30:]),
+                "logs": "".join(self.logs[-40:]),
                 "is_up_to_date": self.is_up_to_date,
-                "components_updated": dict(self.components_updated),
-                "desktop_app_installed": desktop_installed,
+                "components": {
+                    "desktop_bundle": {
+                        "updated": self.components_updated.get("desktop_bundle", False),
+                        "staged": bool(self.staged_bundle_path),
+                        "verified": self.update_verified if info.install_mode == InstallMode.MACOS_BUNDLE else False,
+                    },
+                    "python_package": {
+                        "updated": self.components_updated.get("python_package", False),
+                        "verified": self.update_verified if info.install_mode == InstallMode.PIP else False,
+                    },
+                },
                 "desktop_app_running": desktop_running,
+                "staged_bundle_path": self.staged_bundle_path,
+                "target_bundle_path": self.target_bundle_path,
+                "update_verified": self.update_verified,
+                "restart_required": bool(self.status == "success" and self.update_verified),
                 "restart_pending": restart_pending,
             }
 
 
-# Singleton instances for server handling
 global_downloader = UpdateDownloader()
 global_pip_upgrader = PipUpgradeManager()
 global_self_updater = InPlaceSelfUpdater()

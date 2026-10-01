@@ -47,17 +47,41 @@ from antiagent.engine.remote_sessions import (
     RemoteHost,
     RemoteSessionManager,
 )
+import argparse
+import uuid
+
+from antiagent.runtime import (
+    DashboardLaunchContext,
+    InstallMode,
+    find_active_macos_bundle,
+    find_installed_macos_bundles,
+    get_current_launch_context,
+    get_runtime_install_info,
+    is_desktop_app_running,
+    set_current_launch_context,
+)
 from antiagent.updater import (
+    check_and_complete_pending_update,
     check_for_updates,
     global_downloader,
     global_pip_upgrader,
     global_self_updater,
     is_safe_download_url,
+    load_pending_update,
     open_downloaded_file,
     reveal_in_file_manager,
 )
 
+SERVER_INSTANCE_ID = uuid.uuid4().hex
+
+# Automatically complete pending update diagnostics upon process startup
+check_and_complete_pending_update(__version__)
+
 global_remote_manager = RemoteSessionManager()
+
+# Backward compatibility aliases
+find_running_or_installed_desktop_app = find_active_macos_bundle
+is_desktop_app_currently_running = is_desktop_app_running
 
 
 def get_default_workspace_path() -> str:
@@ -67,88 +91,84 @@ def get_default_workspace_path() -> str:
     return str(Path.home())
 
 
-def find_running_or_installed_desktop_app() -> Optional[Path]:
-    """Find the path of the macOS desktop app, prioritizing the currently running instance."""
-    if sys.platform != "darwin":
-        return None
-    try:
-        ppid = os.getppid()
-        pname = subprocess.check_output(["ps", "-p", str(ppid), "-o", "comm="], text=True).strip()
-        if "AntiAgent.app" in pname:
-            parts = pname.split(".app")
-            app_p = Path(parts[0] + ".app")
-            if app_p.exists():
-                return app_p
-    except Exception:
-        pass
-
-    try:
-        out = subprocess.check_output(["pgrep", "-fl", "AntiAgent.app"], text=True)
-        for line in out.strip().splitlines():
-            if "Contents/MacOS/AntiAgent" in line:
-                for token in line.split():
-                    if ".app" in token:
-                        app_p = Path(token.split(".app")[0] + ".app")
-                        if app_p.exists():
-                            return app_p
-    except Exception:
-        pass
-
-    mac_app = Path("/Applications/AntiAgent.app")
-    user_app = Path.home() / "Applications" / "AntiAgent.app"
-    if mac_app.exists():
-        return mac_app
-    if user_app.exists():
-        return user_app
-    return None
+def parse_dashboard_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
+    """Parse dashboard command line arguments with consistent defaults."""
+    parser = argparse.ArgumentParser(description="Launch AntiAgent visual dashboard")
+    parser.add_argument("--port", type=int, default=4242, help="Port to listen on (default: 4242)")
+    parser.add_argument("--host", default="127.0.0.1", help="Host address (default: 127.0.0.1)")
+    parser.add_argument("--no-open", action="store_true", help="Do not automatically open browser")
+    parser.add_argument("--workspace", default=".", help="Workspace path")
+    return parser.parse_args(argv)
 
 
-def is_desktop_app_currently_running() -> bool:
-    if sys.platform != "darwin":
-        return False
-    try:
-        res = subprocess.run(["pgrep", "-x", "AntiAgent"], capture_output=True, text=True)
-        return res.returncode == 0
-    except Exception:
-        return False
+def _relaunch_desktop_worker(
+    app_path: Path,
+    staged_path: Optional[Path] = None,
+    target_version: Optional[str] = None,
+) -> None:
+    time.sleep(0.3)
+    if DashboardRequestHandler.server_instance:
+        try:
+            DashboardRequestHandler.server_instance.server_close()
+        except Exception:
+            pass
 
-
-def _relaunch_desktop_worker(app_path: Path) -> None:
-    time.sleep(0.4)
-    script = f'''
-    osascript -e 'quit app "AntiAgent"' 2>/dev/null || pkill -x AntiAgent 2>/dev/null || true
-    for i in {{1..20}}; do
-        if ! pgrep -x "AntiAgent" >/dev/null; then
-            break
-        fi
-        sleep 0.2
-    done
-    open "{str(app_path)}"
-    '''
-    try:
-        subprocess.Popen(["/bin/bash", "-c", script], start_new_session=True)
-    except Exception:
-        pass
+    if staged_path and staged_path.exists():
+        backup_app = app_path.parent / f"{app_path.name}.backup"
+        cmd = [
+            sys.executable or "python3",
+            "-m", "antiagent.desktop.relauncher",
+            "--target-app", str(app_path),
+            "--staged-app", str(staged_path),
+            "--backup-app", str(backup_app),
+            "--old-pid", str(os.getpid()),
+            "--parent-pid", str(os.getppid()),
+            "--target-version", str(target_version or __version__),
+        ]
+        try:
+            subprocess.Popen(cmd, start_new_session=True, close_fds=True)
+        except Exception:
+            pass
+    else:
+        try:
+            subprocess.run(["osascript", "-e", 'quit app "AntiAgent"'], capture_output=True, timeout=3.0)
+        except Exception:
+            pass
+        time.sleep(0.5)
+        try:
+            subprocess.Popen(["open", str(app_path)], start_new_session=True)
+        except Exception:
+            pass
     os._exit(0)
 
 
-def _restart_cli_worker() -> None:
-    time.sleep(0.4)
+def _restart_cli_worker(ctx: Optional[DashboardLaunchContext] = None) -> None:
+    time.sleep(0.3)
+    if DashboardRequestHandler.server_instance:
+        try:
+            DashboardRequestHandler.server_instance.server_close()
+        except Exception:
+            pass
+
+    launch_ctx = ctx or get_current_launch_context()
+    cmd = launch_ctx.to_argv()
     try:
-        clean_args = []
-        for a in sys.argv[1:]:
-            if a not in clean_args:
-                clean_args.append(a)
-        cmd = [sys.executable, "-m", "antiagent", "dashboard"] + clean_args
-        os.execv(sys.executable, cmd)
+        if sys.platform == "win32":
+            creationflags = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0) | getattr(subprocess, "DETACHED_PROCESS", 0)
+            subprocess.Popen(cmd, creationflags=creationflags, close_fds=True)
+        else:
+            subprocess.Popen(cmd, start_new_session=True, close_fds=True)
     except Exception:
-        os._exit(0)
+        pass
+    os._exit(0)
 
 
 class DashboardRequestHandler(BaseHTTPRequestHandler):
     """Handles HTTP requests for the AntiAgent dashboard."""
 
     workspace_path: str = get_default_workspace_path()
+    server_instance: Optional[ThreadingHTTPServer] = None
+    launch_context: Optional[DashboardLaunchContext] = None
 
     def log_message(self, format: str, *args: Any) -> None:
         # Keep terminal output clean unless debugging
@@ -407,30 +427,8 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
         elif path == "/api/update/self_update_reset":
             global_self_updater.reset()
             self._send_json({"ok": True, "status": global_self_updater.get_status()})
-        elif path == "/api/update/relaunch_app":
-            target = find_running_or_installed_desktop_app()
-            relaunch_ok = False
-            if sys.platform == "darwin" and target and target.exists():
-                global_self_updater.reset()
-                relaunch_ok = True
-                if os.environ.get("ANTIAGENT_TESTING") != "1":
-                    threading.Thread(target=_relaunch_desktop_worker, args=(target,), daemon=True).start()
-            self._send_json({"ok": relaunch_ok, "app_path": str(target) if target else None})
-        elif path == "/api/update/restart":
-            global_self_updater.reset()
-            if os.environ.get("ANTIAGENT_TESTING") == "1":
-                self._send_json({"ok": True, "message": "Server restarting (test mode)...", "desktop_relaunch": False})
-                return
-
-            desktop_running = is_desktop_app_currently_running()
-            desktop_path = find_running_or_installed_desktop_app() if desktop_running else None
-
-            if desktop_running and desktop_path:
-                threading.Thread(target=_relaunch_desktop_worker, args=(desktop_path,), daemon=True).start()
-                self._send_json({"ok": True, "message": "Relaunching AntiAgent desktop app...", "desktop_relaunch": True})
-            else:
-                threading.Thread(target=_restart_cli_worker, daemon=True).start()
-                self._send_json({"ok": True, "message": "Server restarting...", "desktop_relaunch": False})
+        elif path in ("/api/update/restart", "/api/update/relaunch_app"):
+            self._handle_api_restart(force_desktop=(path == "/api/update/relaunch_app"))
         elif path == "/api/pr/monitor":
             pr_id = body.get("pr")
             cfg = load_config(self.workspace_path)
@@ -544,8 +542,15 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
         if raw_key:
             masked_key = f"{raw_key[:4]}••••{raw_key[-4:]}" if len(raw_key) > 8 else "••••••••"
 
+        runtime_info = get_runtime_install_info()
         resp = {
             "version": __version__,
+            "server_instance_id": SERVER_INSTANCE_ID,
+            "install_mode": runtime_info.install_mode.value,
+            "current_executable": runtime_info.current_executable,
+            "package_path": runtime_info.package_path,
+            "macos_bundle_path": runtime_info.macos_bundle_path,
+            "is_site_packages": runtime_info.is_site_packages,
             "workspace_path": str(Path(self.workspace_path).resolve()),
             "workspace_hook_active": ws_active,
             "global_hook_active": global_active,
@@ -762,6 +767,66 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
             self._send_json({"ok": True, "url": raw_url})
         except Exception as e:
             self._send_json({"ok": False, "error": str(e)}, status=500)
+
+    def _handle_api_restart(self, force_desktop: bool = False) -> None:
+        runtime_info = get_runtime_install_info()
+        pending = load_pending_update()
+        staged_path = getattr(global_self_updater, "staged_bundle_path", None)
+        if not staged_path and pending:
+            staged_path = pending.get("staged_path")
+        staged_path_obj = Path(staged_path) if staged_path else None
+
+        target_ver = (
+            getattr(global_self_updater, "target_version", None)
+            or (pending and pending.get("target_version"))
+            or __version__
+        )
+
+        is_macos_desktop = (runtime_info.install_mode == InstallMode.MACOS_BUNDLE) or force_desktop or is_desktop_app_running()
+        active_bundle = find_active_macos_bundle(inspect_processes=True)
+        if not active_bundle and pending and pending.get("app_path"):
+            cand = Path(pending["app_path"])
+            if cand.is_dir():
+                active_bundle = cand
+        if not active_bundle and is_macos_desktop:
+            installed = find_installed_macos_bundles()
+            if installed:
+                active_bundle = installed[0]
+
+        is_bundle_mode = bool(is_macos_desktop and active_bundle)
+        mode_str = "macos_bundle" if is_bundle_mode else runtime_info.install_mode.value
+
+        resp_data = {
+            "ok": True,
+            "mode": mode_str,
+            "target_version": target_ver,
+            "expected_app_path": str(active_bundle) if is_bundle_mode else None,
+            "app_path": str(active_bundle) if is_bundle_mode else None,
+            "desktop_relaunch": is_bundle_mode,
+            "server_instance_id": SERVER_INSTANCE_ID,
+            "message": (
+                "Relaunching AntiAgent desktop app..."
+                if is_bundle_mode
+                else "Dashboard server restarting..."
+            ),
+        }
+        self._send_json(resp_data)
+
+        if os.environ.get("ANTIAGENT_TESTING") == "1":
+            return
+
+        if is_bundle_mode and active_bundle:
+            threading.Thread(
+                target=_relaunch_desktop_worker,
+                args=(active_bundle, staged_path_obj, target_ver),
+                daemon=True,
+            ).start()
+        else:
+            threading.Thread(
+                target=_restart_cli_worker,
+                args=(self.launch_context or get_current_launch_context(),),
+                daemon=True,
+            ).start()
 
     def _handle_api_remotes_list(self, force_probe: bool = False) -> None:
         hosts = global_remote_manager.registry.list_hosts()
@@ -1187,10 +1252,26 @@ def run_dashboard(
     workspace_path: str = ".",
 ) -> None:
     """Launch the AntiAgent local dashboard server."""
-    DashboardRequestHandler.workspace_path = workspace_path
+    runtime_info = get_runtime_install_info()
+    abs_ws = str(Path(workspace_path).resolve())
+    launch_ctx = DashboardLaunchContext(
+        host=host,
+        port=port,
+        workspace_path=abs_ws,
+        open_browser=open_browser,
+        install_mode=runtime_info.install_mode.value,
+        python_executable=runtime_info.current_executable,
+        macos_bundle_path=runtime_info.macos_bundle_path,
+    )
+    set_current_launch_context(launch_ctx)
+    DashboardRequestHandler.workspace_path = abs_ws
+    DashboardRequestHandler.launch_context = launch_ctx
+
     url = f"http://{host}:{port}"
     try:
         server = ThreadingHTTPServer((host, port), DashboardRequestHandler)
+        server.allow_reuse_address = True
+        DashboardRequestHandler.server_instance = server
     except OSError as e:
         if "Address already in use" in str(e) or getattr(e, "errno", None) in (48, 98):
             print(f"🛡️  AntiAgent Dashboard is already running at: {url}")
@@ -1221,4 +1302,8 @@ def run_dashboard(
         server.serve_forever()
     except KeyboardInterrupt:
         print("\n👋 Stopping AntiAgent Dashboard.")
-        server.server_close()
+    finally:
+        try:
+            server.server_close()
+        except Exception:
+            pass

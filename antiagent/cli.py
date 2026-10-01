@@ -802,14 +802,16 @@ def handle_update_cli(args: argparse.Namespace) -> None:
     )
 
     if args.pip:
-        print("📦 Upgrading AntiAgent via pip...")
+        target_v = getattr(args, "version", None)
+        bsp = getattr(args, "break_system_packages", False)
+        print(f"📦 Upgrading AntiAgent Python package via pip (target: {target_v or 'latest GitHub release'})...")
         upgrader = PipUpgradeManager()
-        upgrader.start_upgrade()
+        upgrader.start_upgrade(target_version=target_v, allow_break_system_packages=bsp)
         while upgrader.status == "running":
             time.sleep(0.3)
         print("".join(upgrader.logs))
         if upgrader.status == "success":
-            print("🎉 AntiAgent upgraded successfully!")
+            print(f"🎉 AntiAgent upgraded successfully to v{upgrader.verified_version or target_v}!")
         else:
             sys.exit(upgrader.returncode or 1)
         return
@@ -1658,6 +1660,8 @@ def main() -> None:
     update_parser.add_argument("--check", action="store_true", help="Check for updates without downloading")
     update_parser.add_argument("--download", action="store_true", help="Download the latest update package to Downloads")
     update_parser.add_argument("--pip", action="store_true", help="Upgrade AntiAgent using pip")
+    update_parser.add_argument("--version", help="Specific target version to update to")
+    update_parser.add_argument("--break-system-packages", action="store_true", help="Explicitly allow installing into externally managed Python environments (last resort)")
     update_parser.add_argument("--asset", help="Specific asset filename to download")
 
     # remote (Remote Sessions via SSH)

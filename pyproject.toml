@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "antiagent"
-version = "0.4.3"
+dynamic = ["version"]
 description = "Intelligent AI supervisor and 'Approved for Me' safety gatekeeper for Google Antigravity"
 readme = "README.md"
 authors = [
@@ -40,3 +40,16 @@ antiagent-flow-hook = "antiagent.flow_hook:main"
 
 [tool.setuptools.packages.find]
 include = ["antiagent*", "plugin*"]
+
+[tool.setuptools.package-data]
+antiagent = [
+  "dashboard/assets/*",
+  "desktop/*.swift",
+  "desktop/*.icns",
+  "desktop/*.png",
+]
+
+[tool.setuptools.dynamic]
+version = {attr = "antiagent.__version__"}
+
+
