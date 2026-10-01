@@ -55,7 +55,17 @@ def handle_pre_tool_use(payload: Dict[str, Any]) -> Dict[str, Any]:
         except Exception:
             context = None
 
-    evaluator = AntiAgentEvaluator(config, workspace_paths=workspace_paths)
+    trusted_artifact_paths = (
+        [artifact_directory]
+        if isinstance(artifact_directory, str) and artifact_directory.strip()
+        else []
+    )
+
+    evaluator = AntiAgentEvaluator(
+        config,
+        workspace_paths=workspace_paths,
+        trusted_artifact_paths=trusted_artifact_paths,
+    )
     result = evaluator.evaluate(tool_name, tool_args, context=context)
 
     # Update interaction state for prompt queue safety

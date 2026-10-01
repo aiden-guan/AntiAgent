@@ -16,29 +16,80 @@ from antiagent.constants import (
 class FSGuard:
     """Evaluates filesystem access against workspace boundaries and sensitive file rules."""
 
-    def __init__(self, workspace_paths: Optional[List[str]] = None):
+    def __init__(
+        self,
+        workspace_paths: Optional[List[str]] = None,
+        trusted_artifact_paths: Optional[List[str]] = None,
+    ):
+        raw_workspaces = (
+            workspace_paths
+            if (workspace_paths is not None and len(workspace_paths) > 0)
+            else [os.getcwd()]
+        )
         self.workspace_paths = [
-            Path(os.path.abspath(p)).resolve() for p in (workspace_paths or [os.getcwd()])
+            Path(os.path.abspath(os.path.expanduser(p))).resolve()
+            for p in raw_workspaces
+            if p
         ]
+        if not self.workspace_paths:
+            self.workspace_paths = [Path(os.path.abspath(os.getcwd())).resolve()]
+
+        self.trusted_artifact_paths = [
+            Path(os.path.abspath(os.path.expanduser(p))).resolve()
+            for p in (trusted_artifact_paths or [])
+            if p and str(p).strip()
+        ]
+
+    @staticmethod
+    def _is_path_contained(
+        resolved_target: Path,
+        root: Path,
+        is_windows: Optional[bool] = None,
+    ) -> bool:
+        """Check whether resolved_target is contained within root, preserving Windows case-insensitivity."""
+        if is_windows is None:
+            is_windows = (os.name == "nt")
+        try:
+            if is_windows:
+                from pathlib import PureWindowsPath
+                import ntpath
+
+                norm_target = PureWindowsPath(ntpath.normcase(str(resolved_target)))
+                norm_root = PureWindowsPath(ntpath.normcase(str(root)))
+                norm_target.relative_to(norm_root)
+            else:
+                resolved_target.relative_to(root)
+            return True
+        except ValueError:
+            return False
+
+    def _is_inside_roots(
+        self,
+        target_path: str,
+        roots: List[Path],
+        is_windows: Optional[bool] = None,
+    ) -> bool:
+        """Check whether target_path resolves to a location inside one of the given roots."""
+        if not target_path or not roots:
+            return False
+
+        resolved = Path(os.path.abspath(os.path.expanduser(target_path))).resolve()
+        for root in roots:
+            if self._is_path_contained(resolved, root, is_windows=is_windows):
+                return True
+        return False
 
     def is_inside_workspace(self, target_path: str) -> bool:
         """Check whether target_path resolves to a location inside one of the workspace directories."""
         if not target_path:
             return True
+        return self._is_inside_roots(target_path, self.workspace_paths)
 
-        resolved = Path(os.path.abspath(os.path.expanduser(target_path))).resolve()
-        for ws in self.workspace_paths:
-            try:
-                if os.name == "nt":
-                    norm_resolved = Path(os.path.normcase(str(resolved)))
-                    norm_ws = Path(os.path.normcase(str(ws)))
-                    norm_resolved.relative_to(norm_ws)
-                else:
-                    resolved.relative_to(ws)
-                return True
-            except ValueError:
-                continue
-        return False
+    def is_inside_trusted_artifact_path(self, target_path: str) -> bool:
+        """Check whether target_path resolves to a location inside one of the trusted artifact directories."""
+        if not target_path:
+            return False
+        return self._is_inside_roots(target_path, self.trusted_artifact_paths)
 
     def is_sensitive_target(self, target_path: str) -> Tuple[bool, str]:
         """Check if target_path matches known sensitive files or credentials."""
@@ -130,7 +181,15 @@ class FSGuard:
                 return DECISION_ASK, f"⚠️ Mutating sensitive target: {sens_reason}"
             return DECISION_ASK, f"Accessing sensitive target: {sens_reason}"
 
-        # 2. Check workspace boundary
+        # 2. Check trusted artifact directory
+        if tool_name in ("write_to_file", "replace_file_content", "delete_file"):
+            if self.is_inside_trusted_artifact_path(target_path):
+                return (
+                    DECISION_ALLOW,
+                    "Auto-approved agent artifact mutation inside current Antigravity artifact directory.",
+                )
+
+        # 3. Check workspace boundary
         if not self.is_inside_workspace(target_path):
             if tool_name in ("write_to_file", "replace_file_content", "delete_file"):
                 return (

@@ -3,6 +3,29 @@
 All notable changes to the **AntiAgent** project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.4.2] — 2026-09-30
+
+### Summary
+Introduced **Antigravity Conversation Artifact & Brain Directory Auto-Approval (Closes #3)**. AntiAgent now treats Antigravity's current per-conversation `artifactDirectoryPath` as an agent-owned write area. Routine file mutations (`write_to_file`, `replace_file_content`, `delete_file`) targeting inside that directory are deterministically auto-approved with zero confirmation prompts and without disrupting prompt queue interaction states. Sibling conversations, sensitive files (`.env`, credentials, system roots), and external filesystem paths remain strictly protected under workspace boundary guards.
+
+### Architectural & Functional Highlights
+
+| Area / Component | Improvement |
+| :--- | :--- |
+| **Runtime Trusted Artifact Containment (`engine/heuristics/fs_guard.py`)** | Added canonical-path containment verification (`_is_inside_roots`, `_is_path_contained`) for trusted artifact paths distinct from workspace roots. Correctly rejects path traversal (`conv-a/../conv-b`), prefix collisions (`conv-a-malicious`), and POSIX symlink escapes while preserving Windows case-insensitivity. |
+| **Deterministic Heuristic Auto-Approval (`engine/heuristics/fs_guard.py`)** | Evaluates file mutation tools (`write_to_file`, `replace_file_content`, `delete_file`) targeting inside `trusted_artifact_paths` immediately after sensitive target checks, returning `DECISION_ALLOW` deterministically before outside-workspace rules and before LLM supervisor invocation. |
+| **Antigravity PreToolUse Hook Integration (`hook.py`)** | Authoritatively passes `artifactDirectoryPath` from Antigravity's runtime payload into `AntiAgentEvaluator` and `FSGuard`. Ensures interaction state machine stays in `RUNNING` with `pending_approval = False` on auto-approved artifact mutations. |
+| **Safety Invariant Prioritization** | Strict evaluation hierarchy guarantees that credential files (`.env`, SSH keys, SAM, registry hives) and protected system paths (`/etc`, `/System`, `/Windows`) are checked FIRST and always flagged for confirmation, even if placed inside an artifact directory. |
+| **User & Environment Control (`config.py`)** | Added `auto_approve_artifact_writes: bool = True` with environment override `ANTIAGENT_AUTO_APPROVE_ARTIFACT_WRITES`. Untrusted repositories cannot declare arbitrary write roots via `.antiagent.json`. |
+
+### Verification Proof
+- All 323 unit tests passed (`python3 -m unittest discover tests`) with 0 failures and 0 errors.
+- Added comprehensive unit, evaluator, hook contract, and Windows path containment test suite in `tests/test_artifact_directory.py` (18 tests).
+- Verified sensitive target check precedence, traversal rejection, sibling conversation isolation, and symlink escape rejection.
+- Closes GitHub Issue [#3](https://github.com/aiden-guan/AntiAgent/issues/3).
+
+---
+
 ## [v0.4.1] — 2026-09-28
 
 ### Summary

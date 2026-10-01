@@ -70,6 +70,60 @@ class TestFSGuard(unittest.TestCase):
         )
         self.assertIsNone(res)
 
+    def test_trusted_artifact_directory_evaluation(self):
+        conv_a = os.path.abspath("/Users/fakeuser/.gemini/antigravity/brain/conv-a")
+        conv_b = os.path.abspath("/Users/fakeuser/.gemini/antigravity/brain/conv-b")
+        guard = FSGuard(
+            workspace_paths=[self.workspace],
+            trusted_artifact_paths=[conv_a],
+        )
+
+        # 1. Inside workspace -> None
+        res_ws = guard.evaluate_file_tool("write_to_file", {"TargetFile": os.path.join(self.workspace, "app.py")})
+        self.assertIsNone(res_ws)
+
+        # 2. write_to_file in brain/conv-a/scratch/test.py -> ALLOW
+        res_allow = guard.evaluate_file_tool("write_to_file", {"TargetFile": os.path.join(conv_a, "scratch/test.py")})
+        self.assertIsNotNone(res_allow)
+        self.assertEqual(res_allow[0], DECISION_ALLOW)
+        self.assertIn("Auto-approved agent artifact mutation", res_allow[1])
+
+        # 3. replace_file_content in brain/conv-a/artifacts/result.md -> ALLOW
+        res_replace = guard.evaluate_file_tool("replace_file_content", {"TargetFile": os.path.join(conv_a, "artifacts/result.md")})
+        self.assertIsNotNone(res_replace)
+        self.assertEqual(res_replace[0], DECISION_ALLOW)
+
+        # 4. delete_file inside brain/conv-a -> ALLOW
+        res_del = guard.evaluate_file_tool("delete_file", {"TargetFile": os.path.join(conv_a, "scratch/temp.txt")})
+        self.assertIsNotNone(res_del)
+        self.assertEqual(res_del[0], DECISION_ALLOW)
+
+        # 5. write_to_file in brain/conv-b/file.py -> ASK
+        res_conv_b = guard.evaluate_file_tool("write_to_file", {"TargetFile": os.path.join(conv_b, "file.py")})
+        self.assertIsNotNone(res_conv_b)
+        self.assertEqual(res_conv_b[0], DECISION_ASK)
+
+        # 6. write_to_file outside -> ASK
+        res_outside = guard.evaluate_file_tool("write_to_file", {"TargetFile": "/Users/fakeuser/outside/file.py"})
+        self.assertIsNotNone(res_outside)
+        self.assertEqual(res_outside[0], DECISION_ASK)
+
+        # 7. Sensitive target inside artifact directory -> ASK (sensitive check takes priority)
+        res_sens = guard.evaluate_file_tool("write_to_file", {"TargetFile": os.path.join(conv_a, ".env")})
+        self.assertIsNotNone(res_sens)
+        self.assertEqual(res_sens[0], DECISION_ASK)
+        self.assertIn("Mutating sensitive target", res_sens[1])
+
+        # 8. Path traversal out of conv-a into conv-b -> ASK
+        res_trav = guard.evaluate_file_tool("write_to_file", {"TargetFile": os.path.join(conv_a, "../conv-b/file.py")})
+        self.assertIsNotNone(res_trav)
+        self.assertEqual(res_trav[0], DECISION_ASK)
+
+        # 9. Prefix collision (/conv-a vs /conv-a-malicious) -> ASK
+        res_col = guard.evaluate_file_tool("write_to_file", {"TargetFile": conv_a + "-malicious/file.py"})
+        self.assertIsNotNone(res_col)
+        self.assertEqual(res_col[0], DECISION_ASK)
+
 
 class TestCommandGuard(unittest.TestCase):
     def setUp(self):

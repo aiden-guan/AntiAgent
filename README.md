@@ -370,6 +370,12 @@ AntiAgent supports three distinct safety profiles:
 | **`paranoid`** | 🟢 Auto-Approve | 🟡 Ask User | 🟡 Ask User | 🟡 Ask User | 🔴 Deny |
 | **`autonomous`** (OpenAI/Claude subagent review style)| 🟢 Auto-Approve | 🟢 Auto-Approve | 🟢 Auto-Approve | 🟢 Auto-Approve (if within bounds) | 🔴 Deny |
 
+### 🧠 Antigravity Conversation Artifact & Scratch Directory
+
+AntiAgent treats Antigravity's current per-conversation artifactDirectoryPath as an agent-owned write area. Routine file mutations inside that exact directory are auto-approved, while sibling conversations and other external filesystem paths remain protected.
+
+Artifact auto-approval is enabled by default and can be toggled via `auto_approve_artifact_writes: bool` in configuration or the `ANTIAGENT_AUTO_APPROVE_ARTIFACT_WRITES` environment variable.
+
 ### Setting Your Profile & LLM Supervisor
 
 Configure AntiAgent via CLI or environment variables:
@@ -391,6 +397,7 @@ antiagent config --set-audit-include-tool-calls true
 Supported Environment Variables:
 - `ANTIAGENT_PROFILE`: `balanced` | `paranoid` | `autonomous`
 - `ANTIAGENT_PROVIDER`: `native` | `gemini` | `openai` | `ollama` | `offline`
+- `ANTIAGENT_AUTO_APPROVE_ARTIFACT_WRITES`: `true` | `false` (default: `true`)
 - `ANTIAGENT_AUDIT_INCLUDE_TOOL_CALLS`: `true` | `false` (default: `false` for commands only)
 - `ANTIAGENT_AUTO_PR_MONITOR`: `true` | `false`
 - `ANTIAGENT_PR_AUTO_MERGE`: `true` | `false`

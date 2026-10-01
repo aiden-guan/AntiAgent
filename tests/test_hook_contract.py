@@ -217,6 +217,95 @@ class TestHookContract(unittest.TestCase):
         self.assertTrue(st.pending_question)
         self.assertEqual(st.active_tool, "ask_question")
 
+    def test_pre_tool_use_artifact_write_auto_approved(self):
+        """Verify file mutation inside current conversation artifactDirectoryPath is auto-approved."""
+        from antiagent.engine.interaction_state import InteractionState, InteractionStateStore
+
+        store = InteractionStateStore.default()
+        cid = "d0d717e3-97f7-49ee-a0b1-5ce92363f6ba"
+        artifact_root = "/Users/fakeuser/.gemini/antigravity/brain/d0d717e3-97f7-49ee-a0b1-5ce92363f6ba"
+        payload = {
+            "toolCall": {
+                "name": "write_to_file",
+                "args": {
+                    "TargetFile": f"{artifact_root}/scratch/test_fix_generator.py",
+                    "CodeContent": "def test(): pass",
+                },
+            },
+            "conversationId": cid,
+            "workspacePaths": ["/Users/fakeuser/myproject"],
+            "artifactDirectoryPath": artifact_root,
+        }
+        resp = handle_pre_tool_use(payload)
+        self.assertEqual(resp["decision"], DECISION_ALLOW)
+        self.assertIn("Auto-approved agent artifact mutation", resp.get("reason", ""))
+        self.assertNotIn(resp["decision"], [DECISION_ASK, DECISION_FORCE_ASK, DECISION_DENY])
+
+        state = store.get_state(cid)
+        self.assertFalse(state.pending_approval)
+        self.assertNotEqual(state.state, InteractionState.AWAITING_APPROVAL)
+
+    def test_pre_tool_use_missing_artifact_directory_forces_ask(self):
+        """When artifactDirectoryPath is missing from payload, external file write requires FORCE_ASK."""
+        cid = "conv-missing-artifact-dir"
+        target = "/Users/fakeuser/.gemini/antigravity/brain/conv-other/scratch/test.py"
+        payload = {
+            "toolCall": {
+                "name": "write_to_file",
+                "args": {"TargetFile": target, "CodeContent": "print('hello')"},
+            },
+            "conversationId": cid,
+            "workspacePaths": ["/Users/fakeuser/myproject"],
+        }
+        resp = handle_pre_tool_use(payload)
+        self.assertEqual(resp["decision"], DECISION_FORCE_ASK)
+        self.assertIn("outside active workspace", resp.get("reason", ""))
+
+    def test_pre_tool_use_different_conversation_artifact_forces_ask(self):
+        """When target is in a different conversation artifact directory, it requires confirmation."""
+        cid = "conv-current-1111"
+        current_artifact = "/Users/fakeuser/.gemini/antigravity/brain/conv-current-1111"
+        other_artifact = "/Users/fakeuser/.gemini/antigravity/brain/conv-other-2222"
+        payload = {
+            "toolCall": {
+                "name": "write_to_file",
+                "args": {
+                    "TargetFile": f"{other_artifact}/scratch/test.py",
+                    "CodeContent": "print('hello')",
+                },
+            },
+            "conversationId": cid,
+            "workspacePaths": ["/Users/fakeuser/myproject"],
+            "artifactDirectoryPath": current_artifact,
+        }
+        resp = handle_pre_tool_use(payload)
+        self.assertEqual(resp["decision"], DECISION_FORCE_ASK)
+        self.assertIn("outside active workspace", resp.get("reason", ""))
+
+    def test_pre_tool_use_artifact_write_disabled_by_config(self):
+        """When auto_approve_artifact_writes=False, artifact write requires FORCE_ASK."""
+        from unittest.mock import patch
+        import os
+
+        cid = "conv-disabled-cfg"
+        artifact_root = "/Users/fakeuser/.gemini/antigravity/brain/conv-disabled-cfg"
+        payload = {
+            "toolCall": {
+                "name": "write_to_file",
+                "args": {
+                    "TargetFile": f"{artifact_root}/scratch/test.py",
+                    "CodeContent": "print('hello')",
+                },
+            },
+            "conversationId": cid,
+            "workspacePaths": ["/Users/fakeuser/myproject"],
+            "artifactDirectoryPath": artifact_root,
+        }
+        with patch.dict(os.environ, {"ANTIAGENT_AUTO_APPROVE_ARTIFACT_WRITES": "false"}):
+            resp = handle_pre_tool_use(payload)
+            self.assertEqual(resp["decision"], DECISION_FORCE_ASK)
+            self.assertIn("outside active workspace", resp.get("reason", ""))
+
 
 if __name__ == "__main__":
     unittest.main()

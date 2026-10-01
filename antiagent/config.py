@@ -27,6 +27,9 @@ class AntiAgentConfig:
     # Auto-approve routine dev build/test commands within workspace (e.g. npm test, pytest)
     auto_approve_dev_commands: bool = True
 
+    # Auto-approve agent artifact mutations inside current Antigravity conversation artifact directory
+    auto_approve_artifact_writes: bool = True
+
     # "Approve for Me" context-aware auto-review engine (evaluates intent coherence & vulnerabilities)
     auto_review: bool = True
 
@@ -165,6 +168,9 @@ def load_config(workspace_dir: Optional[str] = None) -> AntiAgentConfig:
 
     if os.getenv("ANTIAGENT_AUTO_APPROVE_READS"):
         cfg.auto_approve_reads = os.getenv("ANTIAGENT_AUTO_APPROVE_READS").lower() in ("true", "1", "yes")
+
+    if os.getenv("ANTIAGENT_AUTO_APPROVE_ARTIFACT_WRITES"):
+        cfg.auto_approve_artifact_writes = os.getenv("ANTIAGENT_AUTO_APPROVE_ARTIFACT_WRITES").lower() in ("true", "1", "yes")
 
     if os.getenv("ANTIAGENT_AUTO_PR_MONITOR"):
         cfg.auto_pr_monitor = os.getenv("ANTIAGENT_AUTO_PR_MONITOR").lower() in ("true", "1", "yes")

@@ -51,11 +51,23 @@ class EvaluationResult:
 class AntiAgentEvaluator:
     """Multi-tier security evaluator coordinating heuristics and LLM subagent review."""
 
-    def __init__(self, config: AntiAgentConfig, workspace_paths: Optional[List[str]] = None):
+    def __init__(
+        self,
+        config: AntiAgentConfig,
+        workspace_paths: Optional[List[str]] = None,
+        trusted_artifact_paths: Optional[List[str]] = None,
+    ):
         self.config = config
         self.workspace_paths = workspace_paths or []
+        if getattr(config, "auto_approve_artifact_writes", True):
+            self.trusted_artifact_paths = trusted_artifact_paths or []
+        else:
+            self.trusted_artifact_paths = []
 
-        self.fs_guard = FSGuard(self.workspace_paths)
+        self.fs_guard = FSGuard(
+            workspace_paths=self.workspace_paths,
+            trusted_artifact_paths=self.trusted_artifact_paths,
+        )
         self.cmd_guard = CommandGuard(
             custom_allow_patterns=config.custom_allow_patterns,
             custom_deny_patterns=config.custom_deny_patterns,
