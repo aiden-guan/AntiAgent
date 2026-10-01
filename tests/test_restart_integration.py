@@ -125,6 +125,9 @@ class TestDashboardRestartIntegration(unittest.TestCase):
         py = sys.executable or "python3"
         env = os.environ.copy()
         env["ANTIAGENT_TESTING"] = "1"
+        repo_root = str(Path(__file__).resolve().parent.parent)
+        existing_pp = env.get("PYTHONPATH", "")
+        env["PYTHONPATH"] = f"{repo_root}:{existing_pp}" if existing_pp else repo_root
 
         cmd = [
             py, "-m", "antiagent.dashboard",
@@ -142,17 +145,22 @@ class TestDashboardRestartIntegration(unittest.TestCase):
         base_url = f"http://{self.host}:{self.port}"
         status_url = f"{base_url}/api/status"
 
-        # Wait for server to become responsive
+        # Wait for server to become responsive (up to 12s on busy CI runners)
         initial_status = None
-        for _ in range(30):
+        for _ in range(60):
+            if self.proc.poll() is not None:
+                break
             try:
                 initial_status = query_json(status_url, timeout=1.0)
                 if initial_status and initial_status.get("version"):
                     break
             except Exception:
-                time.sleep(0.1)
+                time.sleep(0.2)
 
-        self.assertIsNotNone(initial_status, "Server failed to start within timeout.")
+        if initial_status is None:
+            stdout_data = self.proc.stdout.read().decode("utf-8", errors="replace") if self.proc.stdout else ""
+            stderr_data = self.proc.stderr.read().decode("utf-8", errors="replace") if self.proc.stderr else ""
+            self.fail(f"Server failed to start within timeout. Exit code: {self.proc.poll()}\nStdout:\n{stdout_data}\nStderr:\n{stderr_data}")
         self.assertIn("server_instance_id", initial_status)
         self.assertTrue(len(initial_status["server_instance_id"]) > 10)
         self.assertIn("install_mode", initial_status)
