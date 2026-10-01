@@ -10,6 +10,7 @@ import unittest
 import urllib.error
 import urllib.request
 from pathlib import Path
+from unittest.mock import patch
 
 
 def find_free_port() -> int:
@@ -103,13 +104,16 @@ class TestDashboardRestartIntegration(unittest.TestCase):
             self.assertIn("desktop_relaunch", res)
             self.assertIn("message", res)
 
-            # Test force_desktop=True
+            # Test force_desktop=True with active bundle present
             handler_desktop = DummyHandler()
-            handler_desktop._handle_api_restart(force_desktop=True)
-            res_desktop = json.loads(handler_desktop.wfile.getvalue().decode("utf-8"))
-            self.assertTrue(res_desktop["ok"])
-            self.assertTrue(res_desktop["desktop_relaunch"])
-            self.assertEqual(res_desktop["mode"], "macos_bundle")
+            fake_app = Path("/tmp/AntiAgent.app")
+            with patch("antiagent.dashboard.server.find_active_macos_bundle", return_value=fake_app):
+                handler_desktop._handle_api_restart(force_desktop=True)
+                res_desktop = json.loads(handler_desktop.wfile.getvalue().decode("utf-8"))
+                self.assertTrue(res_desktop["ok"])
+                self.assertTrue(res_desktop["desktop_relaunch"])
+                self.assertEqual(res_desktop["mode"], "macos_bundle")
+                self.assertEqual(res_desktop["expected_app_path"], str(fake_app))
         finally:
             if old_val is not None:
                 os.environ["ANTIAGENT_TESTING"] = old_val

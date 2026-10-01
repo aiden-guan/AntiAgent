@@ -20,10 +20,13 @@ from antiagent.runtime import (
 
 class TestRuntimeDetection(unittest.TestCase):
     def test_find_enclosing_macos_bundle(self):
-        fake_bundle = Path("/Applications/AntiAgent.app")
-        fake_pkg = fake_bundle / "Contents" / "Resources" / "antiagent"
-        enclosing = find_enclosing_macos_bundle(fake_pkg)
-        self.assertEqual(enclosing, fake_bundle)
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            fake_bundle = Path(tmp_dir) / "AntiAgent.app"
+            (fake_bundle / "Contents").mkdir(parents=True)
+            (fake_bundle / "Contents" / "Info.plist").write_bytes(b"<plist></plist>")
+            fake_pkg = fake_bundle / "Contents" / "Resources" / "antiagent"
+            enclosing = find_enclosing_macos_bundle(fake_pkg)
+            self.assertEqual(enclosing.resolve(), fake_bundle.resolve())
 
         # Negative case: normal path outside any .app bundle
         self.assertIsNone(find_enclosing_macos_bundle(Path("/usr/local/lib/python3.12/site-packages/antiagent")))
