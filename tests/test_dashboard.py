@@ -1,3 +1,4 @@
+import sys
 """Unit tests for AntiAgent local dashboard server and API endpoints."""
 
 import json
@@ -549,3 +550,9 @@ if __name__ == "__main__":
     unittest.main()
 
 
+
+
+def test_dashboard_server_uses_exclusive_bind_on_windows():
+    from antiagent.dashboard.server import DashboardHTTPServer
+
+    assert DashboardHTTPServer.allow_reuse_address == (sys.platform != "win32")

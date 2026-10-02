@@ -344,7 +344,7 @@ def launch_windows_app() -> None:
     import webbrowser
 
     # 1. Ensure backend daemon is running
-    url = "http://127.0.0.1:4242/api/status"
+    url = "http://127.0.0.1:4242/"
     is_up = False
     try:
         with urllib.request.urlopen(url, timeout=0.5) as resp:
@@ -375,6 +375,12 @@ def launch_windows_app() -> None:
                         break
             except Exception:
                 continue
+
+    if not is_up:
+        print(
+            "⚠️  The AntiAgent dashboard did not respond on http://127.0.0.1:4242. "
+            "A stale AntiAgent process may be holding the port; close it (or reboot) and retry."
+        )
 
     # 2. Launch standalone window via Edge app mode, Chrome app mode, or default browser
     app_url = "http://127.0.0.1:4242"

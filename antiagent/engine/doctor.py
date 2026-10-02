@@ -85,7 +85,7 @@ def get_doctor_report(workspace_path: str = ".") -> Dict[str, Any]:
     # 6. Daemon Status
     daemon_running = False
     try:
-        urllib.request.urlopen("http://127.0.0.1:4242/api/status", timeout=0.5)
+        urllib.request.urlopen("http://127.0.0.1:4242/", timeout=0.5)
         daemon_running = True
     except Exception:
         daemon_running = False

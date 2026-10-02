@@ -163,11 +163,31 @@ def _restart_cli_worker(ctx: Optional[DashboardLaunchContext] = None) -> None:
     os._exit(0)
 
 
+class DashboardHTTPServer(ThreadingHTTPServer):
+    """Threading server that refuses to share a port with another listener.
+
+    On Windows SO_REUSEADDR lets several processes bind the same port, so a stale
+    daemon from an older install would silently keep answering requests. Use
+    SO_EXCLUSIVEADDRUSE there so the second bind fails with "address in use".
+    """
+
+    allow_reuse_address = sys.platform != "win32"
+
+    def server_bind(self) -> None:
+        if sys.platform == "win32":
+            import socket
+
+            exclusive = getattr(socket, "SO_EXCLUSIVEADDRUSE", None)
+            if exclusive is not None:
+                self.socket.setsockopt(socket.SOL_SOCKET, exclusive, 1)
+        super().server_bind()
+
+
 class DashboardRequestHandler(BaseHTTPRequestHandler):
     """Handles HTTP requests for the AntiAgent dashboard."""
 
     workspace_path: str = get_default_workspace_path()
-    server_instance: Optional[ThreadingHTTPServer] = None
+    server_instance: Optional[DashboardHTTPServer] = None
     launch_context: Optional[DashboardLaunchContext] = None
 
     def log_message(self, format: str, *args: Any) -> None:
@@ -504,8 +524,20 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
     def _serve_static_html(self) -> None:
         html_file = Path(__file__).parent / "assets" / "index.html"
         if not html_file.is_file():
+            body = (
+                "<!doctype html><meta charset='utf-8'><title>AntiAgent</title>"
+                "<body style='font-family:sans-serif;max-width:40em;margin:4em auto'>"
+                "<h1>Dashboard assets are missing</h1>"
+                f"<p>AntiAgent {__version__} is running, but <code>{html_file}</code> "
+                "was not found. Reinstall with <code>pip install --upgrade --force-reinstall "
+                "https://github.com/aiden-guan/AntiAgent/archive/refs/heads/main.zip</code> "
+                "and restart any running AntiAgent process.</p></body>"
+            ).encode("utf-8")
             self.send_response(404)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
             self.end_headers()
+            self.wfile.write(body)
             return
 
         content = html_file.read_bytes()
@@ -1269,11 +1301,14 @@ def run_dashboard(
 
     url = f"http://{host}:{port}"
     try:
-        server = ThreadingHTTPServer((host, port), DashboardRequestHandler)
-        server.allow_reuse_address = True
+        server = DashboardHTTPServer((host, port), DashboardRequestHandler)
         DashboardRequestHandler.server_instance = server
     except OSError as e:
-        if "Address already in use" in str(e) or getattr(e, "errno", None) in (48, 98):
+        if (
+            "Address already in use" in str(e)
+            or getattr(e, "errno", None) in (48, 98, 10048, 10013)
+            or getattr(e, "winerror", None) in (10048, 10013)
+        ):
             print(f"🛡️  AntiAgent Dashboard is already running at: {url}")
             if open_browser:
                 try:
