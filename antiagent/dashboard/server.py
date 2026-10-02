@@ -16,6 +16,7 @@ from antiagent import __version__
 from antiagent.audit.logger import AuditLogger
 from antiagent.cli import install_hook, uninstall_hook
 from antiagent.config import (
+    get_global_config_dir,
     load_config,
     save_global_config,
     save_workspace_config,
@@ -602,6 +603,8 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
             "pr_monitor_auto_fix": cfg.pr_monitor_auto_fix,
             "custom_allow_patterns": cfg.custom_allow_patterns,
             "custom_deny_patterns": cfg.custom_deny_patterns,
+            "trusted_tools": cfg.trusted_tools,
+            "trusted_tool_patterns": cfg.trusted_tool_patterns,
             "audit_log_path": cfg.audit_log_path,
             "audit_include_tool_calls": cfg.audit_include_tool_calls,
             "onboarding_completed": cfg.onboarding_completed,
@@ -617,6 +620,26 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
         logger = AuditLogger(cfg.audit_log_path)
         entries = logger.read_recent(limit=limit, include_tool_calls=include_tool_calls)
         self._send_json(entries)
+
+    @staticmethod
+    def _parse_string_list(raw: Any, field_name: str) -> List[str]:
+        """Parse and validate a list of strings or multiline string.
+        Trims blank lines and whitespace. Rejects arbitrary non-string objects.
+        """
+        if isinstance(raw, str):
+            lines = [line.strip() for line in raw.splitlines()]
+            return [line for line in lines if line]
+        elif isinstance(raw, list):
+            result = []
+            for item in raw:
+                if not isinstance(item, str):
+                    raise ValueError(f"Each item in '{field_name}' must be a string, got {type(item).__name__}")
+                cleaned = item.strip()
+                if cleaned:
+                    result.append(cleaned)
+            return result
+        else:
+            raise ValueError(f"'{field_name}' must be a string or list of strings, got {type(raw).__name__}")
 
     def _handle_api_config(self, body: Dict[str, Any]) -> None:
         scope = body.get("scope", "workspace")
@@ -673,6 +696,40 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
                 cfg.custom_deny_patterns = [p.strip() for p in patterns.splitlines() if p.strip()]
             elif isinstance(patterns, list):
                 cfg.custom_deny_patterns = [str(p).strip() for p in patterns if str(p).strip()]
+
+        has_trusted_update = False
+        if "trusted_tools" in body:
+            try:
+                cfg.trusted_tools = self._parse_string_list(body["trusted_tools"], "trusted_tools")
+            except ValueError as e:
+                self._send_json({"ok": False, "error": str(e)}, status=400)
+                return
+            has_trusted_update = True
+
+        if "trusted_tool_patterns" in body:
+            try:
+                cfg.trusted_tool_patterns = self._parse_string_list(body["trusted_tool_patterns"], "trusted_tool_patterns")
+            except ValueError as e:
+                self._send_json({"ok": False, "error": str(e)}, status=400)
+                return
+            has_trusted_update = True
+
+        if has_trusted_update:
+            # Trusted tools and patterns are security-sensitive and must persist to global config
+            global_file = get_global_config_dir() / "config.json"
+            global_dict = {}
+            if global_file.is_file():
+                try:
+                    with open(global_file, "r", encoding="utf-8") as f:
+                        global_dict = json.load(f)
+                except Exception:
+                    global_dict = {}
+            if "trusted_tools" in body:
+                global_dict["trusted_tools"] = cfg.trusted_tools
+            if "trusted_tool_patterns" in body:
+                global_dict["trusted_tool_patterns"] = cfg.trusted_tool_patterns
+            with open(global_file, "w", encoding="utf-8") as f:
+                json.dump(global_dict, f, indent=2)
 
         actual_scope = scope
         if scope == "global":

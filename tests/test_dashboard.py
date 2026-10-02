@@ -124,6 +124,8 @@ class TestDashboardServer(unittest.TestCase):
             "audit_enabled": True,
             "custom_allow_patterns": ["^npm run lint"],
             "custom_deny_patterns": ["^rm -rf /tmp"],
+            "trusted_tools": ["mcp__github__search"],
+            "trusted_tool_patterns": ["^mcp__notion__.*$"],
         }).encode("utf-8")
         req = urllib.request.Request(url, data=payload, headers={"Content-Type": "application/json"})
         with urllib.request.urlopen(req) as resp:
@@ -139,6 +141,8 @@ class TestDashboardServer(unittest.TestCase):
             self.assertTrue(cfg["auto_approve_dev_commands"])
             self.assertEqual(cfg["custom_allow_patterns"], ["^npm run lint"])
             self.assertEqual(cfg["custom_deny_patterns"], ["^rm -rf /tmp"])
+            self.assertEqual(cfg["trusted_tools"], ["mcp__github__search"])
+            self.assertEqual(cfg["trusted_tool_patterns"], ["^mcp__notion__.*$"])
 
     def test_api_workspace_switch(self):
         from pathlib import Path

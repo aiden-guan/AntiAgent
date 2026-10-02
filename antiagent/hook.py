@@ -123,7 +123,8 @@ def handle_pre_tool_use(payload: Dict[str, Any]) -> Dict[str, Any]:
     # Log to audit trail if enabled
     if config.audit_enabled:
         is_command = (tool_name == "run_command")
-        if is_command or config.audit_include_tool_calls:
+        is_trusted_match = "trusted tool" in (result.reason or "").lower()
+        if is_command or config.audit_include_tool_calls or is_trusted_match:
             audit_logger = AuditLogger(config.audit_log_path)
             audit_logger.log_event(
                 tool_name=tool_name,

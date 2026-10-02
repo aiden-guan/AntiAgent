@@ -376,6 +376,30 @@ AntiAgent treats Antigravity's current per-conversation artifactDirectoryPath as
 
 Artifact auto-approval is enabled by default and can be toggled via `auto_approve_artifact_writes: bool` in configuration or the `ANTIAGENT_AUTO_APPROVE_ARTIFACT_WRITES` environment variable.
 
+### Trusted MCP and Tool Calls
+
+AntiAgent supports first-class allowlisting for Model Context Protocol (MCP) tools and arbitrary Antigravity tool calls. When a tool is trusted, AntiAgent auto-approves calls to that tool without invoking the LLM supervisor, eliminating latency and avoiding unnecessary supervisor tokens.
+
+- **Exact Tool Matching (`trusted_tools`)**: Matches the exact `tool_name` string (e.g. `mcp__github__search`, `mcp__github__fetch_file`, `mcp__notion__search`).
+- **Regex Tool Matching (`trusted_tool_patterns`)**: Matches regular expressions against the full `tool_name` (e.g. `^mcp__github__.*$`, `^mcp__notion__(search|fetch).*$`), allowing entire MCP tool suites or namespaces to be trusted at once.
+- **Global Configuration Requirement**: Tool allowlists are security-sensitive and must be configured in your global user configuration (`~/.antiagent/config.json`) or via the AntiAgent Dashboard. Untrusted workspace repositories (`.antiagent.json`) are strictly blocked from defining or overriding `trusted_tools` or `trusted_tool_patterns`, ensuring a malicious cloned repository cannot whitelist its own MCP tools.
+- **Preservation of Non-Bypassable Safety Invariants**: Trusting a tool bypasses supervisor review for that tool only after applicable hard safety checks. Catastrophic command protection (`rm -rf /`), secret credential shielding (`.env`, `~/.ssh/id_rsa`), and protected system paths (`/etc`, `/var`, `C:\Windows`) remain strictly non-bypassable even with broad patterns.
+- **Security Implications**: AntiAgent operates generically on tool names and cannot validate arbitrary remote server-side behavior for every MCP provider. Trusting an MCP tool allows calls to that tool without AI supervisor review. Only whitelist tools and servers from trusted providers.
+
+Example configuration (`~/.antiagent/config.json`):
+
+```json
+{
+  "trusted_tools": [
+    "mcp__github__search",
+    "mcp__github__fetch_file"
+  ],
+  "trusted_tool_patterns": [
+    "^mcp__notion__(search|fetch).*$"
+  ]
+}
+```
+
 ### Setting Your Profile & LLM Supervisor
 
 Configure AntiAgent via CLI or environment variables:

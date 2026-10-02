@@ -2499,6 +2499,50 @@
         </div>
       </div>
 
+      <!-- Card: Trusted MCP & Tool Allowlist -->
+      <div class="card" id="trustedToolsCard" data-card-id="trustedToolsCard" data-views="security all">
+        <div class="card-header-bar" onclick="handleCardHeaderClick(event, 'trustedToolsCard')">
+          <div class="card-title-left">
+            <svg class="card-title-icon" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+            <span class="card-title-text">Trusted MCP &amp; Tool Allowlist</span>
+            <span id="trustedToolsCardSummaryPill" class="card-collapsed-summary">0 tools • 0 patterns</span>
+          </div>
+          <div class="card-header-actions" onclick="event.stopPropagation()">
+            <span class="eyebrow-label">Global Policy</span>
+            <button class="card-action-btn" onclick="toggleFocusCard('trustedToolsCard')" title="Expand / Focus card full screen (Esc to exit)">
+              <svg class="icon icon-focus" viewBox="0 0 24 24"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+            </button>
+            <button class="card-action-btn" onclick="toggleCardCollapse('trustedToolsCard')" title="Collapse or Expand card">
+              <svg class="icon icon-chevron" viewBox="0 0 24 24"><polyline points="18 15 12 9 6 15"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="card-body" id="trustedToolsCardBody">
+          <div class="focus-header-banner">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <svg class="icon" viewBox="0 0 24 24" style="stroke: #ffffff; width: 16px; height: 16px;"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+              <span style="font-weight: 600; color: #ffffff;">Focus Mode: Trusted MCP &amp; Tool Allowlist</span>
+              <span>• Press <kbd style="font-family: var(--font-mono); background: rgba(255,255,255,0.1); padding: 1px 5px; border-radius: 4px;">Esc</kbd> to return</span>
+            </div>
+            <button class="btn btn-outline btn-sm" onclick="exitFocusCard()">Exit Focus</button>
+          </div>
+          <div style="margin-bottom: 14px; font-size: 13px; color: var(--text-muted); line-height: 1.5;">
+            Trusted tools are auto-approved without AI review after AntiAgent's non-bypassable safety checks. Regex patterns can trust multiple tools at once. Changes are always saved to your secure global user configuration.
+          </div>
+          <div class="form-group">
+            <label for="trustedToolsInput">Trusted Tools (Exact tool names — 1 per line)</label>
+            <textarea id="trustedToolsInput" class="form-control" rows="3" placeholder="mcp__github__search&#10;mcp__github__fetch_file&#10;mcp__notion__search"></textarea>
+          </div>
+          <div class="form-group">
+            <label for="trustedToolPatternsInput">Trusted Tool Patterns (Regex patterns — 1 per line)</label>
+            <textarea id="trustedToolPatternsInput" class="form-control" rows="3" placeholder="^mcp__github__.*$&#10;^mcp__notion__(search|fetch).*$"></textarea>
+          </div>
+          <button class="btn btn-outline" style="width: 100%;" onclick="saveTrustedTools()">
+            <span>Save Trusted Tools &amp; Patterns</span>
+          </button>
+        </div>
+      </div>
+
       <!-- Card 5: Pull Request & CI Monitor Card -->
       <div class="card" id="prMonitorCard" data-card-id="prMonitorCard" data-views="fleet all">
         <div class="card-header-bar" onclick="handleCardHeaderClick(event, 'prMonitorCard')">
@@ -3956,6 +4000,20 @@
         }
         document.getElementById('customAllowInput').value = (data.custom_allow_patterns || []).join('\n');
         document.getElementById('customDenyInput').value = (data.custom_deny_patterns || []).join('\n');
+        const trustedToolsInput = document.getElementById('trustedToolsInput');
+        if (trustedToolsInput) {
+          trustedToolsInput.value = (data.trusted_tools || []).join('\n');
+        }
+        const trustedPatternsInput = document.getElementById('trustedToolPatternsInput');
+        if (trustedPatternsInput) {
+          trustedPatternsInput.value = (data.trusted_tool_patterns || []).join('\n');
+        }
+        const trustedSummaryPill = document.getElementById('trustedToolsCardSummaryPill');
+        if (trustedSummaryPill) {
+          const tCount = (data.trusted_tools || []).length;
+          const pCount = (data.trusted_tool_patterns || []).length;
+          trustedSummaryPill.textContent = `${tCount} tools • ${pCount} patterns`;
+        }
         fetchPRStatus();
         fetchRemotes();
         fetchConversations();
@@ -4083,6 +4141,18 @@
         body: JSON.stringify({ scope, custom_allow_patterns, custom_deny_patterns })
       });
       flashSave();
+    }
+
+    async function saveTrustedTools() {
+      const trusted_tools = document.getElementById('trustedToolsInput').value;
+      const trusted_tool_patterns = document.getElementById('trustedToolPatternsInput').value;
+      await fetch('/api/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scope: 'global', trusted_tools, trusted_tool_patterns })
+      });
+      flashSave();
+      fetchStatus();
     }
 
     function flashSave() {
@@ -7240,6 +7310,7 @@
       { id: 'engineCard', name: 'Supervisor Engine & Provider', icon: 'cpu', desc: 'LLM supervisor provider (Native, Gemini, Ollama)' },
       { id: 'rulesCard', name: 'Autonomous Execution Rules', icon: 'check-square', desc: 'Auto-approve rules & persistent audit toggles' },
       { id: 'customRegexCard', name: 'Custom Policy Regex Rules', icon: 'code', desc: 'Custom command allow and deny patterns' },
+      { id: 'trustedToolsCard', name: 'Trusted MCP & Tool Allowlist', icon: 'tool', desc: 'Auto-approved MCP and tool call allowlist' },
       { id: 'prMonitorCard', name: 'Pull Request & CI Monitor', icon: 'git-pull-request', desc: 'GitHub PR CI checks and failure log inspector' },
       { id: 'conversationsCard', name: 'Antigravity Conversations', icon: 'message-square', desc: 'Agent session inspector and transcript viewer' },
       { id: 'remoteSessionsCard', name: 'Remote SSH Sessions', icon: 'server', desc: 'SSH remote machine fleet management' },

@@ -16,6 +16,7 @@ from antiagent.engine.context_extractor import TaskContext
 from antiagent.engine.heuristics.command_guard import CommandGuard
 from antiagent.engine.heuristics.fs_guard import FSGuard
 from antiagent.engine.heuristics.git_guard import GitGuard
+from antiagent.engine.heuristics.tool_guard import ToolGuard
 from antiagent.engine.heuristics.vulnerability_guard import VulnerabilityGuard
 from antiagent.engine.supervisor.cache import DecisionCache
 from antiagent.engine.supervisor.reviewer import LLMSupervisor
@@ -74,8 +75,16 @@ class AntiAgentEvaluator:
         )
         self.git_guard = GitGuard()
         self.vuln_guard = VulnerabilityGuard()
+        self.tool_guard = ToolGuard(
+            trusted_tools=getattr(config, "trusted_tools", None),
+            trusted_tool_patterns=getattr(config, "trusted_tool_patterns", None),
+        )
         self.cache = DecisionCache()
         self.supervisor = LLMSupervisor(config)
+
+    def clear_cache(self) -> None:
+        """Clear cached decisions."""
+        self.cache.clear()
 
     def evaluate(
         self,
@@ -92,29 +101,35 @@ class AntiAgentEvaluator:
             dec, rsn = cached
             return EvaluationResult(decision=dec, reason=rsn)
 
-        # 2. Check inherently safe read-only tools
-        if self.config.auto_approve_reads and tool_name in SAFE_READ_TOOLS:
-            # Check FS boundary for sensitive reads
-            target = (
-                tool_args.get("AbsolutePath")
-                or tool_args.get("TargetFile")
-                or tool_args.get("DirectoryPath")
-                or tool_args.get("SearchPath")
-            )
-            if target:
-                is_sens, sens_reason = self.fs_guard.is_sensitive_target(target)
-                if is_sens:
+        # 2. Existing sensitive filesystem protections
+        target = (
+            tool_args.get("AbsolutePath")
+            or tool_args.get("TargetFile")
+            or tool_args.get("DirectoryPath")
+            or tool_args.get("SearchPath")
+            or tool_args.get("path")
+        )
+        if target and isinstance(target, str):
+            is_sens, sens_reason = self.fs_guard.is_sensitive_target(target)
+            if is_sens:
+                if tool_name in ("write_to_file", "replace_file_content", "delete_file"):
                     return EvaluationResult(
                         decision=DECISION_ASK,
-                        reason=f"Reading sensitive credential target: {sens_reason}",
+                        reason=f"⚠️ Mutating sensitive target: {sens_reason}",
                     )
+                return EvaluationResult(
+                    decision=DECISION_ASK,
+                    reason=f"Reading sensitive credential target: {sens_reason}",
+                )
 
+        # Check inherently safe read-only tools
+        if self.config.auto_approve_reads and tool_name in SAFE_READ_TOOLS:
             return EvaluationResult(
                 decision=DECISION_ALLOW,
                 reason=f"Auto-approved safe read-only tool: '{tool_name}'",
             )
 
-        # 3. Check filesystem mutation tools (write_to_file, replace_file_content, delete_file)
+        # Check filesystem mutation tools (write_to_file, replace_file_content, delete_file)
         if tool_name in ("write_to_file", "replace_file_content", "delete_file"):
             fs_verdict = self.fs_guard.evaluate_file_tool(tool_name, tool_args)
             if fs_verdict:
@@ -127,7 +142,8 @@ class AntiAgentEvaluator:
                     reason="Paranoid mode: manual approval required for file modification.",
                 )
 
-        # 4. Check shell command executions (run_command)
+        # 3 & 4. Existing catastrophic/hard-deny protections and vulnerability protections
+        cmd_verdict = None
         if tool_name == "run_command":
             cmd_line = tool_args.get("CommandLine", "")
 
@@ -144,11 +160,30 @@ class AntiAgentEvaluator:
                 decision, reason = cmd_verdict
                 if decision == DECISION_DENY:
                     return EvaluationResult(decision=decision, reason=reason)
-                if decision == DECISION_ALLOW:
-                    self.cache.put(tool_name, tool_args, decision, reason, context_summary=ctx_summary)
-                    return EvaluationResult(decision=decision, reason=reason)
 
-            # C. Check Git operations if it's a git command (after verifying no hard deny matched)
+        # 5. Trusted tool policy (exact match and regex patterns)
+        trusted_match = self.tool_guard.is_trusted(tool_name)
+        if trusted_match:
+            # Dangerous shell operations (rm -rf, sudo, killall) cannot be bypassed by broad tool pattern
+            if tool_name == "run_command" and cmd_verdict and cmd_verdict[0] == DECISION_ASK:
+                decision, reason = cmd_verdict
+                return EvaluationResult(decision=decision, reason=reason)
+
+            prefix = trusted_match[0].lower() + trusted_match[1:] if trusted_match.startswith("Trusted") else trusted_match
+            return EvaluationResult(
+                decision=DECISION_ALLOW,
+                reason=f"Allowed by {prefix}",
+            )
+
+        # 6. Normal deterministic heuristics
+        if tool_name == "run_command":
+            cmd_line = tool_args.get("CommandLine", "")
+            if cmd_verdict and cmd_verdict[0] == DECISION_ALLOW:
+                decision, reason = cmd_verdict
+                self.cache.put(tool_name, tool_args, decision, reason, context_summary=ctx_summary)
+                return EvaluationResult(decision=decision, reason=reason)
+
+            # Check Git operations if it's a git command (after verifying no hard deny matched)
             git_verdict = self.git_guard.evaluate(cmd_line)
             if git_verdict:
                 decision, reason = git_verdict
@@ -164,8 +199,7 @@ class AntiAgentEvaluator:
                     self.cache.put(tool_name, tool_args, decision, reason, context_summary=ctx_summary)
                     return EvaluationResult(decision=decision, reason=reason)
 
-        # 5. If we reach here, the action is mutating or non-trivial.
-        # Tier 2: Context-Aware Auto-Review / AI Supervisor Review
+        # 7. Tier 2: Context-Aware Auto-Review / AI Supervisor Review
         ai_decision, ai_reason = self.supervisor.review(
             tool_name, tool_args, self.workspace_paths, context=context
         )

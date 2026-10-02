@@ -328,6 +328,8 @@ def check_status(workspace_path: str = ".") -> None:
     print(f"  PR Auto-Merge:    {'Enabled' if cfg.pr_monitor_auto_merge else 'Disabled'}")
     print(f"  Audit Log:        {cfg.audit_log_path}")
     print(f"  Audit Tool Calls: {'Enabled' if cfg.audit_include_tool_calls else 'Disabled'}")
+    print(f"  Trusted Tools:    {len(cfg.trusted_tools)}")
+    print(f"  Trusted Patterns: {len(cfg.trusted_tool_patterns)}")
 
 
 def run_tests(workspace_path: str = ".") -> None:
@@ -456,6 +458,24 @@ def view_audit(limit: int = 20, workspace_path: str = ".", include_tool_calls: O
 def configure_cli(args: argparse.Namespace) -> None:
     """Update settings via CLI."""
     cfg = load_config()
+
+    if getattr(args, "show", False):
+        print("⚙️  AntiAgent Configuration Details:")
+        print(f"  Safety Profile:     {cfg.profile.upper()}")
+        print(f"  Provider:           {cfg.provider.upper() if cfg.provider else 'OFFLINE'}")
+        print(f"  Model:              {cfg.model or '(default)'}")
+        print(f"  Auto-approve Read:  {'Yes' if cfg.auto_approve_reads else 'No'}")
+        print(f"  Auto-PR Monitor:    {'Enabled' if cfg.auto_pr_monitor else 'Disabled'}")
+        print(f"  Audit Log Path:     {cfg.audit_log_path}")
+        print(f"  Audit Tool Calls:   {'Enabled' if cfg.audit_include_tool_calls else 'Disabled'}")
+        print(f"  Trusted Tools ({len(cfg.trusted_tools)}):")
+        for t in cfg.trusted_tools:
+            print(f"    - {t}")
+        print(f"  Trusted Tool Patterns ({len(cfg.trusted_tool_patterns)}):")
+        for p in cfg.trusted_tool_patterns:
+            print(f"    - {p}")
+        return
+
     changed = False
 
     if args.set_profile:
@@ -1600,6 +1620,7 @@ def main() -> None:
     config_parser.add_argument("--set-auto-pr-monitor", help="Enable/disable auto-PR monitoring on PR creation (true/false)")
     config_parser.add_argument("--set-pr-auto-merge", help="Enable/disable auto-merge when CI checks turn green (true/false)")
     config_parser.add_argument("--set-pr-interval", type=int, help="Poll interval for PR checks in seconds")
+    config_parser.add_argument("--show", action="store_true", help="Show active configuration details")
     config_parser.add_argument("--global", dest="global_config", action="store_true", help="Apply to global config")
 
     # pr (Pull Request & CI monitor)

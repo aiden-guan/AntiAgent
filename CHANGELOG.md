@@ -3,6 +3,28 @@
 All notable changes to the **AntiAgent** project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.4.5] — 2026-10-02
+
+### Summary
+Introduced first-class allowlisting for Model Context Protocol (MCP) and arbitrary Antigravity tool calls (closes **#6**). Provides deterministic tool-level auto-approvals for trusted MCP tools (e.g. GitHub, Notion, Supabase) via exact tool names and regex patterns, bypassing unnecessary AI supervisor review while strictly preserving non-bypassable security invariants, credential shielding, and workspace configuration isolation.
+
+### Architectural & Functional Highlights
+
+| Area / Component | Improvement |
+| :--- | :--- |
+| **Tool-Level Policy Evaluator (`engine/heuristics/tool_guard.py`)** | Added deterministic `ToolGuard` component supporting exact tool matching (`trusted_tools`) and safe regex pattern evaluation (`trusted_tool_patterns`). Handles malformed or invalid regex safely without crashing or exposing false positives. |
+| **Non-Bypassable Safety Evaluation Pipeline (`engine/evaluator.py`)** | Positioned trusted tool policy deterministically after sensitive filesystem target checks (`~/.ssh/id_rsa`, `/etc/passwd`), catastrophic command patterns (`rm -rf /`), and exploit/vulnerability guard checks. Broad patterns (`.*`) cannot bypass core safety boundaries. |
+| **Untrusted Workspace Config Isolation (`config.py`)** | Added `trusted_tools` and `trusted_tool_patterns` to `forbidden_keys` in `load_config()`. Prevents malicious or untrusted repositories from self-whitelisting tools or arbitrary MCP endpoints. Sanitized `save_workspace_config()` to ensure settings remain exclusively in global configuration. |
+| **Interactive Dashboard Integration (`dashboard/assets/index.html`, `server.py`)** | Added dedicated "Trusted MCP & Tool Allowlist" dashboard card with multiline editors, placeholder examples, and real-time telemetry summary pills. Updated `/api/config` and `/api/status` to validate string list inputs, trim whitespace, and persist changes to global configuration. |
+| **CLI & Audit Visibility (`cli.py`, `hook.py`)** | Added concise visibility to `antiagent status` (`Trusted Tools: X`, `Trusted Patterns: Y`) and detailed inspection via `antiagent config --show`. Ensured trusted tool calls are clearly recorded in the audit trail with rule-attribution reasons (`Allowed by trusted tool exact match: ...`). |
+
+### Verification Proof
+- All 367 unit and integration tests passed (`python3 -m unittest discover tests` and `pytest`).
+- Added comprehensive test suite `tests/test_tool_guard.py` (21 tests) covering exact match, regex patterns, invalid regex safety, supervisor bypass, untrusted tool fallback, regression against security invariants, workspace config isolation, audit logging, and dashboard API round trips.
+- Closes GitHub Issue [#6](https://github.com/aiden-guan/AntiAgent/issues/6).
+
+---
+
 ## [v0.4.4] — 2026-10-01
 
 ### Summary

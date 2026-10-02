@@ -49,6 +49,10 @@ class AntiAgentConfig:
     custom_allow_patterns: List[str] = field(default_factory=list)
     custom_deny_patterns: List[str] = field(default_factory=list)
 
+    # Tool-level allowlists (exact names and regex patterns)
+    trusted_tools: List[str] = field(default_factory=list)
+    trusted_tool_patterns: List[str] = field(default_factory=list)
+
     # Audit logging
     audit_enabled: bool = True
     audit_log_path: Optional[str] = None
@@ -127,6 +131,8 @@ def load_config(workspace_dir: Optional[str] = None) -> AntiAgentConfig:
                             "endpoint_url",
                             "api_key",
                             "audit_log_path",
+                            "trusted_tools",
+                            "trusted_tool_patterns",
                         }
                         for k, v in ws_data.items():
                             if k in forbidden_keys:
@@ -225,6 +231,10 @@ def save_global_config(config: AntiAgentConfig) -> Path:
 def save_workspace_config(config: AntiAgentConfig, workspace_dir: str) -> Path:
     """Save configuration to <workspace>/.antiagent.json."""
     ws_file = Path(workspace_dir) / ".antiagent.json"
+    data = config.to_dict()
+    # Strip security-sensitive global-only settings that should not live in workspace config
+    data.pop("trusted_tools", None)
+    data.pop("trusted_tool_patterns", None)
     with open(ws_file, "w", encoding="utf-8") as f:
-        json.dump(config.to_dict(), f, indent=2)
+        json.dump(data, f, indent=2)
     return ws_file
