@@ -1,0 +1,857 @@
+{
+  "label": "after_gated_nobridge",
+  "python": "3.12.3",
+  "platform": "darwin",
+  "timestamp": "2026-10-02T14:39:35",
+  "installed_handlers": {
+    "PreInvocation": 1,
+    "PostInvocation": 0,
+    "PreToolUse": 1,
+    "PostToolUse": 0,
+    "Stop": 1
+  },
+  "bridge_active": false,
+  "A_startup": {
+    "python_pass": {
+      "n": 60,
+      "median": 23.66,
+      "mean": 24.63,
+      "p95": 28.453,
+      "min": 22.742,
+      "max": 30.722,
+      "total": 1477.828
+    },
+    "python_import_json": {
+      "n": 60,
+      "median": 25.2,
+      "mean": 26.263,
+      "p95": 30.331,
+      "min": 24.247,
+      "max": 31.86,
+      "total": 1575.799
+    },
+    "guard_pre_tool_use": {
+      "n": 60,
+      "median": 58.047,
+      "mean": 60.187,
+      "p95": 69.928,
+      "min": 55.854,
+      "max": 74.894,
+      "total": 3611.228
+    },
+    "flow_stop_installed": {
+      "n": 60,
+      "median": 4.143,
+      "mean": 4.347,
+      "p95": 5.392,
+      "min": 3.818,
+      "max": 6.661,
+      "total": 260.834
+    }
+  },
+  "B_persistence": {
+    "get_state_cold": {
+      "n": 300,
+      "median": 0.033,
+      "mean": 0.035,
+      "p95": 0.038,
+      "min": 0.03,
+      "max": 0.209,
+      "total": 10.462
+    },
+    "get_state_warm": {
+      "n": 300,
+      "median": 0.008,
+      "mean": 0.008,
+      "p95": 0.01,
+      "min": 0.008,
+      "max": 0.014,
+      "total": 2.518
+    },
+    "update_state_changed": {
+      "n": 300,
+      "median": 0.22,
+      "mean": 0.25,
+      "p95": 0.381,
+      "min": 0.196,
+      "max": 1.186,
+      "total": 75.084
+    },
+    "update_state_identical": {
+      "n": 300,
+      "median": 0.015,
+      "mean": 0.018,
+      "p95": 0.018,
+      "min": 0.014,
+      "max": 0.364,
+      "total": 5.375
+    },
+    "save_state": {
+      "n": 300,
+      "median": 0.21,
+      "mean": 0.234,
+      "p95": 0.338,
+      "min": 0.188,
+      "max": 0.867,
+      "total": 70.192
+    },
+    "write_components": {
+      "serialize": {
+        "n": 300,
+        "median": 0.009,
+        "mean": 0.012,
+        "p95": 0.03,
+        "min": 0.008,
+        "max": 0.073,
+        "total": 3.607
+      },
+      "mkstemp": {
+        "n": 300,
+        "median": 0.046,
+        "mean": 0.055,
+        "p95": 0.068,
+        "min": 0.04,
+        "max": 0.518,
+        "total": 16.421
+      },
+      "write_flush": {
+        "n": 300,
+        "median": 0.01,
+        "mean": 0.011,
+        "p95": 0.018,
+        "min": 0.009,
+        "max": 0.069,
+        "total": 3.442
+      },
+      "fsync": {
+        "n": 300,
+        "median": 0.021,
+        "mean": 0.022,
+        "p95": 0.03,
+        "min": 0.014,
+        "max": 0.068,
+        "total": 6.47
+      },
+      "chmod": {
+        "n": 300,
+        "median": 0.01,
+        "mean": 0.012,
+        "p95": 0.02,
+        "min": 0.009,
+        "max": 0.078,
+        "total": 3.706
+      },
+      "replace": {
+        "n": 300,
+        "median": 0.081,
+        "mean": 0.09,
+        "p95": 0.117,
+        "min": 0.072,
+        "max": 0.469,
+        "total": 27.086
+      }
+    },
+    "content_bytes": 667
+  },
+  "C_runs": {
+    "1inv_5tools": {
+      "A_guard_on_flow_on": {
+        "total_ms_median": 302.098,
+        "total_ms_all": [
+          337.985,
+          302.098,
+          301.157
+        ],
+        "per_event": {
+          "PreInvocation": {
+            "n": 3,
+            "median": 3.779,
+            "mean": 3.874,
+            "p95": 4.203,
+            "min": 3.642,
+            "max": 4.203,
+            "total": 11.623
+          },
+          "PreToolUse": {
+            "n": 15,
+            "median": 59.413,
+            "mean": 61.105,
+            "p95": 69.013,
+            "min": 57.524,
+            "max": 72.276,
+            "total": 916.574
+          },
+          "Stop": {
+            "n": 3,
+            "median": 4.278,
+            "mean": 4.348,
+            "p95": 4.686,
+            "min": 4.079,
+            "max": 4.686,
+            "total": 13.044
+          }
+        },
+        "flow_hook": {
+          "n": 6,
+          "median": 4.141,
+          "mean": 4.111,
+          "p95": 4.686,
+          "min": 3.642,
+          "max": 4.686,
+          "total": 24.667
+        },
+        "invocations": 1,
+        "tool_calls": 5
+      },
+      "B_guard_on_flow_off": {
+        "total_ms_median": 288.238,
+        "total_ms_all": [
+          290.252,
+          288.238,
+          286.386
+        ],
+        "per_event": {
+          "PreToolUse": {
+            "n": 15,
+            "median": 56.857,
+            "mean": 57.658,
+            "p95": 60.152,
+            "min": 56.409,
+            "max": 60.403,
+            "total": 864.877
+          }
+        },
+        "flow_hook": {},
+        "invocations": 1,
+        "tool_calls": 5
+      },
+      "C_flow_on_no_fsync": {
+        "total_ms_median": 304.711,
+        "total_ms_all": [
+          304.564,
+          304.711,
+          304.899
+        ],
+        "per_event": {
+          "PreInvocation": {
+            "n": 3,
+            "median": 3.539,
+            "mean": 3.751,
+            "p95": 4.203,
+            "min": 3.51,
+            "max": 4.203,
+            "total": 11.253
+          },
+          "PreToolUse": {
+            "n": 15,
+            "median": 58.709,
+            "mean": 59.314,
+            "p95": 61.439,
+            "min": 58.165,
+            "max": 61.457,
+            "total": 889.706
+          },
+          "Stop": {
+            "n": 3,
+            "median": 4.428,
+            "mean": 4.405,
+            "p95": 4.637,
+            "min": 4.15,
+            "max": 4.637,
+            "total": 13.215
+          }
+        },
+        "flow_hook": {
+          "n": 6,
+          "median": 4.177,
+          "mean": 4.078,
+          "p95": 4.637,
+          "min": 3.51,
+          "max": 4.637,
+          "total": 24.468
+        },
+        "invocations": 1,
+        "tool_calls": 5
+      },
+      "D_flow_inprocess": {
+        "total_ms_median": 304.747,
+        "total_ms_all": [
+          335.0,
+          304.747,
+          294.269
+        ],
+        "per_event": {
+          "PreInvocation(inproc)": {
+            "n": 3,
+            "median": 0.589,
+            "mean": 1.803,
+            "p95": 4.473,
+            "min": 0.346,
+            "max": 4.473,
+            "total": 5.408
+          },
+          "PreToolUse": {
+            "n": 15,
+            "median": 60.061,
+            "mean": 61.609,
+            "p95": 68.836,
+            "min": 57.324,
+            "max": 70.058,
+            "total": 924.138
+          },
+          "Stop(inproc)": {
+            "n": 3,
+            "median": 0.694,
+            "mean": 1.49,
+            "p95": 3.19,
+            "min": 0.584,
+            "max": 3.19,
+            "total": 4.469
+          }
+        },
+        "flow_hook": {
+          "n": 6,
+          "median": 0.642,
+          "mean": 1.646,
+          "p95": 4.473,
+          "min": 0.346,
+          "max": 4.473,
+          "total": 9.877
+        },
+        "invocations": 1,
+        "tool_calls": 5
+      },
+      "flow_overhead_ms": 13.86,
+      "flow_overhead_pct_of_hook_time": 4.6,
+      "flow_overhead_per_tool_call_ms": 2.772,
+      "flow_overhead_per_invocation_ms": 13.86
+    },
+    "5inv_20tools": {
+      "A_guard_on_flow_on": {
+        "total_ms_median": 1263.796,
+        "total_ms_all": [
+          1263.796,
+          1341.196,
+          1256.173
+        ],
+        "per_event": {
+          "PreInvocation": {
+            "n": 15,
+            "median": 4.386,
+            "mean": 4.518,
+            "p95": 5.555,
+            "min": 3.45,
+            "max": 5.606,
+            "total": 67.771
+          },
+          "PreToolUse": {
+            "n": 60,
+            "median": 62.191,
+            "mean": 63.009,
+            "p95": 71.758,
+            "min": 56.441,
+            "max": 74.26,
+            "total": 3780.526
+          },
+          "Stop": {
+            "n": 3,
+            "median": 4.221,
+            "mean": 4.29,
+            "p95": 4.679,
+            "min": 3.969,
+            "max": 4.679,
+            "total": 12.869
+          }
+        },
+        "flow_hook": {
+          "n": 18,
+          "median": 4.366,
+          "mean": 4.48,
+          "p95": 5.555,
+          "min": 3.45,
+          "max": 5.606,
+          "total": 80.64
+        },
+        "invocations": 5,
+        "tool_calls": 20
+      },
+      "B_guard_on_flow_off": {
+        "total_ms_median": 1278.666,
+        "total_ms_all": [
+          1236.411,
+          1278.666,
+          1297.305
+        ],
+        "per_event": {
+          "PreToolUse": {
+            "n": 60,
+            "median": 62.958,
+            "mean": 63.54,
+            "p95": 70.971,
+            "min": 56.224,
+            "max": 82.346,
+            "total": 3812.383
+          }
+        },
+        "flow_hook": {},
+        "invocations": 5,
+        "tool_calls": 20
+      },
+      "C_flow_on_no_fsync": {
+        "total_ms_median": 1328.805,
+        "total_ms_all": [
+          1822.01,
+          1328.805,
+          1254.858
+        ],
+        "per_event": {
+          "PreInvocation": {
+            "n": 15,
+            "median": 4.504,
+            "mean": 4.801,
+            "p95": 6.775,
+            "min": 3.784,
+            "max": 8.166,
+            "total": 72.015
+          },
+          "PreToolUse": {
+            "n": 60,
+            "median": 62.702,
+            "mean": 72.003,
+            "p95": 114.707,
+            "min": 57.808,
+            "max": 323.58,
+            "total": 4320.184
+          },
+          "Stop": {
+            "n": 3,
+            "median": 4.562,
+            "mean": 4.491,
+            "p95": 4.904,
+            "min": 4.008,
+            "max": 4.904,
+            "total": 13.474
+          }
+        },
+        "flow_hook": {
+          "n": 18,
+          "median": 4.517,
+          "mean": 4.749,
+          "p95": 6.775,
+          "min": 3.784,
+          "max": 8.166,
+          "total": 85.489
+        },
+        "invocations": 5,
+        "tool_calls": 20
+      },
+      "D_flow_inprocess": {
+        "total_ms_median": 1238.871,
+        "total_ms_all": [
+          1238.871,
+          1285.227,
+          1230.336
+        ],
+        "per_event": {
+          "PreInvocation(inproc)": {
+            "n": 15,
+            "median": 0.638,
+            "mean": 0.632,
+            "p95": 0.709,
+            "min": 0.337,
+            "max": 0.988,
+            "total": 9.476
+          },
+          "PreToolUse": {
+            "n": 60,
+            "median": 62.232,
+            "mean": 62.383,
+            "p95": 69.623,
+            "min": 56.639,
+            "max": 76.017,
+            "total": 3742.976
+          },
+          "Stop(inproc)": {
+            "n": 3,
+            "median": 0.695,
+            "mean": 0.661,
+            "p95": 0.722,
+            "min": 0.565,
+            "max": 0.722,
+            "total": 1.982
+          }
+        },
+        "flow_hook": {
+          "n": 18,
+          "median": 0.643,
+          "mean": 0.637,
+          "p95": 0.722,
+          "min": 0.337,
+          "max": 0.988,
+          "total": 11.458
+        },
+        "invocations": 5,
+        "tool_calls": 20
+      },
+      "flow_overhead_ms": -14.87,
+      "flow_overhead_pct_of_hook_time": -1.2,
+      "flow_overhead_per_tool_call_ms": -0.743,
+      "flow_overhead_per_invocation_ms": -2.974
+    },
+    "10inv_50tools": {
+      "A_guard_on_flow_on": {
+        "total_ms_median": 3083.584,
+        "total_ms_all": [
+          3102.805,
+          3083.584,
+          3036.298
+        ],
+        "per_event": {
+          "PreInvocation": {
+            "n": 30,
+            "median": 4.239,
+            "mean": 4.221,
+            "p95": 4.865,
+            "min": 3.278,
+            "max": 4.876,
+            "total": 126.628
+          },
+          "PreToolUse": {
+            "n": 150,
+            "median": 59.256,
+            "mean": 60.556,
+            "p95": 66.983,
+            "min": 56.273,
+            "max": 96.72,
+            "total": 9083.406
+          },
+          "Stop": {
+            "n": 3,
+            "median": 4.04,
+            "mean": 4.218,
+            "p95": 4.61,
+            "min": 4.003,
+            "max": 4.61,
+            "total": 12.653
+          }
+        },
+        "flow_hook": {
+          "n": 33,
+          "median": 4.228,
+          "mean": 4.221,
+          "p95": 4.78,
+          "min": 3.278,
+          "max": 4.876,
+          "total": 139.281
+        },
+        "invocations": 10,
+        "tool_calls": 50
+      },
+      "B_guard_on_flow_off": {
+        "total_ms_median": 2991.122,
+        "total_ms_all": [
+          2969.44,
+          2997.152,
+          2991.122
+        ],
+        "per_event": {
+          "PreToolUse": {
+            "n": 150,
+            "median": 58.696,
+            "mean": 59.718,
+            "p95": 64.161,
+            "min": 57.017,
+            "max": 69.65,
+            "total": 8957.713
+          }
+        },
+        "flow_hook": {},
+        "invocations": 10,
+        "tool_calls": 50
+      },
+      "C_flow_on_no_fsync": {
+        "total_ms_median": 3084.749,
+        "total_ms_all": [
+          3038.178,
+          3135.511,
+          3084.749
+        ],
+        "per_event": {
+          "PreInvocation": {
+            "n": 30,
+            "median": 4.13,
+            "mean": 4.239,
+            "p95": 4.598,
+            "min": 3.495,
+            "max": 7.27,
+            "total": 127.171
+          },
+          "PreToolUse": {
+            "n": 150,
+            "median": 59.45,
+            "mean": 60.789,
+            "p95": 65.451,
+            "min": 56.712,
+            "max": 105.246,
+            "total": 9118.345
+          },
+          "Stop": {
+            "n": 3,
+            "median": 4.337,
+            "mean": 4.307,
+            "p95": 4.357,
+            "min": 4.228,
+            "max": 4.357,
+            "total": 12.922
+          }
+        },
+        "flow_hook": {
+          "n": 33,
+          "median": 4.148,
+          "mean": 4.245,
+          "p95": 4.472,
+          "min": 3.495,
+          "max": 7.27,
+          "total": 140.094
+        },
+        "invocations": 10,
+        "tool_calls": 50
+      },
+      "D_flow_inprocess": {
+        "total_ms_median": 2985.624,
+        "total_ms_all": [
+          2985.624,
+          3011.317,
+          2972.111
+        ],
+        "per_event": {
+          "PreInvocation(inproc)": {
+            "n": 30,
+            "median": 0.628,
+            "mean": 0.639,
+            "p95": 0.772,
+            "min": 0.34,
+            "max": 1.045,
+            "total": 19.166
+          },
+          "PreToolUse": {
+            "n": 150,
+            "median": 59.023,
+            "mean": 59.654,
+            "p95": 63.878,
+            "min": 56.638,
+            "max": 72.392,
+            "total": 8948.138
+          },
+          "Stop(inproc)": {
+            "n": 3,
+            "median": 0.583,
+            "mean": 0.583,
+            "p95": 0.589,
+            "min": 0.576,
+            "max": 0.589,
+            "total": 1.748
+          }
+        },
+        "flow_hook": {
+          "n": 33,
+          "median": 0.626,
+          "mean": 0.634,
+          "p95": 0.733,
+          "min": 0.34,
+          "max": 1.045,
+          "total": 20.914
+        },
+        "invocations": 10,
+        "tool_calls": 50
+      },
+      "flow_overhead_ms": 92.462,
+      "flow_overhead_pct_of_hook_time": 3.0,
+      "flow_overhead_per_tool_call_ms": 1.849,
+      "flow_overhead_per_invocation_ms": 9.246
+    },
+    "20inv_100tools": {
+      "A_guard_on_flow_on": {
+        "total_ms_median": 6394.809,
+        "total_ms_all": [
+          6307.497,
+          6524.182,
+          6394.809
+        ],
+        "per_event": {
+          "PreInvocation": {
+            "n": 60,
+            "median": 4.34,
+            "mean": 4.463,
+            "p95": 5.213,
+            "min": 3.729,
+            "max": 6.461,
+            "total": 267.789
+          },
+          "PreToolUse": {
+            "n": 300,
+            "median": 60.971,
+            "mean": 63.15,
+            "p95": 76.336,
+            "min": 56.332,
+            "max": 109.086,
+            "total": 18945.111
+          },
+          "Stop": {
+            "n": 3,
+            "median": 4.568,
+            "mean": 4.529,
+            "p95": 4.803,
+            "min": 4.217,
+            "max": 4.803,
+            "total": 13.587
+          }
+        },
+        "flow_hook": {
+          "n": 63,
+          "median": 4.343,
+          "mean": 4.466,
+          "p95": 5.213,
+          "min": 3.729,
+          "max": 6.461,
+          "total": 281.377
+        },
+        "invocations": 20,
+        "tool_calls": 100
+      },
+      "B_guard_on_flow_off": {
+        "total_ms_median": 6628.732,
+        "total_ms_all": [
+          6408.263,
+          7795.228,
+          6628.732
+        ],
+        "per_event": {
+          "PreToolUse": {
+            "n": 300,
+            "median": 63.982,
+            "mean": 69.441,
+            "p95": 90.741,
+            "min": 57.038,
+            "max": 282.368,
+            "total": 20832.223
+          }
+        },
+        "flow_hook": {},
+        "invocations": 20,
+        "tool_calls": 100
+      },
+      "C_flow_on_no_fsync": {
+        "total_ms_median": 6463.543,
+        "total_ms_all": [
+          6463.543,
+          7004.453,
+          6448.041
+        ],
+        "per_event": {
+          "PreInvocation": {
+            "n": 60,
+            "median": 4.443,
+            "mean": 4.489,
+            "p95": 5.106,
+            "min": 3.52,
+            "max": 6.067,
+            "total": 269.369
+          },
+          "PreToolUse": {
+            "n": 300,
+            "median": 62.325,
+            "mean": 65.442,
+            "p95": 77.969,
+            "min": 57.768,
+            "max": 174.363,
+            "total": 19632.633
+          },
+          "Stop": {
+            "n": 3,
+            "median": 4.442,
+            "mean": 4.679,
+            "p95": 5.53,
+            "min": 4.064,
+            "max": 5.53,
+            "total": 14.036
+          }
+        },
+        "flow_hook": {
+          "n": 63,
+          "median": 4.442,
+          "mean": 4.498,
+          "p95": 5.266,
+          "min": 3.52,
+          "max": 6.067,
+          "total": 283.404
+        },
+        "invocations": 20,
+        "tool_calls": 100
+      },
+      "D_flow_inprocess": {
+        "total_ms_median": 6223.228,
+        "total_ms_all": [
+          6010.586,
+          6762.839,
+          6223.228
+        ],
+        "per_event": {
+          "PreInvocation(inproc)": {
+            "n": 60,
+            "median": 0.642,
+            "mean": 0.677,
+            "p95": 0.769,
+            "min": 0.393,
+            "max": 1.777,
+            "total": 40.594
+          },
+          "PreToolUse": {
+            "n": 300,
+            "median": 59.729,
+            "mean": 63.18,
+            "p95": 72.688,
+            "min": 57.228,
+            "max": 211.519,
+            "total": 18954.063
+          },
+          "Stop(inproc)": {
+            "n": 3,
+            "median": 0.694,
+            "mean": 0.665,
+            "p95": 0.708,
+            "min": 0.594,
+            "max": 0.708,
+            "total": 1.996
+          }
+        },
+        "flow_hook": {
+          "n": 63,
+          "median": 0.643,
+          "mean": 0.676,
+          "p95": 0.769,
+          "min": 0.393,
+          "max": 1.777,
+          "total": 42.59
+        },
+        "invocations": 20,
+        "tool_calls": 100
+      },
+      "flow_overhead_ms": -233.923,
+      "flow_overhead_pct_of_hook_time": -3.7,
+      "flow_overhead_per_tool_call_ms": -2.339,
+      "flow_overhead_per_invocation_ms": -11.696
+    }
+  },
+  "E_profile": {
+    "records": 20,
+    "by_event_median": {
+      "guard:pre-tool-use": {
+        "duration_ms": 1.746,
+        "since_profiler_import_ms": 29.614,
+        "evaluate_ms": 0.857,
+        "n": 20
+      }
+    }
+  }
+}

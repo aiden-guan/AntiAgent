@@ -6,8 +6,10 @@ evaluation verdict JSON on stdout.
 
 import json
 import sys
+import time
 from typing import Any, Dict
 
+from antiagent.engine import hook_profiler as _prof
 from antiagent.audit.logger import AuditLogger
 from antiagent.config import load_config
 from antiagent.constants import DECISION_ASK
@@ -66,10 +68,16 @@ def handle_pre_tool_use(payload: Dict[str, Any]) -> Dict[str, Any]:
         workspace_paths=workspace_paths,
         trusted_artifact_paths=trusted_artifact_paths,
     )
-    result = evaluator.evaluate(tool_name, tool_args, context=context)
+    with _prof.span("evaluate"):
+        result = evaluator.evaluate(tool_name, tool_args, context=context)
 
-    # Update interaction state for prompt queue safety
-    if conversation_id:
+    # Update interaction state for prompt queue safety (only consumed by flow features)
+    flow_enabled = config.prompt_queue_enabled or config.smart_enter_enabled or config.steer_enabled
+    if flow_enabled:
+        from antiagent.engine.flow_presence import any_bridge_active
+
+        flow_enabled = any_bridge_active()
+    if conversation_id and flow_enabled:
         try:
             import time
             from antiagent.constants import DECISION_FORCE_ASK
@@ -158,6 +166,8 @@ def main() -> None:
             except Exception:
                 pass
 
+    started_ns = time.perf_counter_ns()
+    payload: Dict[str, Any] = {}
     try:
         raw_input = sys.stdin.read()
         if not raw_input.strip():
@@ -179,6 +189,15 @@ def main() -> None:
             "reason": f"AntiAgent internal error: {e}. Confirmation required for safety.",
         }
         sys.stdout.write(json.dumps(fallback, ensure_ascii=True))
+
+    if _prof.enabled():
+        sys.stdout.flush()
+        _prof.emit(
+            "guard:pre-tool-use",
+            started_ns,
+            conversation_id=payload.get("conversationId") if isinstance(payload, dict) else None,
+            step_idx=payload.get("stepIdx") if isinstance(payload, dict) else None,
+        )
 
 
 if __name__ == "__main__":

@@ -141,6 +141,58 @@ def get_flow_hook_command(event_arg: str) -> str:
     return f"{_quote_path(py_exec)} -m antiagent.flow_hook {event_arg}"
 
 
+def flow_features_enabled(cfg: Any) -> bool:
+    """True if any feature that consumes lifecycle flow state is enabled.
+
+    Flow state is only consumed by the `antiagent agy` PTY bridge, which needs POSIX
+    PTYs; on Windows the hooks could never be used, so they are never installed.
+    """
+    if sys.platform == "win32":
+        return False
+    return bool(
+        getattr(cfg, "prompt_queue_enabled", True)
+        or getattr(cfg, "smart_enter_enabled", True)
+        or getattr(cfg, "steer_enabled", True)
+    )
+
+
+FLOW_GATE_MARKER = ".antiagent/runtime/bridges/"
+
+
+def gate_flow_command(command: str) -> str:
+    """Runs `command` only while an `antiagent agy` bridge is active.
+
+    Uses only POSIX sh builtins, so when no bridge is running the hook costs a shell
+    (~2-3 ms) instead of a Python interpreter (~40 ms) and still answers `{}`.
+    """
+    return (
+        f'for f in "$HOME"/{FLOW_GATE_MARKER}*; do '
+        f'if [ -e "$f" ]; then exec {command}; fi; '
+        "done; printf '{}'"
+    )
+
+
+def build_flow_hook_spec() -> Dict[str, Any]:
+    """hooks.json entry for the lifecycle flow-state hook (PreInvocation + Stop only)."""
+    return {
+        "enabled": True,
+        "PreInvocation": [
+            {
+                "type": "command",
+                "command": gate_flow_command(get_flow_hook_command("pre-invocation")),
+                "timeout": 10,
+            }
+        ],
+        "Stop": [
+            {
+                "type": "command",
+                "command": gate_flow_command(get_flow_hook_command("stop")),
+                "timeout": 10,
+            }
+        ],
+    }
+
+
 def install_hook(is_global: bool = False, workspace_path: str = ".", quiet: bool = False) -> None:
     """Install AntiAgent PreToolUse and Flow State hooks into Antigravity configuration."""
     if is_global:
@@ -178,43 +230,16 @@ def install_hook(is_global: bool = False, workspace_path: str = ".", quiet: bool
         ],
     }
 
-    # Register antiagent-flow-state hook (PreInvocation, PostInvocation, PostToolUse, Stop)
-    hooks_data["antiagent-flow-state"] = {
-        "enabled": True,
-        "PreInvocation": [
-            {
-                "type": "command",
-                "command": get_flow_hook_command("pre-invocation"),
-                "timeout": 10,
-            }
-        ],
-        "PostInvocation": [
-            {
-                "type": "command",
-                "command": get_flow_hook_command("post-invocation"),
-                "timeout": 10,
-            }
-        ],
-        "PostToolUse": [
-            {
-                "matcher": "*",
-                "hooks": [
-                    {
-                        "type": "command",
-                        "command": get_flow_hook_command("post-tool-use"),
-                        "timeout": 10,
-                    }
-                ],
-            }
-        ],
-        "Stop": [
-            {
-                "type": "command",
-                "command": get_flow_hook_command("stop"),
-                "timeout": 10,
-            }
-        ],
-    }
+    # Register antiagent-flow-state hook only when a flow feature is enabled.
+    # Antigravity runs every hook synchronously in the agent loop, so each handler is a
+    # process spawn on the critical path. PreInvocation + Stop are sufficient: tool steps
+    # are tracked by the PreToolUse guard, and every tool step is followed by
+    # PreInvocation or Stop, so PostToolUse/PostInvocation handlers were redundant.
+    flow_enabled = flow_features_enabled(load_config(None if is_global else str(Path(workspace_path).resolve())))
+    if flow_enabled:
+        hooks_data["antiagent-flow-state"] = build_flow_hook_spec()
+    else:
+        hooks_data.pop("antiagent-flow-state", None)
 
     import tempfile
     prefix = f".tmp_hooks_{hooks_file.stem}_"
@@ -234,7 +259,44 @@ def install_hook(is_global: bool = False, workspace_path: str = ".", quiet: bool
     if not quiet:
         print(f"✅ Successfully installed AntiAgent hooks to {target_desc} -> {hooks_file}")
         print("   • antiagent-guard: Reviews tool calls before execution.")
-        print("   • antiagent-flow-state: Tracks agent lifecycle for prompt queue & steering.")
+        if flow_enabled:
+            print("   • antiagent-flow-state: Tracks agent lifecycle for prompt queue & steering.")
+
+
+def _flow_spec_is_current(spec: Any) -> bool:
+    if not isinstance(spec, dict) or set(k for k in spec if k != "enabled") != {"PreInvocation", "Stop"}:
+        return False
+    return all(
+        FLOW_GATE_MARKER in h.get("command", "")
+        for ev in ("PreInvocation", "Stop")
+        for h in spec.get(ev, [])
+    )
+
+
+def refresh_installed_hooks(workspace_path: str = ".") -> None:
+    """Re-installs AntiAgent hook locations whose flow-state entry no longer matches config.
+
+    Migrates hooks.json files written by older versions (which also registered
+    PostToolUse/PostInvocation) and adds/removes the flow hook when flow features are
+    toggled, so lifecycle tracking stays predictable after configuration changes.
+    """
+    locations = [
+        (False, Path(workspace_path).resolve() / ".agents" / "hooks.json"),
+        (True, Path(os.path.expanduser("~/.gemini/config/hooks.json"))),
+    ]
+    for is_global, hooks_file in locations:
+        try:
+            if not hooks_file.is_file():
+                continue
+            data = json.loads(hooks_file.read_text(encoding="utf-8"))
+            if "antiagent-guard" not in data:
+                continue
+            want = flow_features_enabled(load_config(None if is_global else str(Path(workspace_path).resolve())))
+            spec = data.get("antiagent-flow-state")
+            if (want and not _flow_spec_is_current(spec)) or (not want and spec is not None):
+                install_hook(is_global=is_global, workspace_path=workspace_path, quiet=True)
+        except Exception:
+            pass
 
 
 def uninstall_hook(is_global: bool = False, workspace_path: str = ".") -> None:
@@ -1469,6 +1531,8 @@ def launch_agy_cli(agy_args: List[str], workspace_path: str = ".") -> int:
             install_hook(is_global=True, quiet=True)
         except Exception:
             pass
+    else:
+        refresh_installed_hooks(workspace_path)
 
     cfg = load_config(workspace_path)
     store = InteractionStateStore.default()

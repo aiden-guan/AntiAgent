@@ -3,6 +3,27 @@
 All notable changes to the **AntiAgent** project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.4.6] — 2026-10-02
+
+### Summary
+Fixed agents taking noticeably longer to finish tasks since the v0.4.x flow-state hooks were installed. Antigravity runs every hook synchronously in the agent loop, and the `antiagent-flow-state` hook spawned a Python process (~40 ms) on every tool call and model invocation, roughly doubling AntiAgent's hook overhead. Flow tracking is now nearly free unless an `antiagent agy` session is actually running, and queued prompts / Smart Enter no longer get stuck behind stale state.
+
+### Architectural & Functional Highlights
+
+| Area / Component | Improvement |
+| :--- | :--- |
+| **Fewer Lifecycle Hooks (`cli.py`, `plugin/hooks.json`)** | Flow-state hook now registers only `PreInvocation` and `Stop`. `PostToolUse` and `PostInvocation` were redundant (every tool step is followed by `PreInvocation` or `Stop`). Legacy handlers remain for older `hooks.json` files and perform no I/O unless something must be cleared. |
+| **Pay-Only-When-Used Flow Tracking (`engine/flow_presence.py`, `cli.py`)** | `antiagent agy` registers a per-PID marker while running. Installed flow hook commands check for it with shell builtins and answer `{}` without starting Python when no wrapper is active (~4 ms instead of ~40 ms). Not installed on Windows (no PTY bridge) or when all flow features are disabled. Existing installs are migrated automatically on `antiagent agy` launch. |
+| **Lighter State Persistence (`engine/interaction_state.py`, `hook.py`)** | Ephemeral interaction state no longer fsyncs (atomic replace kept; prompt queue durability unchanged). Updates that only change informational fields skip disk writes. The guard hook skips flow-state writes when no wrapper is active; security evaluation is unchanged. |
+| **State-Machine Fixes (`engine/pty_bridge.py`)** | Terminal surface detection no longer re-matches stale "Allow once" text after `Stop`, which held queued prompts and made Smart Enter queue instead of send (and rewrote state on every output chunk). A `BACKGROUND_BUSY` state older than 30 s lets an explicit Enter through on a clean prompt surface; queued prompts are never dispatched on a timer, and approval/preview/question surfaces stay protected. State recorded before a wrapper session started is ignored. |
+| **Hook Profiling & Benchmarks (`engine/hook_profiler.py`, `benchmarks/hook_latency.py`)** | Opt-in `ANTIAGENT_PROFILE_HOOKS=1` writes per-hook timings to `~/.antiagent/runtime/hook_profile.jsonl` without touching hook stdout. Benchmark harness reproduces Antigravity's synchronous `sh -c` hook execution with A/B configurations. |
+
+### Verification Proof
+- All 411 tests passed (`pytest`), including new suites `tests/test_flow_state_machine.py`, `tests/test_flow_hook_performance.py`, and `tests/test_flow_presence.py`.
+- Simulated 20-invocation / 100-tool run: flow overhead +6.8 s → within noise without a wrapper session (+0.9 s with one); single flow hook ~40 ms → ~4 ms when idle.
+
+---
+
 ## [v0.4.5] — 2026-10-02
 
 ### Summary

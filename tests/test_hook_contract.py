@@ -13,6 +13,14 @@ from antiagent.hook import handle_pre_tool_use
 
 
 class TestHookContract(unittest.TestCase):
+    def setUp(self):
+        # Interaction-state updates only happen while an `antiagent agy` bridge is active.
+        from unittest.mock import patch
+
+        self._bridge = patch("antiagent.engine.flow_presence.any_bridge_active", return_value=True)
+        self._bridge.start()
+        self.addCleanup(self._bridge.stop)
+
     def test_pre_tool_use_allow_contract(self):
         payload = {
             "toolCall": {

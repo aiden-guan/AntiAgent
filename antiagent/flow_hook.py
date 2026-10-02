@@ -11,6 +11,8 @@ import sys
 import time
 from typing import Any, Dict
 
+from antiagent.engine import hook_profiler as _prof
+from antiagent.engine.flow_presence import any_bridge_active
 from antiagent.engine.interaction_state import (
     ActiveSurface,
     InteractionState,
@@ -67,43 +69,49 @@ def handle_pre_invocation(payload: Dict[str, Any], store: InteractionStateStore)
 
 
 def handle_post_invocation(payload: Dict[str, Any], store: InteractionStateStore) -> Dict[str, Any]:
-    """Handles PostInvocation lifecycle event."""
-    cid = _extract_cid(payload, store)
-    if cid:
-        store.update_state(
-            cid,
-            last_event="PostInvocation",
-            last_event_time=time.time(),
-        )
+    """Handles PostInvocation lifecycle event.
+
+    No longer installed: it only recorded an informational timestamp. Kept so that
+    hooks.json files written by older versions keep working; it performs no I/O.
+    """
     return {}
 
 
 def handle_post_tool_use(payload: Dict[str, Any], store: InteractionStateStore) -> Dict[str, Any]:
-    """Handles PostToolUse lifecycle event."""
+    """Handles PostToolUse lifecycle event.
+
+    No longer installed: every tool step is followed by PreInvocation (or Stop),
+    which resets the same fields. Kept for hooks.json files from older versions;
+    it only writes when an approval/question/interrupt state actually needs clearing.
+    """
     cid = _extract_cid(payload, store)
     if cid:
         current = store.get_state(cid)
-        new_state = current.state
-        new_surface = current.active_surface
         if current.state in (
             InteractionState.AWAITING_APPROVAL,
             InteractionState.AWAITING_QUESTION,
             InteractionState.INTERRUPTING,
-        ):
-            new_state = InteractionState.RUNNING
-            new_surface = ActiveSurface.PROMPT
-
-        store.update_state(
-            cid,
-            state=new_state,
-            active_surface=new_surface,
-            last_event="PostToolUse",
-            last_event_time=time.time(),
-            step_idx=_extract_int(payload, "stepIdx", "step_idx", -1),
-            pending_approval=False,
-            pending_question=False,
-            active_tool=None,
-        )
+        ) or current.pending_approval or current.pending_question or current.active_tool:
+            new_state = current.state
+            new_surface = current.active_surface
+            if current.state in (
+                InteractionState.AWAITING_APPROVAL,
+                InteractionState.AWAITING_QUESTION,
+                InteractionState.INTERRUPTING,
+            ):
+                new_state = InteractionState.RUNNING
+                new_surface = ActiveSurface.PROMPT
+            store.update_state(
+                cid,
+                state=new_state,
+                active_surface=new_surface,
+                last_event="PostToolUse",
+                last_event_time=time.time(),
+                step_idx=_extract_int(payload, "stepIdx", "step_idx", current.step_idx),
+                pending_approval=False,
+                pending_question=False,
+                active_tool=None,
+            )
     return {}
 
 
@@ -152,6 +160,7 @@ def main() -> None:
                 except Exception:
                     pass
 
+    started_ns = time.perf_counter_ns()
     event_type = sys.argv[1] if len(sys.argv) > 1 else ""
     event_type = event_type.lower().strip().replace("_", "-")
 
@@ -161,8 +170,15 @@ def main() -> None:
     except Exception:
         payload = {}
 
-    store = InteractionStateStore.default()
     response: Dict[str, Any] = {}
+
+    # Legacy (ungated) hook commands still reach here; without an active bridge the
+    # state has no consumer, so skip all state I/O.
+    if not any_bridge_active():
+        sys.stdout.write(json.dumps(response, ensure_ascii=True))
+        return
+
+    store = InteractionStateStore.default()
 
     try:
         if event_type in ("pre-invocation", "preinvocation"):
@@ -181,6 +197,15 @@ def main() -> None:
         response = {}
 
     sys.stdout.write(json.dumps(response, ensure_ascii=True))
+    sys.stdout.flush()
+
+    if _prof.enabled():
+        _prof.emit(
+            f"flow:{event_type}",
+            started_ns,
+            conversation_id=payload.get("conversationId") or payload.get("conversation_id"),
+            step_idx=payload.get("stepIdx", payload.get("step_idx")),
+        )
 
 
 if __name__ == "__main__":

@@ -23,25 +23,6 @@
         "timeout": 10
       }
     ],
-    "PostInvocation": [
-      {
-        "type": "command",
-        "command": "python3 -m antiagent.flow_hook post-invocation",
-        "timeout": 10
-      }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 -m antiagent.flow_hook post-tool-use",
-            "timeout": 10
-          }
-        ]
-      }
-    ],
     "Stop": [
       {
         "type": "command",

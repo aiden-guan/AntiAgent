@@ -172,11 +172,12 @@ class TestInteractionState(unittest.TestCase):
         self.assertEqual(s1.invocation_num, 1)
         self.assertFalse(s1.fully_idle)
 
-        # 2. PostInvocation -> preserves state, records event
+        # 2. PostInvocation (legacy installs only) -> no-op, preserves state
         res_post = handle_post_invocation({"conversationId": cid, "invocationNum": 1}, self.store)
         self.assertEqual(res_post, {})
         s2 = self.store.get_state(cid)
-        self.assertEqual(s2.last_event, "PostInvocation")
+        self.assertEqual(s2.state, InteractionState.RUNNING)
+        self.assertEqual(s2.last_event, "PreInvocation")
 
         # 3. PostToolUse -> clears pending approval
         self.store.update_state(cid, state=InteractionState.AWAITING_APPROVAL, pending_approval=True)
@@ -210,7 +211,8 @@ class TestInteractionState(unittest.TestCase):
         self.assertEqual(s1.state, InteractionState.RUNNING)
         self.assertEqual(s1.invocation_num, 2)
 
-        # 2. post_tool_use with snake_case
+        # 2. post_tool_use with snake_case (clearing an approval, so it writes)
+        self.store.update_state(cid, state=InteractionState.AWAITING_APPROVAL, pending_approval=True)
         handle_post_tool_use({"conversation_id": cid, "step_idx": 7}, self.store)
         s2 = self.store.get_state(cid)
         self.assertEqual(s2.step_idx, 7)

@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 
 from antiagent.config import get_global_config_dir
+from antiagent.engine import hook_profiler as _prof
 
 
 class InteractionState(str, Enum):
@@ -200,6 +201,14 @@ def _sanitize_filename(name: str) -> str:
     return sanitized or "default"
 
 
+# Informational fields whose change alone does not warrant a disk write.
+_VOLATILE_FIELDS = ("last_event", "last_event_time")
+
+
+def _meaningful_fields(data: Dict[str, Any]) -> Dict[str, Any]:
+    return {k: v for k, v in data.items() if k not in _VOLATILE_FIELDS}
+
+
 class InteractionStateStore:
     """Thread-safe and process-safe persistent store for conversation interaction states."""
 
@@ -242,6 +251,8 @@ class InteractionStateStore:
         """Records the ID of the currently active conversation."""
         if not conversation_id:
             return
+        if self.get_active_conversation_id() == conversation_id:
+            return
         path = self._active_cid_file()
         try:
             self._write_atomic(path, conversation_id)
@@ -262,8 +273,9 @@ class InteractionStateStore:
                     if cid in self._memory_cache and last_mtime == stat.st_mtime_ns:
                         return self._memory_cache[cid]
 
-                    data = json.loads(path.read_text(encoding="utf-8"))
-                    state = ConversationState.from_dict(data)
+                    with _prof.span("state_read"):
+                        data = json.loads(path.read_text(encoding="utf-8"))
+                        state = ConversationState.from_dict(data)
                     self._memory_cache[cid] = state
                     self._file_mtime_ns[cid] = stat.st_mtime_ns
                     return state
@@ -282,8 +294,9 @@ class InteractionStateStore:
         """Persists conversation state atomically to disk and memory."""
         cid = state.conversation_id or "default"
         path = self._state_file(cid)
-        content = json.dumps(state.to_dict(), indent=2)
-        self._write_atomic(path, content)
+        with _prof.span("state_write"):
+            content = json.dumps(state.to_dict(), indent=2)
+            self._write_atomic(path, content)
 
         with self._cache_lock:
             self._memory_cache[cid] = state
@@ -301,6 +314,10 @@ class InteractionStateStore:
                 if k in data:
                     data[k] = v
             new_state = ConversationState.from_dict(data)
+            if _meaningful_fields(new_state.to_dict()) == _meaningful_fields(current.to_dict()):
+                # Only informational fields changed: keep them in memory, skip disk I/O.
+                self._memory_cache[new_state.conversation_id or "default"] = new_state
+                return new_state
             self.save_state(new_state)
             return new_state
 
@@ -349,11 +366,9 @@ class InteractionStateStore:
             with os.fdopen(fd, "w", encoding="utf-8") as f:
                 f.write(content)
                 f.flush()
-                if hasattr(os, "fsync"):
-                    try:
-                        os.fsync(f.fileno())
-                    except OSError:
-                        pass
+                # No fsync: interaction state is ephemeral runtime state. Cross-process
+                # readers only need the atomic replace below; durability across power
+                # loss is not required (queued prompts are persisted by PromptQueue).
 
             if os.name != "nt":
                 try:
@@ -361,7 +376,8 @@ class InteractionStateStore:
                 except OSError:
                     pass
 
-            os.replace(temp_file, target_path)
+            with _prof.span("replace"):
+                os.replace(temp_file, target_path)
         finally:
             if os.path.exists(temp_file):
                 try:

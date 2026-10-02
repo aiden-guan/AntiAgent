@@ -35,8 +35,10 @@ class TestCLI(unittest.TestCase):
         flow = data["antiagent-flow-state"]
         self.assertTrue(flow["enabled"])
         self.assertIn("PreInvocation", flow)
-        self.assertIn("PostInvocation", flow)
-        self.assertIn("PostToolUse", flow)
+        self.assertIn("Stop", flow)
+        # Redundant per-tool / per-invocation lifecycle processes are not installed.
+        self.assertNotIn("PostInvocation", flow)
+        self.assertNotIn("PostToolUse", flow)
         self.assertIn("Stop", flow)
 
         # 2. Uninstall
@@ -396,7 +398,9 @@ class TestRemoteCLI(unittest.TestCase):
         from antiagent.cli import launch_agy_cli
 
         with patch("antiagent.cli.resolve_real_agy_executable", return_value="/bin/echo"):
-            with patch("antiagent.cli.load_config") as mock_load_cfg:
+            with patch("antiagent.cli.load_config") as mock_load_cfg, \
+                    patch("antiagent.cli.refresh_installed_hooks"), \
+                    patch("antiagent.cli.install_hook"):
                 with patch("antiagent.engine.pty_bridge.PTYBridge") as mock_bridge:
                     mock_instance = MagicMock()
                     mock_instance.run.return_value = 0

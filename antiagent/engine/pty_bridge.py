@@ -20,6 +20,7 @@ from typing import Any, Dict, Iterator, List, Optional, Tuple
 
 from antiagent.config import AntiAgentConfig, load_config
 from antiagent.engine import pty as pty_engine
+from antiagent.engine.flow_presence import register_bridge, unregister_bridge
 from antiagent.engine.interaction_state import (
     ActiveSurface,
     ConversationState,
@@ -354,6 +355,13 @@ def get_clear_editor_bytes(prompt_len: int = 0, line_count: int = 1) -> bytes:
     return bytes(seq)
 
 
+# After a Stop with fullyIdle=false, Smart Enter queues typed prompts while background
+# tasks finish. If no lifecycle event has arrived for this long, an explicit Enter on a
+# clean prompt surface is forwarded instead of being queued behind a state that may
+# never be cleared. Queued items are never dispatched on this timer.
+BACKGROUND_BUSY_STALE_SECONDS = 30.0
+
+
 class SteeringCoordinator:
     """Coordinates single-shot agent steering via Ctrl+S."""
 
@@ -430,6 +438,20 @@ class PTYBridge:
         self._steering_coord = SteeringCoordinator(
             self.conversation_id, self.store, self.queue, -1
         )
+        self._terminal_buffer = ""
+        self._started_at = 0.0
+
+    def _current_state(self) -> ConversationState:
+        """State for the active conversation, ignoring records from before this session.
+
+        Lifecycle hooks only write state while a bridge is running, so a record older
+        than this session may be left over from an untracked run and must not drive
+        Enter/queue decisions; it is treated as UNKNOWN until a fresh event arrives.
+        """
+        state = self.store.get_state(self.conversation_id)
+        if self._started_at and state.last_event_time < self._started_at:
+            return ConversationState(conversation_id=self.conversation_id)
+        return state
 
     def set_conversation_id(self, new_cid: str) -> None:
         """Updates active conversation identity if it changes."""
@@ -472,7 +494,7 @@ class PTYBridge:
         if active_cid and active_cid != self.conversation_id:
             self.set_conversation_id(active_cid)
 
-        state = self.store.get_state(self.conversation_id)
+        state = self._current_state()
         surface = state.active_surface
         has_prompt_text = not self.prompt_buffer.is_empty
 
@@ -512,13 +534,24 @@ class PTYBridge:
             or state.pending_question
         )
 
+        # A BACKGROUND_BUSY state with no lifecycle event for a long time may never be
+        # cleared (no further Stop arrives once background tasks finish). On a clean
+        # prompt surface, let an explicit Enter through rather than queueing forever.
+        background_stale = (
+            state.state == InteractionState.BACKGROUND_BUSY
+            and surface == ActiveSurface.PROMPT
+            and not (state.pending_approval or state.pending_preview or state.pending_question)
+            and state.last_event_time > 0
+            and (time.time() - state.last_event_time) >= BACKGROUND_BUSY_STALE_SECONDS
+        )
+
         # ---------------------------------------------------------
         # 1. ENTER KEY
         # ---------------------------------------------------------
         if event_name == "enter":
             if has_prompt_text and self.config.smart_enter_enabled:
                 # If agent is running or in approval/preview/question modal:
-                if agent_is_busy:
+                if agent_is_busy and not background_stale:
                     # QUEUE the prompt
                     text_to_queue = self.prompt_buffer.text
                     lines = self.prompt_buffer.line_count
@@ -652,6 +685,32 @@ class PTYBridge:
         # Forward editing keys to AGY natively
         return False
 
+    def observe_terminal_output(self, data: bytes) -> None:
+        """Fallback interactive-surface detection over a rolling window of AGY output."""
+        text_chunk = data.decode("utf-8", errors="ignore")
+        self._terminal_buffer += text_chunk
+        if len(self._terminal_buffer) > 4096:
+            self._terminal_buffer = self._terminal_buffer[-4096:]
+
+        obs = detect_surface_from_terminal_output(self._terminal_buffer)
+        if obs:
+            # Consume the matched window: the observation is recorded in the store, and
+            # rescanning the same stale text on every later chunk would keep re-asserting
+            # a dialog that has already been resolved (and rewrite state per chunk). A
+            # TUI redraw of a still-open dialog re-emits the text and is detected again.
+            self._terminal_buffer = ""
+            obs_state, obs_surface = obs
+            self.store.update_state(
+                self.conversation_id,
+                state=obs_state,
+                active_surface=obs_surface,
+                pending_preview=(obs_surface == ActiveSurface.TEAMWORK_PREVIEW),
+                pending_approval=(obs_surface == ActiveSurface.APPROVAL),
+                pending_question=(obs_surface == ActiveSurface.QUESTION),
+                last_event="TerminalObservation",
+                last_event_time=time.time(),
+            )
+
     def try_drain_queue(self) -> bool:
         """Attempts to dispatch one queued prompt if safe dispatch conditions are met."""
         if self.master_fd is None or self.master_fd < 0:
@@ -661,7 +720,7 @@ class PTYBridge:
         if active_cid != self.conversation_id:
             self.set_conversation_id(active_cid)
 
-        state = self.store.get_state(self.conversation_id)
+        state = self._current_state()
         lease_owner = f"pty_bridge_{os.getpid()}"
 
         if not can_dispatch_user_turn(state, self.queue, self.conversation_id, lease_owner=lease_owner):
@@ -758,6 +817,8 @@ class PTYBridge:
                 old_winch = None
 
         self._running = True
+        self._started_at = time.time()
+        register_bridge()
 
         try:
             proc = subprocess.Popen(
@@ -784,26 +845,7 @@ class PTYBridge:
                             if not data:
                                 break
                             os.write(sys.stdout.fileno(), data)
-
-                            # Maintain rolling window buffer for fallback interactive surface detection
-                            text_chunk = data.decode("utf-8", errors="ignore")
-                            self._terminal_buffer += text_chunk
-                            if len(self._terminal_buffer) > 4096:
-                                self._terminal_buffer = self._terminal_buffer[-4096:]
-
-                            obs = detect_surface_from_terminal_output(self._terminal_buffer)
-                            if obs:
-                                obs_state, obs_surface = obs
-                                self.store.update_state(
-                                    self.conversation_id,
-                                    state=obs_state,
-                                    active_surface=obs_surface,
-                                    pending_preview=(obs_surface == ActiveSurface.TEAMWORK_PREVIEW),
-                                    pending_approval=(obs_surface == ActiveSurface.APPROVAL),
-                                    pending_question=(obs_surface == ActiveSurface.QUESTION),
-                                    last_event="TerminalObservation",
-                                    last_event_time=time.time(),
-                                )
+                            self.observe_terminal_output(data)
                         except OSError:
                             break
 
@@ -839,6 +881,7 @@ class PTYBridge:
 
         finally:
             self._running = False
+            unregister_bridge()
             if old_winch is not None and hasattr(signal, "SIGWINCH"):
                 try:
                     signal.signal(signal.SIGWINCH, old_winch)
