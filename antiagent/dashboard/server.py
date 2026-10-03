@@ -102,6 +102,41 @@ def parse_dashboard_args(argv: Optional[List[str]] = None) -> argparse.Namespace
     return parser.parse_args(argv)
 
 
+def _find_relauncher_script(staged_path: Optional[Path] = None, app_path: Optional[Path] = None) -> Optional[Path]:
+    candidates = [
+        Path(__file__).resolve().parent.parent / "desktop" / "relauncher.py",
+    ]
+    if staged_path:
+        candidates.append(Path(staged_path) / "Contents" / "Resources" / "antiagent" / "desktop" / "relauncher.py")
+    if app_path:
+        candidates.append(Path(app_path) / "Contents" / "Resources" / "antiagent" / "desktop" / "relauncher.py")
+
+    for c in candidates:
+        if c.is_file():
+            return c
+
+    try:
+        import antiagent.desktop.relauncher as rel_mod
+        if hasattr(rel_mod, "__file__") and rel_mod.__file__:
+            p = Path(rel_mod.__file__).resolve()
+            if p.is_file():
+                return p
+    except Exception:
+        pass
+
+    return None
+
+
+def _find_desktop_app_pid() -> int:
+    try:
+        pids = subprocess.check_output(["pgrep", "-x", "AntiAgent"], text=True).strip().split()
+        if pids:
+            return int(pids[0])
+    except Exception:
+        pass
+    return os.getppid()
+
+
 def _relaunch_desktop_worker(
     app_path: Path,
     staged_path: Optional[Path] = None,
@@ -116,16 +151,35 @@ def _relaunch_desktop_worker(
 
     if staged_path and staged_path.exists():
         backup_app = app_path.parent / f"{app_path.name}.backup"
-        cmd = [
-            sys.executable or "python3",
-            "-m", "antiagent.desktop.relauncher",
-            "--target-app", str(app_path),
-            "--staged-app", str(staged_path),
-            "--backup-app", str(backup_app),
-            "--old-pid", str(os.getpid()),
-            "--parent-pid", str(os.getppid()),
-            "--target-version", str(target_version or __version__),
-        ]
+        relauncher_script = _find_relauncher_script(staged_path, app_path)
+        desktop_pid = _find_desktop_app_pid()
+        target_ver = str(target_version or __version__)
+        log_file = Path.home() / ".antiagent" / "update_relaunch.log"
+
+        if relauncher_script and relauncher_script.is_file():
+            cmd = [
+                sys.executable or "python3",
+                str(relauncher_script),
+                "--target-app", str(app_path),
+                "--staged-app", str(staged_path),
+                "--backup-app", str(backup_app),
+                "--old-pid", str(os.getpid()),
+                "--parent-pid", str(desktop_pid),
+                "--target-version", target_ver,
+                "--log-file", str(log_file),
+            ]
+        else:
+            cmd = [
+                sys.executable or "python3",
+                "-m", "antiagent.desktop.relauncher",
+                "--target-app", str(app_path),
+                "--staged-app", str(staged_path),
+                "--backup-app", str(backup_app),
+                "--old-pid", str(os.getpid()),
+                "--parent-pid", str(desktop_pid),
+                "--target-version", target_ver,
+                "--log-file", str(log_file),
+            ]
         try:
             subprocess.Popen(cmd, start_new_session=True, close_fds=True)
         except Exception:
@@ -135,7 +189,15 @@ def _relaunch_desktop_worker(
             subprocess.run(["osascript", "-e", 'quit app "AntiAgent"'], capture_output=True, timeout=3.0)
         except Exception:
             pass
-        time.sleep(0.5)
+        # Wait up to 1.5s for existing desktop app instance to exit
+        try:
+            for _ in range(15):
+                pids = subprocess.check_output(["pgrep", "-x", "AntiAgent"], text=True).strip().split()
+                if not pids:
+                    break
+                time.sleep(0.1)
+        except Exception:
+            time.sleep(0.5)
         try:
             subprocess.Popen(["open", str(app_path)], start_new_session=True)
         except Exception:
@@ -450,6 +512,8 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
             self._send_json({"ok": True, "status": global_self_updater.get_status()})
         elif path in ("/api/update/restart", "/api/update/relaunch_app"):
             self._handle_api_restart(force_desktop=(path == "/api/update/relaunch_app"))
+        elif path == "/api/shutdown":
+            self._handle_api_shutdown()
         elif path == "/api/pr/monitor":
             pr_id = body.get("pr")
             cfg = load_config(self.workspace_path)
@@ -916,6 +980,27 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
                 args=(self.launch_context or get_current_launch_context(),),
                 daemon=True,
             ).start()
+
+    def _handle_api_shutdown(self) -> None:
+        """Gracefully terminate the AntiAgent dashboard server and desktop app."""
+        self._send_json({"ok": True, "message": "AntiAgent dashboard server shutting down..."})
+        if os.environ.get("ANTIAGENT_TESTING") == "1":
+            return
+
+        def _worker():
+            time.sleep(0.2)
+            try:
+                subprocess.run(["osascript", "-e", 'tell application "AntiAgent" to quit'], capture_output=True, timeout=2.0)
+            except Exception:
+                pass
+            if DashboardRequestHandler.server_instance:
+                try:
+                    DashboardRequestHandler.server_instance.server_close()
+                except Exception:
+                    pass
+            os._exit(0)
+
+        threading.Thread(target=_worker, daemon=True).start()
 
     def _handle_api_remotes_list(self, force_probe: bool = False) -> None:
         hosts = global_remote_manager.registry.list_hosts()

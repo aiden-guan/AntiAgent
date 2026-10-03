@@ -173,6 +173,24 @@ class TestDashboardRestartIntegration(unittest.TestCase):
         self.assertTrue(restart_resp["ok"])
         self.assertEqual(restart_resp["server_instance_id"], initial_status["server_instance_id"])
 
+        # Verify POST /api/shutdown endpoint
+        shutdown_url = f"{base_url}/api/shutdown"
+        shutdown_resp = post_json(shutdown_url, {})
+        self.assertTrue(shutdown_resp["ok"])
+        self.assertIn("shutting down", shutdown_resp["message"])
+
+    def test_find_relauncher_script_and_pid(self):
+        """Verify _find_relauncher_script locates the script and _find_desktop_app_pid runs safely."""
+        from antiagent.dashboard.server import _find_relauncher_script, _find_desktop_app_pid
+        script = _find_relauncher_script()
+        self.assertIsNotNone(script)
+        self.assertTrue(script.is_file())
+        self.assertTrue(str(script).endswith("relauncher.py"))
+
+        pid = _find_desktop_app_pid()
+        self.assertIsInstance(pid, int)
+        self.assertTrue(pid >= 0)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -140,6 +140,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNavigati
         appMenu.addItem(NSMenuItem.separator())
         appMenu.addItem(withTitle: "Quit AntiAgent", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
 
+        let fileMenuItem = NSMenuItem()
+        mainMenu.addItem(fileMenuItem)
+        let fileMenu = NSMenu(title: "File")
+        fileMenuItem.submenu = fileMenu
+        fileMenu.addItem(withTitle: "Close Window", action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w")
+
         let editMenuItem = NSMenuItem()
         mainMenu.addItem(editMenuItem)
         let editMenu = NSMenu(title: "Edit")
@@ -152,6 +158,15 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNavigati
         editMenu.addItem(withTitle: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
         editMenu.addItem(withTitle: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
 
+        let windowMenuItem = NSMenuItem()
+        mainMenu.addItem(windowMenuItem)
+        let windowMenu = NSMenu(title: "Window")
+        windowMenuItem.submenu = windowMenu
+        windowMenu.addItem(withTitle: "Minimize", action: #selector(NSWindow.performMiniaturize(_:)), keyEquivalent: "m")
+        windowMenu.addItem(withTitle: "Zoom", action: #selector(NSWindow.performZoom(_:)), keyEquivalent: "")
+        windowMenu.addItem(NSMenuItem.separator())
+        windowMenu.addItem(withTitle: "Close", action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w")
+
         NSApp.mainMenu = mainMenu
     }
 
@@ -163,13 +178,41 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNavigati
         webView.reload()
     }
 
-    func windowShouldClose(_ sender: NSWindow) -> Bool {
-        NSApp.terminate(nil)
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         return true
     }
 
+    func windowShouldClose(_ sender: NSWindow) -> Bool {
+        return true
+    }
+
+    func webViewDidClose(_ webView: WKWebView) {
+        window.performClose(nil)
+    }
+
     func applicationWillTerminate(_ notification: Notification) {
-        daemonProcess?.terminate()
+        if let shutdownUrl = URL(string: "http://127.0.0.1:4242/api/shutdown") {
+            var req = URLRequest(url: shutdownUrl)
+            req.httpMethod = "POST"
+            req.timeoutInterval = 0.5
+            let sema = DispatchSemaphore(value: 0)
+            let task = URLSession.shared.dataTask(with: req) { _, _, _ in
+                sema.signal()
+            }
+            task.resume()
+            _ = sema.wait(timeout: .now() + 0.4)
+        }
+
+        if let proc = daemonProcess, proc.isRunning {
+            proc.terminate()
+            let start = Date()
+            while proc.isRunning && Date().timeIntervalSince(start) < 0.8 {
+                usleep(50000)
+            }
+            if proc.isRunning {
+                kill(proc.processIdentifier, SIGKILL)
+            }
+        }
     }
 }
 

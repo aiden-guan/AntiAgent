@@ -99,6 +99,19 @@ def perform_staged_swap_and_relaunch(
             pass
         _wait_pid(parent_pid, timeout=timeout, term_after=2.0, log_file=log_file)
 
+    # Also check process table for any running AntiAgent processes and terminate them
+    try:
+        out = subprocess.check_output(["pgrep", "-x", "AntiAgent"], text=True)
+        for line in out.strip().splitlines():
+            pid_str = line.strip()
+            if pid_str.isdigit():
+                p = int(pid_str)
+                if p != os.getpid() and p != old_pid and p != parent_pid:
+                    _log(f"Waiting for AntiAgent desktop process {p} to terminate...", log_file)
+                    _wait_pid(p, timeout=timeout, term_after=2.0, log_file=log_file)
+    except Exception:
+        pass
+
     # Give OS a brief moment to release file locks
     time.sleep(0.3)
 
@@ -184,6 +197,21 @@ def perform_staged_swap_and_relaunch(
         subprocess.run(["xattr", "-cr", str(target_app)], capture_output=True)
     except Exception:
         pass
+
+    # Ensure desktop Python module is present in target bundle resources
+    target_resources_antiagent = target_app / "Contents" / "Resources" / "antiagent"
+    if target_resources_antiagent.is_dir():
+        target_desktop = target_resources_antiagent / "desktop"
+        if not target_desktop.is_dir():
+            try:
+                target_desktop.mkdir(parents=True, exist_ok=True)
+                source_desktop = Path(__file__).resolve().parent
+                for fname in ("__init__.py", "relauncher.py", "builder.py", "main.swift"):
+                    src_f = source_desktop / fname
+                    if src_f.is_file():
+                        shutil.copy(src_f, target_desktop / fname)
+            except Exception:
+                pass
 
     try:
         subprocess.run(["codesign", "--force", "--deep", "--sign", "-", str(target_app)], capture_output=True)

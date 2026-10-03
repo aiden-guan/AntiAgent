@@ -1120,6 +1120,21 @@ class InPlaceSelfUpdater:
         except Exception:
             pass
 
+        # Ensure desktop support package is present in staged bundle
+        staged_resources_antiagent = staged_app / "Contents" / "Resources" / "antiagent"
+        if staged_resources_antiagent.is_dir():
+            staged_desktop = staged_resources_antiagent / "desktop"
+            if not staged_desktop.is_dir():
+                try:
+                    staged_desktop.mkdir(parents=True, exist_ok=True)
+                    source_desktop = Path(__file__).resolve().parent / "desktop"
+                    for fname in ("__init__.py", "relauncher.py", "builder.py", "main.swift"):
+                        src_f = source_desktop / fname
+                        if src_f.is_file():
+                            shutil.copy(src_f, staged_desktop / fname)
+                except Exception:
+                    pass
+
         self._log(f"📦 Staged update verified successfully at {staged_app} (v{staged_ver}).")
 
         with self._lock:

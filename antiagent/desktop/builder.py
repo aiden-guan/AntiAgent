@@ -114,7 +114,7 @@ def build_macos_app(output_dir: Path = None) -> Path:
     shutil.copytree(
         repo_antiagent,
         target_antiagent,
-        ignore=shutil.ignore_patterns("__pycache__", "*.pyc", "desktop", ".DS_Store"),
+        ignore=shutil.ignore_patterns("__pycache__", "*.pyc", "*.png", "*.tiff", "*.o", ".DS_Store"),
     )
 
     # 5. Ad-hoc codesign the completed bundle so macOS recognizes valid resources

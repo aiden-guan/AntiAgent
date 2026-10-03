@@ -3228,6 +3228,9 @@
               <svg class="icon" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
               <span>Relaunch Desktop App</span>
             </button>
+            <button id="oneClickQuitBtn" class="btn btn-outline btn-sm" onclick="quitAndCloseApp()" style="font-size: 11px;">
+              Close App
+            </button>
             <button id="oneClickLogsToggleBtn" class="btn btn-outline btn-sm" onclick="toggleOneClickLogs()" style="margin-left: auto; font-size: 11px;">
               View Logs
             </button>
@@ -3250,9 +3253,10 @@
             </div>
             <button class="btn btn-outline btn-sm" onclick="dismissOneClickError()" style="padding: 2px 8px; font-size: 11px;">✕</button>
           </div>
-          <div style="display: flex; gap: 8px; margin-top: 10px;">
+          <div style="display: flex; gap: 8px; margin-top: 10px; align-items: center; flex-wrap: wrap;">
             <button class="btn btn-outline btn-sm" onclick="triggerOneClickUpdate(true)" style="font-size: 11px;">Retry Update</button>
             <button class="btn btn-outline btn-sm" onclick="toggleOneClickLogs()" style="font-size: 11px;">View Diagnostic Logs</button>
+            <button class="btn btn-outline btn-sm" onclick="quitAndCloseApp()" style="font-size: 11px; margin-left: auto; color: #f87171; border-color: rgba(239,68,68,0.3);">Quit AntiAgent</button>
           </div>
         </div>
       </div>
@@ -5620,6 +5624,15 @@
 
     async function relaunchDesktopApp() {
       return restartAndReloadDashboard();
+    }
+
+    async function quitAndCloseApp() {
+      try {
+        await fetch('/api/shutdown', { method: 'POST' });
+      } catch (_) {}
+      try {
+        window.close();
+      } catch (_) {}
     }
 
     async function cancelOneClickUpdate() {
