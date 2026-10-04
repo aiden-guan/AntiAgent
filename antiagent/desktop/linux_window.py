@@ -188,18 +188,17 @@ def run_gtk4_window(url: str = "http://127.0.0.1:4242") -> int:
     GLib.set_prgname("com.antiagent.desktop")
     GLib.set_application_name("AntiAgent Guard")
 
-    initial_dark = _detect_system_is_dark()
     if has_adw:
         try:
             style_mgr = Adw.StyleManager.get_default()
-            style_mgr.set_color_scheme(Adw.ColorScheme.DEFAULT)
+            style_mgr.set_color_scheme(Adw.ColorScheme.FORCE_DARK)
         except Exception:
             pass
     else:
         settings = Gtk.Settings.get_default()
         if settings:
             try:
-                settings.set_property("gtk-application-prefer-dark-theme", initial_dark)
+                settings.set_property("gtk-application-prefer-dark-theme", True)
             except Exception:
                 pass
 
@@ -207,17 +206,14 @@ def run_gtk4_window(url: str = "http://127.0.0.1:4242") -> int:
         if has_adw:
             try:
                 sm = Adw.StyleManager.get_default()
-                if sm.get_system_supports_color_schemes():
-                    sm.set_color_scheme(Adw.ColorScheme.DEFAULT)
-                else:
-                    sm.set_color_scheme(Adw.ColorScheme.FORCE_DARK if is_dark else Adw.ColorScheme.FORCE_LIGHT)
+                sm.set_color_scheme(Adw.ColorScheme.FORCE_DARK)
             except Exception:
                 pass
         else:
             s = Gtk.Settings.get_default()
             if s:
                 try:
-                    s.set_property("gtk-application-prefer-dark-theme", is_dark)
+                    s.set_property("gtk-application-prefer-dark-theme", True)
                 except Exception:
                     pass
 
@@ -294,11 +290,10 @@ def run_gtk3_window(url: str = "http://127.0.0.1:4242") -> int:
     GLib.set_prgname("com.antiagent.desktop")
     GLib.set_application_name("AntiAgent Guard")
 
-    initial_dark = _detect_system_is_dark()
     settings = Gtk.Settings.get_default()
     if settings:
         try:
-            settings.set_property("gtk-application-prefer-dark-theme", initial_dark)
+            settings.set_property("gtk-application-prefer-dark-theme", True)
         except Exception:
             pass
 
@@ -306,7 +301,7 @@ def run_gtk3_window(url: str = "http://127.0.0.1:4242") -> int:
         s = Gtk.Settings.get_default()
         if s:
             try:
-                s.set_property("gtk-application-prefer-dark-theme", is_dark)
+                s.set_property("gtk-application-prefer-dark-theme", True)
             except Exception:
                 pass
 
