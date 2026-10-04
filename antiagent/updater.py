@@ -160,6 +160,20 @@ def select_recommended_asset(assets: List[Dict[str, Any]]) -> Optional[Dict[str,
             if a.get("name", "").lower().endswith(".zip"):
                 return a
 
+    elif sys.platform.startswith("linux"):
+        for a in assets:
+            n = a.get("name", "").lower()
+            if "linux" in n and n.endswith(".tar.gz"):
+                return a
+        for a in assets:
+            n = a.get("name", "").lower()
+            if "linux" in n and n.endswith(".zip"):
+                return a
+        for a in assets:
+            n = a.get("name", "").lower()
+            if n.endswith(".tar.gz"):
+                return a
+
     for a in assets:
         n = a.get("name", "").lower()
         if n.endswith(".tar.gz") or n.endswith(".zip"):

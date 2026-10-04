@@ -532,6 +532,380 @@ https://github.com/aiden-guan/AntiAgent/issues
     return zip_path
 
 
+def launch_linux_app() -> None:
+    """Launch the AntiAgent desktop application on Linux via native GTK WebKit, Chromium app mode, or default browser."""
+    import time
+    import urllib.request
+    import webbrowser
+
+    # 1. Ensure backend daemon is running
+    url = "http://127.0.0.1:4242/"
+    is_up = False
+    try:
+        with urllib.request.urlopen(url + "api/status", timeout=0.5) as resp:
+            if resp.status == 200:
+                is_up = True
+    except Exception:
+        try:
+            with urllib.request.urlopen(url, timeout=0.5) as resp:
+                if resp.status == 200:
+                    is_up = True
+        except Exception:
+            is_up = False
+
+    if not is_up:
+        print("🚀 Starting AntiAgent background daemon...")
+        py_exec = sys.executable or "python3"
+        subprocess.Popen(
+            [py_exec, "-m", "antiagent.dashboard", "--no-open"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+
+        for _ in range(25):
+            time.sleep(0.2)
+            try:
+                with urllib.request.urlopen(url + "api/status", timeout=0.3) as resp:
+                    if resp.status == 200:
+                        is_up = True
+                        break
+            except Exception:
+                try:
+                    with urllib.request.urlopen(url, timeout=0.3) as resp:
+                        if resp.status == 200:
+                            is_up = True
+                            break
+                except Exception:
+                    continue
+
+    if not is_up:
+        print(
+            "⚠️  The AntiAgent dashboard did not respond on http://127.0.0.1:4242. "
+            "A stale AntiAgent process may be holding the port; close it and retry."
+        )
+
+    app_url = "http://127.0.0.1:4242"
+    repo_root = Path(__file__).resolve().parent.parent.parent
+
+    # 2. Try Native GTK WebKit window
+    python_candidates = [sys.executable or "python3", "/usr/bin/python3", "/usr/local/bin/python3"]
+    seen_py = set()
+    unique_py = []
+    for p in python_candidates:
+        if p and p not in seen_py:
+            seen_py.add(p)
+            unique_py.append(p)
+
+    for py in unique_py:
+        if not shutil.which(py) and not os.path.isfile(py):
+            continue
+        probe_cmd = [
+            py, "-c",
+            "import gi; "
+            "(gi.require_version('Gtk', '4.0'), gi.require_version('WebKit', '6.0')) if hasattr(gi, 'require_version') else None"
+        ]
+        probe_gtk3_cmd = [
+            py, "-c",
+            "import gi; "
+            "gi.require_version('Gtk', '3.0')"
+        ]
+        has_gtk = False
+        try:
+            r = subprocess.run(probe_cmd, capture_output=True, timeout=1.5)
+            if r.returncode == 0:
+                has_gtk = True
+            else:
+                r3 = subprocess.run(probe_gtk3_cmd, capture_output=True, timeout=1.5)
+                if r3.returncode == 0:
+                    has_gtk = True
+        except Exception:
+            has_gtk = False
+
+        if has_gtk:
+            print("🖥️  Launching AntiAgent Guard native GTK window...")
+            env = dict(os.environ)
+            existing_pp = env.get("PYTHONPATH", "")
+            env["PYTHONPATH"] = f"{repo_root}:{existing_pp}" if existing_pp else str(repo_root)
+            try:
+                proc = subprocess.Popen([py, "-m", "antiagent.desktop.linux_window", app_url], env=env)
+                try:
+                    exit_code = proc.wait(timeout=0.6)
+                    if exit_code != 0:
+                        pass
+                    else:
+                        return
+                except subprocess.TimeoutExpired:
+                    return
+            except Exception:
+                pass
+
+    # 3. Fallback: Browser App Mode (Chrome, Chromium, Brave, Edge)
+    browser_bins = [
+        "google-chrome",
+        "google-chrome-stable",
+        "chromium",
+        "chromium-browser",
+        "brave-browser",
+        "microsoft-edge",
+        "microsoft-edge-stable",
+    ]
+    for b in browser_bins:
+        bin_path = shutil.which(b)
+        if bin_path:
+            print(f"🖥️  Launching AntiAgent Guard window via {b} App Mode...")
+            subprocess.Popen([bin_path, f"--app={app_url}", "--window-size=1160,800"])
+            return
+
+    flatpak_candidates = [
+        ("com.google.Chrome", "/var/lib/flatpak/exports/bin/com.google.Chrome"),
+        ("org.chromium.Chromium", "/var/lib/flatpak/exports/bin/org.chromium.Chromium"),
+        ("com.brave.Browser", "/var/lib/flatpak/exports/bin/com.brave.Browser"),
+        ("com.microsoft.Edge", "/var/lib/flatpak/exports/bin/com.microsoft.Edge"),
+    ]
+    for app_id, exp_bin in flatpak_candidates:
+        if os.path.isfile(exp_bin):
+            print(f"🖥️  Launching AntiAgent Guard window via Flatpak {app_id} App Mode...")
+            subprocess.Popen([exp_bin, f"--app={app_url}", "--window-size=1160,800"])
+            return
+        if shutil.which("flatpak"):
+            try:
+                res = subprocess.run(["flatpak", "info", app_id], capture_output=True, timeout=1.0)
+                if res.returncode == 0:
+                    print(f"🖥️  Launching AntiAgent Guard window via Flatpak {app_id} App Mode...")
+                    subprocess.Popen(["flatpak", "run", app_id, f"--app={app_url}", "--window-size=1160,800"])
+                    return
+            except Exception:
+                pass
+
+    # 4. Fallback: Default web browser
+    print("🌐 Opening AntiAgent in default web browser...")
+    webbrowser.open(app_url)
+
+
+def install_linux_app(to_global: bool = False) -> Path:
+    """Install AntiAgent XDG desktop entry, icons, and launcher on Linux."""
+    if to_global:
+        apps_dir = Path("/usr/share/applications")
+        icons_root = Path("/usr/share/icons/hicolor")
+        bin_dir = Path("/usr/local/bin")
+    else:
+        apps_dir = Path(os.path.expanduser("~/.local/share/applications"))
+        icons_root = Path(os.path.expanduser("~/.local/share/icons/hicolor"))
+        bin_dir = Path(os.path.expanduser("~/.local/bin"))
+
+    apps_dir.mkdir(parents=True, exist_ok=True)
+    bin_dir.mkdir(parents=True, exist_ok=True)
+
+    # 1. Install icons
+    desktop_dir = Path(__file__).resolve().parent
+    png_src = desktop_dir / "antiagent.png"
+    svg_src = desktop_dir / "antiagent.svg"
+
+    icon_png_dest = icons_root / "512x512/apps/antiagent.png"
+    icon_svg_dest = icons_root / "scalable/apps/antiagent.svg"
+
+    if png_src.is_file():
+        icon_png_dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(png_src, icon_png_dest)
+
+    if svg_src.is_file():
+        icon_svg_dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(svg_src, icon_svg_dest)
+
+    # 2. Write launcher script
+    launcher_file = bin_dir / "antiagent-app"
+    py_exec = sys.executable or "python3"
+    launcher_content = f"""#!/bin/sh
+# AntiAgent desktop launcher
+exec {py_exec} -m antiagent app "$@"
+"""
+    launcher_file.write_text(launcher_content, encoding="utf-8")
+    launcher_file.chmod(0o755)
+
+    # 3. Write XDG .desktop entry
+    desktop_file = apps_dir / "antiagent.desktop"
+    desktop_content = """[Desktop Entry]
+Version=1.0
+Type=Application
+Name=AntiAgent Guard
+GenericName=AI Agent Safety Guard
+Comment=Interactive security dashboard and real-time safety guard for Google Antigravity
+Exec=antiagent-app %U
+Icon=antiagent
+Terminal=false
+Categories=Development;Security;System;Utility;
+StartupWMClass=antiagent
+Keywords=antigravity;agent;security;guard;ai;safety;
+"""
+    desktop_file.write_text(desktop_content, encoding="utf-8")
+    desktop_file.chmod(0o644)
+
+    # 4. Update desktop and icon caches if available
+    try:
+        subprocess.run(["update-desktop-database", str(apps_dir)], capture_output=True, timeout=2.0)
+    except Exception:
+        pass
+    try:
+        subprocess.run(["gtk-update-icon-cache", "-q", "-t", str(icons_root)], capture_output=True, timeout=2.0)
+    except Exception:
+        pass
+
+    print(f"🎉 Installed AntiAgent desktop application to {desktop_file}")
+    print(f"   • Application launcher: {launcher_file}")
+    print(f"   • Application entry: {desktop_file}")
+    if png_src.is_file():
+        print(f"   • Application icon: {icon_png_dest}")
+    print("   You can now launch 'AntiAgent Guard' from your application menu or run 'antiagent app'!")
+    return desktop_file
+
+
+def build_linux_package(output_dir: Path = None) -> Path:
+    """Package AntiAgent into a standalone AntiAgent-Linux.tar.gz for Linux."""
+    import tarfile
+    import time
+    import io
+
+    if output_dir is None:
+        output_dir = Path(os.getcwd()) / "dist"
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    tar_path = output_dir / "AntiAgent-Linux.tar.gz"
+    if tar_path.exists():
+        tar_path.unlink()
+
+    repo_root = Path(__file__).resolve().parent.parent.parent
+    antiagent_src = repo_root / "antiagent"
+    desktop_dir = Path(__file__).resolve().parent
+
+    with tarfile.open(tar_path, "w:gz") as tf:
+        # 1. Add antiagent package
+        for root, dirs, files in os.walk(antiagent_src):
+            dirs[:] = [d for d in dirs if d not in ("__pycache__", ".pytest_cache")]
+            for file in files:
+                if file.endswith((".pyc", ".DS_Store", ".o")):
+                    continue
+                file_path = Path(root) / file
+                rel_path = file_path.relative_to(repo_root)
+                tf.add(file_path, arcname=f"AntiAgent/{rel_path}")
+
+        # 2. Add AntiAgent.sh
+        sh_content = """#!/usr/bin/env bash
+set -e
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+export PYTHONPATH="$DIR:$PYTHONPATH"
+if [ "$#" -eq 0 ]; then
+    exec python3 -m antiagent app
+else
+    exec python3 -m antiagent "$@"
+fi
+"""
+        sh_bytes = sh_content.encode("utf-8")
+        ti = tarfile.TarInfo(name="AntiAgent/AntiAgent.sh")
+        ti.size = len(sh_bytes)
+        ti.mode = 0o755
+        ti.mtime = int(time.time())
+        tf.addfile(ti, io.BytesIO(sh_bytes))
+
+        # 3. Add install-app.sh
+        install_sh = """#!/usr/bin/env bash
+set -e
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+export PYTHONPATH="$DIR:$PYTHONPATH"
+echo "============================================================"
+echo "  Installing AntiAgent Guard for Linux..."
+echo "============================================================"
+python3 -m antiagent install-app
+echo ""
+echo "🔒 Enabling AntiAgent global protection hook for Antigravity..."
+python3 -m antiagent install --global
+echo ""
+echo "============================================================"
+echo "🎉 Installation complete!"
+echo "You can now launch 'AntiAgent Guard' from your app launcher,"
+echo "or run: ./AntiAgent.sh"
+echo "============================================================"
+"""
+        inst_bytes = install_sh.encode("utf-8")
+        ti_inst = tarfile.TarInfo(name="AntiAgent/install-app.sh")
+        ti_inst.size = len(inst_bytes)
+        ti_inst.mode = 0o755
+        ti_inst.mtime = int(time.time())
+        tf.addfile(ti_inst, io.BytesIO(inst_bytes))
+
+        # 4. Add AntiAgent.desktop
+        desktop_content = """[Desktop Entry]
+Version=1.0
+Type=Application
+Name=AntiAgent Guard
+GenericName=AI Agent Safety Guard
+Comment=Interactive security dashboard and real-time safety guard for Google Antigravity
+Exec=antiagent-app %U
+Icon=antiagent
+Terminal=false
+Categories=Development;Security;System;Utility;
+StartupWMClass=antiagent
+Keywords=antigravity;agent;security;guard;ai;safety;
+"""
+        desk_bytes = desktop_content.encode("utf-8")
+        ti_desk = tarfile.TarInfo(name="AntiAgent/AntiAgent.desktop")
+        ti_desk.size = len(desk_bytes)
+        ti_desk.mode = 0o644
+        ti_desk.mtime = int(time.time())
+        tf.addfile(ti_desk, io.BytesIO(desk_bytes))
+
+        # 5. Add icons if available
+        png_path = desktop_dir / "antiagent.png"
+        if png_path.is_file():
+            tf.add(png_path, arcname="AntiAgent/antiagent.png")
+        svg_path = desktop_dir / "antiagent.svg"
+        if svg_path.is_file():
+            tf.add(svg_path, arcname="AntiAgent/antiagent.svg")
+
+        # 6. Add README.txt
+        readme_content = f"""============================================================
+  🛡️ AntiAgent Guard for Linux (v{__version__})
+============================================================
+
+Thank you for downloading AntiAgent!
+
+QUICKSTART:
+1. Run './AntiAgent.sh' to launch the desktop application.
+2. In the top bar, click '🚀 Guide & Doctor' and click 'Enable Global Hook'.
+   That's it! Google Antigravity is now protected across all your projects.
+
+INSTALL SYSTEM SHORTCUT & GLOBAL HOOK:
+Run:
+  ./install-app.sh
+
+This automatically installs the desktop application menu entry
+('AntiAgent Guard') and enables the Antigravity PreToolUse hook.
+
+COMMAND LINE USAGE:
+  ./AntiAgent.sh status      (Check active protection status)
+  ./AntiAgent.sh doctor      (Run environment diagnostic health check)
+  ./AntiAgent.sh test        (Run safety simulation test suite)
+  ./AntiAgent.sh app         (Launch the desktop window)
+
+REQUIREMENTS:
+- Linux (x86_64 or aarch64) with Wayland or X11
+- Python 3.9 or newer
+- Google Antigravity
+
+For documentation, bug reports, and updates:
+https://github.com/aiden-guan/AntiAgent/issues
+============================================================
+"""
+        readme_bytes = readme_content.encode("utf-8")
+        ti_readme = tarfile.TarInfo(name="AntiAgent/README.txt")
+        ti_readme.size = len(readme_bytes)
+        ti_readme.mode = 0o644
+        ti_readme.mtime = int(time.time())
+        tf.addfile(ti_readme, io.BytesIO(readme_bytes))
+
+    print(f"📦 Created downloadable Linux release package: {tar_path}")
+    return tar_path
+
+
 def install_app(to_global: bool = False) -> Path:
     """Install AntiAgent desktop launcher."""
     if sys.platform == "win32":
@@ -551,6 +925,9 @@ def install_app(to_global: bool = False) -> Path:
                 pass
         print(f"🎉 Installed AntiAgent Windows launcher to {bat_file}")
         return bat_file
+
+    if sys.platform.startswith("linux"):
+        return install_linux_app(to_global=to_global)
 
     app_bundle = build_macos_app()
 
@@ -578,6 +955,10 @@ def launch_app(dest_app: Path = None) -> None:
     """Open the native desktop app."""
     if sys.platform == "win32":
         launch_windows_app()
+        return
+
+    if sys.platform.startswith("linux"):
+        launch_linux_app()
         return
 
     if dest_app is None or not dest_app.exists():

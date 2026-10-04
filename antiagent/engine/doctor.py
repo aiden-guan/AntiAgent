@@ -77,10 +77,18 @@ def get_doctor_report(workspace_path: str = ".") -> Dict[str, Any]:
                 desktop_app_path = str(candidate)
                 break
     else:
-        user_app = Path(os.path.expanduser("~/.local/share/applications/antiagent.desktop"))
-        if user_app.exists():
-            desktop_app_installed = True
-            desktop_app_path = str(user_app)
+        linux_candidates = [
+            Path(os.path.expanduser("~/.local/share/applications/antiagent.desktop")),
+            Path("/usr/share/applications/antiagent.desktop"),
+            Path("/usr/local/share/applications/antiagent.desktop"),
+            Path(os.path.expanduser("~/.local/bin/antiagent-app")),
+            Path(os.getcwd()) / "AntiAgent.sh",
+        ]
+        for candidate in linux_candidates:
+            if candidate.exists():
+                desktop_app_installed = True
+                desktop_app_path = str(candidate)
+                break
 
     # 6. Daemon Status
     daemon_running = False

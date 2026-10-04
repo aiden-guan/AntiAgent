@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <radialGradient id="bgGlow" cx="50%" cy="40%" r="60%">
+      <stop offset="0%" stop-color="#1c2128"/>
+      <stop offset="100%" stop-color="#08090b"/>
+    </radialGradient>
+    <linearGradient id="shieldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#8b949e"/>
+    </linearGradient>
+    <filter id="dropShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#000000" flood-opacity="0.6"/>
+    </filter>
+  </defs>
+  <!-- Background squircle -->
+  <rect x="16" y="16" width="480" height="480" rx="108" ry="108" fill="url(#bgGlow)" stroke="#30363d" stroke-width="4"/>
+  <!-- Subtle inner border -->
+  <rect x="28" y="28" width="456" height="456" rx="96" ry="96" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="2"/>
+  <!-- Central Emblem / Shield -->
+  <g transform="translate(136, 126) scale(10)" filter="url(#dropShadow)">
+    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" 
+          fill="none" 
+          stroke="url(#shieldGrad)" 
+          stroke-width="1.8" 
+          stroke-linecap="round" 
+          stroke-linejoin="round"/>
+    <!-- Inner protection core -->
+    <circle cx="12" cy="11" r="3" fill="#ffffff" opacity="0.9"/>
+  </g>
+</svg>

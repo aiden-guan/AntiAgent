@@ -1721,7 +1721,7 @@ def main() -> None:
     dashboard_parser.add_argument("--workspace", default=".", help="Workspace path")
 
     # app
-    app_parser = subparsers.add_parser("app", help="Launch the native desktop application (macOS & Windows)")
+    app_parser = subparsers.add_parser("app", help="Launch the native desktop application (macOS, Linux & Windows)")
 
     # install-app
     install_app_parser = subparsers.add_parser("install-app", help="Install native AntiAgent desktop launcher/application")
@@ -1729,7 +1729,7 @@ def main() -> None:
         "--global",
         dest="is_global",
         action="store_true",
-        help="Install to /Applications instead of ~/Applications (macOS)",
+        help="Install globally (/Applications on macOS, /usr/share on Linux)",
     )
 
     # build-dmg
@@ -1739,6 +1739,10 @@ def main() -> None:
     # build-windows
     build_windows_parser = subparsers.add_parser("build-windows", help="Build standalone AntiAgent-Windows.zip (Windows)")
     build_windows_parser.add_argument("--out", default="dist", help="Output directory (default: dist)")
+
+    # build-linux
+    build_linux_parser = subparsers.add_parser("build-linux", help="Build standalone AntiAgent-Linux.tar.gz (Linux)")
+    build_linux_parser.add_argument("--out", default="dist", help="Output directory (default: dist)")
 
     # update
     update_parser = subparsers.add_parser("update", help="Check for and download AntiAgent updates")
@@ -1935,6 +1939,10 @@ def main() -> None:
         from antiagent.desktop.builder import build_windows_package
         win_zip = build_windows_package(Path(args.out))
         print(f"\n📦 Windows release package ready:\n  • ZIP: {win_zip}")
+    elif args.command == "build-linux":
+        from antiagent.desktop.builder import build_linux_package
+        linux_tar = build_linux_package(Path(args.out))
+        print(f"\n📦 Linux release package ready:\n  • TAR.GZ: {linux_tar}")
     elif args.command == "update":
         handle_update_cli(args)
     else:
