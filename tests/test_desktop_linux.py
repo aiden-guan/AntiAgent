@@ -322,5 +322,117 @@ class TestLinuxRuntimeAndUpdater(unittest.TestCase):
             self.assertEqual(selected["name"], "AntiAgent-Linux.tar.gz")
 
 
+class TestLinuxThemeDetection(unittest.TestCase):
+    """Test detection and synchronization of system theme preference (dark/light) on Linux."""
+
+    def test_detect_system_is_dark_portal_dark(self):
+        from antiagent.desktop.linux_window import _detect_system_is_dark
+
+        mock_val = MagicMock()
+        mock_child = MagicMock()
+        mock_variant = MagicMock()
+        mock_variant.unpack.return_value = 1  # 1 = prefer-dark
+        mock_child.get_variant.return_value = mock_variant
+        mock_val.get_child_value.return_value = mock_child
+
+        mock_bus = MagicMock()
+        mock_bus.call_sync.return_value = mock_val
+
+        with patch("gi.repository.Gio.bus_get_sync", return_value=mock_bus):
+            self.assertTrue(_detect_system_is_dark())
+
+    def test_detect_system_is_dark_portal_light(self):
+        from antiagent.desktop.linux_window import _detect_system_is_dark
+
+        mock_val = MagicMock()
+        mock_child = MagicMock()
+        mock_variant = MagicMock()
+        mock_variant.unpack.return_value = 2  # 2 = prefer-light
+        mock_child.get_variant.return_value = mock_variant
+        mock_val.get_child_value.return_value = mock_child
+
+        mock_bus = MagicMock()
+        mock_bus.call_sync.return_value = mock_val
+
+        with patch("gi.repository.Gio.bus_get_sync", return_value=mock_bus):
+            self.assertFalse(_detect_system_is_dark())
+
+    def test_detect_system_is_dark_gsettings_dark(self):
+        from antiagent.desktop.linux_window import _detect_system_is_dark
+
+        mock_source = MagicMock()
+        mock_source.lookup.return_value = True
+
+        mock_settings = MagicMock()
+        mock_settings.list_keys.return_value = ["color-scheme", "gtk-theme"]
+        mock_settings.get_string.side_effect = lambda k: "prefer-dark" if k == "color-scheme" else "Adwaita"
+
+        # Force portal check to fail so it falls back to GSettings
+        with patch("gi.repository.Gio.bus_get_sync", side_effect=Exception("no portal")), \
+             patch("gi.repository.Gio.SettingsSchemaSource.get_default", return_value=mock_source), \
+             patch("gi.repository.Gio.Settings.new", return_value=mock_settings):
+            self.assertTrue(_detect_system_is_dark())
+
+    def test_detect_system_is_dark_gsettings_light(self):
+        from antiagent.desktop.linux_window import _detect_system_is_dark
+
+        mock_source = MagicMock()
+        mock_source.lookup.return_value = True
+
+        mock_settings = MagicMock()
+        mock_settings.list_keys.return_value = ["color-scheme", "gtk-theme"]
+        mock_settings.get_string.side_effect = lambda k: "prefer-light" if k == "color-scheme" else "Adwaita"
+
+        with patch("gi.repository.Gio.bus_get_sync", side_effect=Exception("no portal")), \
+             patch("gi.repository.Gio.SettingsSchemaSource.get_default", return_value=mock_source), \
+             patch("gi.repository.Gio.Settings.new", return_value=mock_settings):
+            self.assertFalse(_detect_system_is_dark())
+
+    def test_detect_system_is_dark_gtk_theme_env(self):
+        from antiagent.desktop.linux_window import _detect_system_is_dark
+
+        with patch("gi.repository.Gio.bus_get_sync", side_effect=Exception("no portal")), \
+             patch("gi.repository.Gio.SettingsSchemaSource.get_default", return_value=None), \
+             patch.dict(os.environ, {"GTK_THEME": "Adwaita-dark"}):
+            self.assertTrue(_detect_system_is_dark())
+
+    def test_detect_system_is_dark_kde_globals(self):
+        from antiagent.desktop.linux_window import _detect_system_is_dark
+
+        temp_dir = tempfile.mkdtemp()
+        try:
+            kde_cfg = Path(temp_dir) / ".config" / "kdeglobals"
+            kde_cfg.parent.mkdir(parents=True)
+            kde_cfg.write_text("[General]\nColorScheme=BreezeDark\n", encoding="utf-8")
+
+            with patch("gi.repository.Gio.bus_get_sync", side_effect=Exception("no portal")), \
+                 patch("gi.repository.Gio.SettingsSchemaSource.get_default", return_value=None), \
+                 patch.dict(os.environ, {"GTK_THEME": ""}, clear=True), \
+                 patch("pathlib.Path.home", return_value=Path(temp_dir)):
+                self.assertTrue(_detect_system_is_dark())
+        finally:
+            shutil.rmtree(temp_dir, ignore_errors=True)
+
+    def test_setup_theme_listener(self):
+        from antiagent.desktop.linux_window import _setup_theme_listener
+
+        mock_callback = MagicMock()
+        mock_bus = MagicMock()
+        mock_bus.signal_subscribe.return_value = 42
+
+        mock_source = MagicMock()
+        mock_source.lookup.return_value = True
+        mock_settings = MagicMock()
+
+        with patch("gi.repository.Gio.bus_get_sync", return_value=mock_bus), \
+             patch("gi.repository.Gio.SettingsSchemaSource.get_default", return_value=mock_source), \
+             patch("gi.repository.Gio.Settings.new", return_value=mock_settings):
+            handles = _setup_theme_listener(mock_callback)
+            self.assertTrue(len(handles) >= 1)
+            mock_bus.signal_subscribe.assert_called_once()
+            self.assertEqual(mock_settings.connect.call_count, 2)
+
+
 if __name__ == "__main__":
     unittest.main()
+

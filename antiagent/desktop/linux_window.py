@@ -32,15 +32,196 @@ def _get_icon_path() -> Optional[Path]:
     return None
 
 
+def _detect_system_is_dark() -> bool:
+    """Detect if the system theme preference is dark mode across Linux desktops."""
+    # 1. Try FreeDesktop XDG Settings Portal via Gio DBus (GNOME, KDE Plasma, wlroots)
+    try:
+        from gi.repository import Gio, GLib
+        bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
+        if bus:
+            val = bus.call_sync(
+                "org.freedesktop.portal.Desktop",
+                "/org/freedesktop/portal/desktop",
+                "org.freedesktop.portal.Settings",
+                "Read",
+                GLib.Variant("(ss)", ("org.freedesktop.appearance", "color-scheme")),
+                GLib.VariantType("(v)"),
+                Gio.DBusCallFlags.NONE,
+                800,
+                None,
+            )
+            if val:
+                portal_val = val.get_child_value(0).get_variant().unpack()
+                # 1 = prefer-dark, 2 = prefer-light, 0 = no preference
+                if portal_val == 1:
+                    return True
+                elif portal_val == 2:
+                    return False
+    except Exception:
+        pass
+
+    # 2. Try GNOME GSettings
+    try:
+        from gi.repository import Gio
+        source = Gio.SettingsSchemaSource.get_default()
+        if source and source.lookup("org.gnome.desktop.interface", True):
+            gsettings = Gio.Settings.new("org.gnome.desktop.interface")
+            keys = gsettings.list_keys() if hasattr(gsettings, "list_keys") else []
+            if not keys or "color-scheme" in keys:
+                try:
+                    scheme = gsettings.get_string("color-scheme").lower()
+                    if "prefer-dark" in scheme:
+                        return True
+                    if "prefer-light" in scheme:
+                        return False
+                except Exception:
+                    pass
+            if not keys or "gtk-theme" in keys:
+                try:
+                    theme = gsettings.get_string("gtk-theme").lower()
+                    if "dark" in theme:
+                        return True
+                except Exception:
+                    pass
+    except Exception:
+        pass
+
+    # 3. Try environment variable
+    gtk_theme = os.environ.get("GTK_THEME", "").lower()
+    if "dark" in gtk_theme:
+        return True
+
+    # 4. Try KDE globals configuration (~/.config/kdeglobals)
+    try:
+        kde_cfg = Path.home() / ".config" / "kdeglobals"
+        if kde_cfg.is_file():
+            content = kde_cfg.read_text(encoding="utf-8", errors="ignore").lower()
+            if "color-scheme=dark" in content or "colorscheme=dark" in content or "breezedark" in content:
+                return True
+            if "color-scheme=light" in content or "colorscheme=light" in content:
+                return False
+    except Exception:
+        pass
+
+    return True
+
+
+def _setup_theme_listener(on_theme_changed: callable) -> list:
+    """Setup listeners for system dark/light theme changes at runtime.
+
+    Returns a list of subscription handles/objects to keep alive.
+    """
+    handles = []
+
+    # 1. Listen to FreeDesktop Portal DBus SettingChanged signal
+    try:
+        from gi.repository import Gio
+        bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
+        if bus:
+            def on_portal_setting_changed(connection, sender, path, iface, signal, params, user_data=None):
+                try:
+                    if params and len(params) >= 3:
+                        ns = params[0]
+                        key = params[1]
+                        if ns == "org.freedesktop.appearance" and key == "color-scheme":
+                            val = params[2].unpack()
+                            if val == 1:
+                                on_theme_changed(True)
+                            elif val == 2:
+                                on_theme_changed(False)
+                            else:
+                                on_theme_changed(_detect_system_is_dark())
+                except Exception:
+                    pass
+
+            sub_id = bus.signal_subscribe(
+                "org.freedesktop.portal.Desktop",
+                "org.freedesktop.portal.Settings",
+                "SettingChanged",
+                "/org/freedesktop/portal/desktop",
+                None,
+                Gio.DBusSignalFlags.NONE,
+                on_portal_setting_changed,
+                None,
+            )
+            handles.append((bus, sub_id))
+    except Exception:
+        pass
+
+    # 2. Listen to GNOME GSettings changed signals
+    try:
+        from gi.repository import Gio
+        source = Gio.SettingsSchemaSource.get_default()
+        if source and source.lookup("org.gnome.desktop.interface", True):
+            gsettings = Gio.Settings.new("org.gnome.desktop.interface")
+
+            def on_gsettings_changed(settings, key, user_data=None):
+                if key in ("color-scheme", "gtk-theme"):
+                    on_theme_changed(_detect_system_is_dark())
+
+            gsettings.connect("changed::color-scheme", on_gsettings_changed)
+            gsettings.connect("changed::gtk-theme", on_gsettings_changed)
+            handles.append(gsettings)
+    except Exception:
+        pass
+
+    return handles
+
+
 def run_gtk4_window(url: str = "http://127.0.0.1:4242") -> int:
     """Launch native window using GTK 4 and WebKit 6."""
     import gi
     gi.require_version("Gtk", "4.0")
     gi.require_version("WebKit", "6.0")
+
+    has_adw = False
+    try:
+        gi.require_version("Adw", "1")
+        from gi.repository import Adw
+        Adw.init()
+        has_adw = True
+    except Exception:
+        pass
+
     from gi.repository import Gtk, WebKit, Gdk, GLib
 
     GLib.set_prgname("com.antiagent.desktop")
     GLib.set_application_name("AntiAgent Guard")
+
+    initial_dark = _detect_system_is_dark()
+    if has_adw:
+        try:
+            style_mgr = Adw.StyleManager.get_default()
+            style_mgr.set_color_scheme(Adw.ColorScheme.DEFAULT)
+        except Exception:
+            pass
+    else:
+        settings = Gtk.Settings.get_default()
+        if settings:
+            try:
+                settings.set_property("gtk-application-prefer-dark-theme", initial_dark)
+            except Exception:
+                pass
+
+    def apply_theme(is_dark: bool):
+        if has_adw:
+            try:
+                sm = Adw.StyleManager.get_default()
+                if sm.get_system_supports_color_schemes():
+                    sm.set_color_scheme(Adw.ColorScheme.DEFAULT)
+                else:
+                    sm.set_color_scheme(Adw.ColorScheme.FORCE_DARK if is_dark else Adw.ColorScheme.FORCE_LIGHT)
+            except Exception:
+                pass
+        else:
+            s = Gtk.Settings.get_default()
+            if s:
+                try:
+                    s.set_property("gtk-application-prefer-dark-theme", is_dark)
+                except Exception:
+                    pass
+
+    theme_handles = _setup_theme_listener(apply_theme)
 
     # Apply dark background styling
     css = b"window { background-color: #0d1117; }"
@@ -113,6 +294,24 @@ def run_gtk3_window(url: str = "http://127.0.0.1:4242") -> int:
     GLib.set_prgname("com.antiagent.desktop")
     GLib.set_application_name("AntiAgent Guard")
 
+    initial_dark = _detect_system_is_dark()
+    settings = Gtk.Settings.get_default()
+    if settings:
+        try:
+            settings.set_property("gtk-application-prefer-dark-theme", initial_dark)
+        except Exception:
+            pass
+
+    def apply_theme(is_dark: bool):
+        s = Gtk.Settings.get_default()
+        if s:
+            try:
+                s.set_property("gtk-application-prefer-dark-theme", is_dark)
+            except Exception:
+                pass
+
+    theme_handles = _setup_theme_listener(apply_theme)
+
     desktop_dir = Path(__file__).resolve().parent
     try:
         icon_theme = Gtk.IconTheme.get_default()
@@ -137,6 +336,11 @@ def run_gtk3_window(url: str = "http://127.0.0.1:4242") -> int:
         )
 
     win = Gtk.Window(title="AntiAgent Guard")
+    header = Gtk.HeaderBar()
+    header.set_show_close_button(True)
+    header.set_title("AntiAgent Guard")
+    win.set_titlebar(header)
+
     win.set_default_size(1160, 800)
     win.set_size_request(800, 600)
     win.set_position(Gtk.WindowPosition.CENTER)
