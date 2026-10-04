@@ -734,7 +734,7 @@ exec {py_exec} -m antiagent app "$@"
     launcher_file.chmod(0o755)
 
     # 3. Write XDG .desktop entry
-    desktop_file = apps_dir / "antiagent.desktop"
+    desktop_file = apps_dir / "com.antiagent.desktop.desktop"
     desktop_content = """[Desktop Entry]
 Version=1.0
 Type=Application
@@ -748,14 +748,20 @@ Categories=Development;Security;System;Utility;
 StartupWMClass=com.antiagent.desktop
 Keywords=antigravity;agent;security;guard;ai;safety;
 """
+    if desktop_file.is_symlink() or desktop_file.exists():
+        try:
+            desktop_file.unlink()
+        except Exception:
+            pass
+
     desktop_file.write_text(desktop_content, encoding="utf-8")
     desktop_file.chmod(0o644)
 
-    alt_desktop_file = apps_dir / "com.antiagent.desktop.desktop"
+    # Clean up legacy un-namespaced desktop entry to prevent duplicate entries in application menus
+    legacy_desktop_file = apps_dir / "antiagent.desktop"
     try:
-        if alt_desktop_file.is_symlink() or alt_desktop_file.exists():
-            alt_desktop_file.unlink()
-        alt_desktop_file.symlink_to(desktop_file.name)
+        if legacy_desktop_file.is_symlink() or legacy_desktop_file.exists():
+            legacy_desktop_file.unlink()
     except Exception:
         pass
 
@@ -851,7 +857,7 @@ echo "============================================================"
         ti_inst.mtime = int(time.time())
         tf.addfile(ti_inst, io.BytesIO(inst_bytes))
 
-        # 4. Add AntiAgent.desktop
+        # 4. Add com.antiagent.desktop.desktop
         desktop_content = """[Desktop Entry]
 Version=1.0
 Type=Application
@@ -866,17 +872,11 @@ StartupWMClass=com.antiagent.desktop
 Keywords=antigravity;agent;security;guard;ai;safety;
 """
         desk_bytes = desktop_content.encode("utf-8")
-        ti_desk = tarfile.TarInfo(name="AntiAgent/AntiAgent.desktop")
+        ti_desk = tarfile.TarInfo(name="AntiAgent/com.antiagent.desktop.desktop")
         ti_desk.size = len(desk_bytes)
         ti_desk.mode = 0o644
         ti_desk.mtime = int(time.time())
         tf.addfile(ti_desk, io.BytesIO(desk_bytes))
-
-        ti_desk_alt = tarfile.TarInfo(name="AntiAgent/com.antiagent.desktop.desktop")
-        ti_desk_alt.size = len(desk_bytes)
-        ti_desk_alt.mode = 0o644
-        ti_desk_alt.mtime = int(time.time())
-        tf.addfile(ti_desk_alt, io.BytesIO(desk_bytes))
 
         # 5. Add icons if available
         png_path = desktop_dir / "antiagent.png"

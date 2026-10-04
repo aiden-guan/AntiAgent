@@ -78,8 +78,11 @@ def get_doctor_report(workspace_path: str = ".") -> Dict[str, Any]:
                 break
     else:
         linux_candidates = [
+            Path(os.path.expanduser("~/.local/share/applications/com.antiagent.desktop.desktop")),
             Path(os.path.expanduser("~/.local/share/applications/antiagent.desktop")),
+            Path("/usr/share/applications/com.antiagent.desktop.desktop"),
             Path("/usr/share/applications/antiagent.desktop"),
+            Path("/usr/local/share/applications/com.antiagent.desktop.desktop"),
             Path("/usr/local/share/applications/antiagent.desktop"),
             Path(os.path.expanduser("~/.local/bin/antiagent-app")),
             Path(os.getcwd()) / "AntiAgent.sh",

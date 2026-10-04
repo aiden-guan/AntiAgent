@@ -40,7 +40,8 @@ class TestLinuxDesktopPackaging(unittest.TestCase):
             names = set(tf.getnames())
             self.assertIn("AntiAgent/AntiAgent.sh", names)
             self.assertIn("AntiAgent/install-app.sh", names)
-            self.assertIn("AntiAgent/AntiAgent.desktop", names)
+            self.assertIn("AntiAgent/com.antiagent.desktop.desktop", names)
+            self.assertNotIn("AntiAgent/AntiAgent.desktop", names)
             self.assertIn("AntiAgent/antiagent.png", names)
             self.assertIn("AntiAgent/antiagent.svg", names)
             self.assertIn("AntiAgent/README.txt", names)
@@ -54,7 +55,7 @@ class TestLinuxDesktopPackaging(unittest.TestCase):
             self.assertTrue(bool(ti_inst.mode & 0o111), "install-app.sh must be executable")
 
             # Check desktop entry content
-            f_desk = tf.extractfile("AntiAgent/AntiAgent.desktop")
+            f_desk = tf.extractfile("AntiAgent/com.antiagent.desktop.desktop")
             self.assertIsNotNone(f_desk)
             desk_content = f_desk.read().decode("utf-8")
             self.assertIn("[Desktop Entry]", desk_content)
@@ -62,7 +63,6 @@ class TestLinuxDesktopPackaging(unittest.TestCase):
             self.assertIn("Exec=antiagent-app %U", desk_content)
             self.assertIn("Icon=antiagent", desk_content)
             self.assertIn("StartupWMClass=com.antiagent.desktop", desk_content)
-            self.assertIn("AntiAgent/com.antiagent.desktop.desktop", names)
             self.assertIn("AntiAgent/com.antiagent.desktop.png", names)
             self.assertIn("AntiAgent/com.antiagent.desktop.svg", names)
 
@@ -89,7 +89,7 @@ class TestLinuxDesktopInstallation(unittest.TestCase):
             desktop_file = install_linux_app(to_global=False)
 
             self.assertTrue(desktop_file.is_file(), "Desktop file was not created")
-            self.assertEqual(desktop_file.name, "antiagent.desktop")
+            self.assertEqual(desktop_file.name, "com.antiagent.desktop.desktop")
 
             content = desktop_file.read_text(encoding="utf-8")
             self.assertIn("[Desktop Entry]", content)
@@ -97,9 +97,9 @@ class TestLinuxDesktopInstallation(unittest.TestCase):
             self.assertIn("Exec=antiagent-app %U", content)
             self.assertIn("StartupWMClass=com.antiagent.desktop", content)
 
-            # Check reverse-DNS alias desktop file
-            alt_desktop = self.mock_home / ".local/share/applications/com.antiagent.desktop.desktop"
-            self.assertTrue(alt_desktop.exists(), "com.antiagent.desktop.desktop was not created")
+            # Ensure no duplicate unnamespaced antiagent.desktop exists
+            legacy_desktop = self.mock_home / ".local/share/applications/antiagent.desktop"
+            self.assertFalse(legacy_desktop.exists(), "Duplicate antiagent.desktop must not exist")
 
             # Check launcher
             launcher = self.mock_home / ".local/bin/antiagent-app"
@@ -115,6 +115,29 @@ class TestLinuxDesktopInstallation(unittest.TestCase):
             self.assertTrue(icon_svg.is_file())
             self.assertTrue(icon_png_alt.is_file())
             self.assertTrue(icon_svg_alt.is_file())
+
+    def test_install_linux_app_cleans_up_legacy_duplicate(self):
+        """Verify installer migrates legacy antiagent.desktop and removes duplication."""
+        def fake_expanduser(path: str) -> str:
+            if path.startswith("~"):
+                return str(self.mock_home) + path[1:]
+            return path
+
+        apps_dir = self.mock_home / ".local/share/applications"
+        apps_dir.mkdir(parents=True, exist_ok=True)
+        old_desktop = apps_dir / "antiagent.desktop"
+        old_desktop.write_text("[Desktop Entry]\nName=Old AntiAgent\n", encoding="utf-8")
+        symlink_desktop = apps_dir / "com.antiagent.desktop.desktop"
+        symlink_desktop.symlink_to(old_desktop.name)
+
+        with patch("os.path.expanduser", side_effect=fake_expanduser), \
+             patch("subprocess.run"):
+            desktop_file = install_linux_app(to_global=False)
+
+            self.assertEqual(desktop_file.name, "com.antiagent.desktop.desktop")
+            self.assertTrue(desktop_file.is_file())
+            self.assertFalse(desktop_file.is_symlink())
+            self.assertFalse(old_desktop.exists(), "Old antiagent.desktop was not cleaned up")
 
     def test_install_app_routes_to_linux(self):
         with patch("sys.platform", "linux"), \
