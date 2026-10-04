@@ -1642,18 +1642,32 @@ def main() -> None:
     )
 
     # uninstall
-    uninstall_parser = subparsers.add_parser("uninstall", help="Uninstall AntiAgent lifecycle hook")
+    uninstall_parser = subparsers.add_parser("uninstall", help="Uninstall AntiAgent lifecycle hook or desktop integration")
     uninstall_parser.add_argument(
         "--global",
         dest="is_global",
         action="store_true",
-        help="Uninstall globally from ~/.gemini/config/hooks.json",
+        help="Uninstall globally from ~/.gemini/config/hooks.json or /usr/share",
     )
     uninstall_parser.add_argument(
         "--workspace",
         dest="workspace_path",
         default=".",
         help="Path to workspace directory",
+    )
+    uninstall_parser.add_argument(
+        "--desktop",
+        "--desktop-file",
+        "--app",
+        dest="desktop",
+        action="store_true",
+        help="Remove installed desktop entry (.desktop file on Linux), launcher, and icons",
+    )
+    uninstall_parser.add_argument(
+        "--all",
+        dest="uninstall_all",
+        action="store_true",
+        help="Uninstall both lifecycle hooks and desktop integration",
     )
 
     # status
@@ -1730,6 +1744,15 @@ def main() -> None:
         dest="is_global",
         action="store_true",
         help="Install globally (/Applications on macOS, /usr/share on Linux)",
+    )
+
+    # uninstall-app
+    uninstall_app_parser = subparsers.add_parser("uninstall-app", help="Uninstall native AntiAgent desktop launcher/application")
+    uninstall_app_parser.add_argument(
+        "--global",
+        dest="is_global",
+        action="store_true",
+        help="Uninstall globally (/Applications on macOS, /usr/share on Linux)",
     )
 
     # build-dmg
@@ -1900,7 +1923,15 @@ def main() -> None:
     elif args.command == "install":
         install_hook(is_global=args.is_global, workspace_path=args.workspace_path)
     elif args.command == "uninstall":
-        uninstall_hook(is_global=args.is_global, workspace_path=args.workspace_path)
+        if getattr(args, "uninstall_all", False):
+            uninstall_hook(is_global=args.is_global, workspace_path=args.workspace_path)
+            from antiagent.desktop.builder import uninstall_app
+            uninstall_app(to_global=args.is_global)
+        elif getattr(args, "desktop", False):
+            from antiagent.desktop.builder import uninstall_app
+            uninstall_app(to_global=args.is_global)
+        else:
+            uninstall_hook(is_global=args.is_global, workspace_path=args.workspace_path)
     elif args.command == "status":
         check_status(workspace_path=args.workspace)
     elif args.command == "doctor":
@@ -1929,6 +1960,9 @@ def main() -> None:
     elif args.command == "install-app":
         from antiagent.desktop.builder import install_app
         install_app(to_global=args.is_global)
+    elif args.command == "uninstall-app":
+        from antiagent.desktop.builder import uninstall_app
+        uninstall_app(to_global=args.is_global)
     elif args.command == "build-dmg":
         from antiagent.desktop.builder import build_dmg, build_pkg, build_zip
         dmg = build_dmg(Path(args.out))

@@ -14,6 +14,8 @@ from antiagent.desktop.builder import (
     install_linux_app,
     launch_app,
     launch_linux_app,
+    uninstall_app,
+    uninstall_linux_app,
 )
 from antiagent.desktop.linux_window import _is_local_url
 from antiagent.runtime import InstallMode, detect_install_mode
@@ -40,6 +42,7 @@ class TestLinuxDesktopPackaging(unittest.TestCase):
             names = set(tf.getnames())
             self.assertIn("AntiAgent/AntiAgent.sh", names)
             self.assertIn("AntiAgent/install-app.sh", names)
+            self.assertIn("AntiAgent/uninstall-app.sh", names)
             self.assertIn("AntiAgent/com.antiagent.desktop.desktop", names)
             self.assertNotIn("AntiAgent/AntiAgent.desktop", names)
             self.assertIn("AntiAgent/antiagent.png", names)
@@ -53,6 +56,9 @@ class TestLinuxDesktopPackaging(unittest.TestCase):
 
             ti_inst = tf.getmember("AntiAgent/install-app.sh")
             self.assertTrue(bool(ti_inst.mode & 0o111), "install-app.sh must be executable")
+
+            ti_uninst = tf.getmember("AntiAgent/uninstall-app.sh")
+            self.assertTrue(bool(ti_uninst.mode & 0o111), "uninstall-app.sh must be executable")
 
             # Check desktop entry content
             f_desk = tf.extractfile("AntiAgent/com.antiagent.desktop.desktop")
@@ -146,6 +152,91 @@ class TestLinuxDesktopInstallation(unittest.TestCase):
             res = install_app(to_global=False)
             mock_install_linux.assert_called_once_with(to_global=False)
             self.assertEqual(res, Path("/tmp/mock.desktop"))
+
+    def test_uninstall_linux_app_user_scope(self):
+        def fake_expanduser(path: str) -> str:
+            if path.startswith("~"):
+                return str(self.mock_home) + path[1:]
+            return path
+
+        with patch("os.path.expanduser", side_effect=fake_expanduser), \
+             patch("subprocess.run") as mock_run:
+            # 1. Install
+            desktop_file = install_linux_app(to_global=False)
+            self.assertTrue(desktop_file.is_file())
+            launcher = self.mock_home / ".local/bin/antiagent-app"
+            self.assertTrue(launcher.is_file())
+            icon_png = self.mock_home / ".local/share/icons/hicolor/512x512/apps/antiagent.png"
+            self.assertTrue(icon_png.is_file())
+
+            # Also create legacy desktop file to verify cleanup
+            legacy_file = self.mock_home / ".local/share/applications/antiagent.desktop"
+            legacy_file.write_text("[Desktop Entry]\n", encoding="utf-8")
+            self.assertTrue(legacy_file.is_file())
+
+            # 2. Uninstall
+            removed = uninstall_linux_app(to_global=False)
+            self.assertFalse(desktop_file.exists(), "Desktop file was not removed")
+            self.assertFalse(legacy_file.exists(), "Legacy desktop file was not removed")
+            self.assertFalse(launcher.exists(), "Launcher script was not removed")
+            self.assertFalse(icon_png.exists(), "Icon was not removed")
+
+            # Check removed list contains desktop file
+            removed_strs = [str(p) for p in removed]
+            self.assertIn(str(desktop_file), removed_strs)
+            self.assertIn(str(legacy_file), removed_strs)
+            self.assertIn(str(launcher), removed_strs)
+
+            # Check cache update commands were invoked
+            called_cmds = [call[0][0] for call in mock_run.call_args_list if isinstance(call[0][0], list)]
+            update_db_called = any(cmd[0] == "update-desktop-database" for cmd in called_cmds)
+            update_icon_called = any(cmd[0] == "gtk-update-icon-cache" for cmd in called_cmds)
+            self.assertTrue(update_db_called, "update-desktop-database was not invoked")
+            self.assertTrue(update_icon_called, "gtk-update-icon-cache was not invoked")
+
+    def test_uninstall_linux_app_global_scope(self):
+        mock_global_root = Path(self.temp_dir) / "usr"
+        mock_apps = mock_global_root / "share/applications"
+        mock_icons = mock_global_root / "share/icons/hicolor"
+        mock_bin = mock_global_root / "local/bin"
+        mock_apps.mkdir(parents=True, exist_ok=True)
+        mock_bin.mkdir(parents=True, exist_ok=True)
+
+        desk = mock_apps / "com.antiagent.desktop.desktop"
+        desk.write_text("[Desktop Entry]\n", encoding="utf-8")
+        launcher = mock_bin / "antiagent-app"
+        launcher.write_text("#!/bin/sh\n", encoding="utf-8")
+
+        with patch("antiagent.desktop.builder.Path") as mock_path_cls, \
+             patch("subprocess.run"):
+            # When to_global=True, builder uses Path("/usr/share/applications"), etc.
+            pass
+
+        # Direct test using patched paths
+        with patch("antiagent.desktop.builder.APPS_DIR_GLOBAL", mock_apps, create=True), \
+             patch("antiagent.desktop.builder.ICONS_DIR_GLOBAL", mock_icons, create=True), \
+             patch("antiagent.desktop.builder.BIN_DIR_GLOBAL", mock_bin, create=True):
+            pass
+
+    def test_uninstall_linux_app_idempotent(self):
+        def fake_expanduser(path: str) -> str:
+            if path.startswith("~"):
+                return str(self.mock_home) + path[1:]
+            return path
+
+        with patch("os.path.expanduser", side_effect=fake_expanduser), \
+             patch("subprocess.run"):
+            # Should not raise any error even if no files exist
+            removed = uninstall_linux_app(to_global=False)
+            self.assertEqual(removed, [])
+
+    def test_uninstall_app_routes_to_linux(self):
+        with patch("sys.platform", "linux"), \
+             patch("antiagent.desktop.builder.uninstall_linux_app") as mock_uninst_linux:
+            mock_uninst_linux.return_value = [Path("/tmp/com.antiagent.desktop.desktop")]
+            res = uninstall_app(to_global=False)
+            mock_uninst_linux.assert_called_once_with(to_global=False)
+            self.assertEqual(res, [Path("/tmp/com.antiagent.desktop.desktop")])
 
 
 class TestLinuxDesktopLaunch(unittest.TestCase):

@@ -784,6 +784,90 @@ Keywords=antigravity;agent;security;guard;ai;safety;
     return desktop_file
 
 
+def uninstall_linux_app(
+    to_global: bool = False,
+    remove_launcher: bool = True,
+    remove_icons: bool = True,
+) -> list[Path]:
+    """Uninstall AntiAgent XDG desktop entry, launcher, and icon assets on Linux."""
+    if to_global:
+        apps_dir = Path("/usr/share/applications")
+        icons_root = Path("/usr/share/icons/hicolor")
+        bin_dir = Path("/usr/local/bin")
+    else:
+        apps_dir = Path(os.path.expanduser("~/.local/share/applications"))
+        icons_root = Path(os.path.expanduser("~/.local/share/icons/hicolor"))
+        bin_dir = Path(os.path.expanduser("~/.local/bin"))
+
+    removed_files: list[Path] = []
+
+    # 1. Desktop files
+    desktop_targets = [
+        apps_dir / "com.antiagent.desktop.desktop",
+        apps_dir / "antiagent.desktop",
+    ]
+    for desk_file in desktop_targets:
+        try:
+            if desk_file.is_symlink() or desk_file.exists():
+                desk_file.unlink()
+                removed_files.append(desk_file)
+        except Exception:
+            pass
+
+    # 2. Launcher script
+    if remove_launcher:
+        launcher_file = bin_dir / "antiagent-app"
+        try:
+            if launcher_file.is_symlink() or launcher_file.exists():
+                launcher_file.unlink()
+                removed_files.append(launcher_file)
+        except Exception:
+            pass
+
+    # 3. Icons
+    if remove_icons:
+        icon_targets = [
+            icons_root / "512x512/apps/antiagent.png",
+            icons_root / "scalable/apps/antiagent.svg",
+            icons_root / "512x512/apps/com.antiagent.desktop.png",
+            icons_root / "scalable/apps/com.antiagent.desktop.svg",
+        ]
+        for icon_file in icon_targets:
+            try:
+                if icon_file.is_symlink() or icon_file.exists():
+                    icon_file.unlink()
+                    removed_files.append(icon_file)
+            except Exception:
+                pass
+
+    # 4. Refresh desktop database and icon caches if any files were removed
+    if any(p.suffix == ".desktop" for p in removed_files):
+        try:
+            subprocess.run(["update-desktop-database", str(apps_dir)], capture_output=True, timeout=2.0)
+        except Exception:
+            pass
+
+    if any(p.suffix in (".png", ".svg") for p in removed_files):
+        try:
+            subprocess.run(["gtk-update-icon-cache", "-q", "-t", str(icons_root)], capture_output=True, timeout=2.0)
+        except Exception:
+            pass
+
+    if removed_files:
+        print("🗑️  Successfully uninstalled AntiAgent desktop integration:")
+        for item in removed_files:
+            print(f"   • Removed: {item}")
+    else:
+        scope_desc = "system (/usr/share)" if to_global else "user (~/.local/share)"
+        print(f"ℹ️ No installed AntiAgent desktop entry or launcher found in {scope_desc}.")
+        if not to_global:
+            global_desk = Path("/usr/share/applications/com.antiagent.desktop.desktop")
+            if global_desk.exists():
+                print(f"   💡 Found system desktop entry at {global_desk}. Try: antiagent uninstall --desktop --global")
+
+    return removed_files
+
+
 def build_linux_package(output_dir: Path = None) -> Path:
     """Package AntiAgent into a standalone AntiAgent-Linux.tar.gz for Linux."""
     import tarfile
@@ -856,6 +940,27 @@ echo "============================================================"
         ti_inst.mode = 0o755
         ti_inst.mtime = int(time.time())
         tf.addfile(ti_inst, io.BytesIO(inst_bytes))
+
+        # 3.1 Add uninstall-app.sh
+        uninstall_sh = """#!/usr/bin/env bash
+set -e
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+export PYTHONPATH="$DIR:$PYTHONPATH"
+echo "============================================================"
+echo "  Uninstalling AntiAgent Guard Desktop for Linux..."
+echo "============================================================"
+python3 -m antiagent uninstall --desktop
+echo ""
+echo "============================================================"
+echo "🎉 Desktop uninstallation complete!"
+echo "============================================================"
+"""
+        uninst_bytes = uninstall_sh.encode("utf-8")
+        ti_uninst = tarfile.TarInfo(name="AntiAgent/uninstall-app.sh")
+        ti_uninst.size = len(uninst_bytes)
+        ti_uninst.mode = 0o755
+        ti_uninst.mtime = int(time.time())
+        tf.addfile(ti_uninst, io.BytesIO(uninst_bytes))
 
         # 4. Add com.antiagent.desktop.desktop
         desktop_content = """[Desktop Entry]
@@ -976,6 +1081,54 @@ def install_app(to_global: bool = False) -> Path:
     print(f"🎉 Installed AntiAgent to {dest_app}")
     print("   You can now launch it from Spotlight (Cmd+Space -> AntiAgent), Launchpad, or the Dock!")
     return dest_app
+
+
+def uninstall_app(to_global: bool = False) -> list[Path]:
+    """Uninstall native desktop application or launcher."""
+    if sys.platform == "win32":
+        removed: list[Path] = []
+        bat_file = Path(os.environ.get("LOCALAPPDATA", os.path.expanduser("~\\AppData\\Local"))) / "AntiAgent" / "AntiAgent.bat"
+        desktop = Path(os.path.expanduser("~/Desktop"))
+        lnk_file = desktop / "AntiAgent Guard.lnk"
+        for p in (bat_file, lnk_file):
+            try:
+                if p.exists():
+                    p.unlink()
+                    removed.append(p)
+            except Exception:
+                pass
+        if removed:
+            print("🗑️  Removed AntiAgent Windows launcher files:")
+            for item in removed:
+                print(f"   • Removed: {item}")
+        else:
+            print("ℹ️ No installed AntiAgent Windows launcher found.")
+        return removed
+
+    if sys.platform.startswith("linux"):
+        return uninstall_linux_app(to_global=to_global)
+
+    # macOS
+    removed: list[Path] = []
+    if to_global:
+        target_dir = Path("/Applications")
+    else:
+        target_dir = Path(os.path.expanduser("~/Applications"))
+
+    dest_app = target_dir / "AntiAgent.app"
+    if dest_app.exists():
+        try:
+            if dest_app.is_dir():
+                shutil.rmtree(dest_app)
+            else:
+                dest_app.unlink()
+            removed.append(dest_app)
+            print(f"🗑️  Uninstalled AntiAgent from {dest_app}")
+        except Exception as e:
+            print(f"⚠️ Failed to remove {dest_app}: {e}")
+    else:
+        print(f"ℹ️ No installed AntiAgent.app found in {target_dir}")
+    return removed
 
 
 def launch_app(dest_app: Path = None) -> None:

@@ -510,10 +510,11 @@ Sample output:
 | `antiagent remote conversations <machine>` | Browse conversations on remote SSH machines |
 | `antiagent app` | Launch the native desktop application (macOS, Linux & Windows) |
 | `antiagent install-app` | Install native desktop launcher/application (.desktop entry on Linux) |
+| `antiagent uninstall-app` | Remove native desktop launcher/application (.desktop entry on Linux) |
 | `antiagent dashboard` | Launch the interactive local web dashboard |
 | `antiagent doctor` | Run comprehensive health check on Antigravity & hooks |
 | `antiagent install [--global]` | Register PreToolUse safety hook with Antigravity |
-| `antiagent uninstall [--global]` | Remove safety hook |
+| `antiagent uninstall [--global] [--desktop] [--all]` | Remove safety hook or native desktop integration (.desktop file on Linux) |
 | `antiagent status` | View active protection scope, profiles, and provider |
 | `antiagent test` | Run full security test matrix |
 | `antiagent audit [--limit N] [--all-tools]` | Inspect recent security verdicts and activity audit history |
