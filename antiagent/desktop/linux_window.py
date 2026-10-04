@@ -37,7 +37,10 @@ def run_gtk4_window(url: str = "http://127.0.0.1:4242") -> int:
     import gi
     gi.require_version("Gtk", "4.0")
     gi.require_version("WebKit", "6.0")
-    from gi.repository import Gtk, WebKit, Gdk
+    from gi.repository import Gtk, WebKit, Gdk, GLib
+
+    GLib.set_prgname("com.antiagent.desktop")
+    GLib.set_application_name("AntiAgent Guard")
 
     # Apply dark background styling
     css = b"window { background-color: #0d1117; }"
@@ -48,6 +51,17 @@ def run_gtk4_window(url: str = "http://127.0.0.1:4242") -> int:
         Gtk.StyleContext.add_provider_for_display(
             display, provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
         )
+        try:
+            icon_theme = Gtk.IconTheme.get_for_display(display)
+            desktop_dir = Path(__file__).resolve().parent
+            icon_theme.add_search_path(str(desktop_dir))
+        except Exception:
+            pass
+
+    try:
+        Gtk.Window.set_default_icon_name("antiagent")
+    except Exception:
+        pass
 
     app = Gtk.Application(application_id="com.antiagent.desktop")
 
@@ -57,8 +71,11 @@ def run_gtk4_window(url: str = "http://127.0.0.1:4242") -> int:
         win.set_size_request(800, 600)
 
         icon_path = _get_icon_path()
-        if icon_path and hasattr(win, "set_icon_name"):
-            win.set_icon_name("antiagent")
+        if hasattr(win, "set_icon_name"):
+            try:
+                win.set_icon_name("antiagent")
+            except Exception:
+                pass
 
         webview = WebKit.WebView()
         win.set_child(webview)
@@ -91,7 +108,23 @@ def run_gtk3_window(url: str = "http://127.0.0.1:4242") -> int:
         gi.require_version("WebKit2", "4.1")
     except (ValueError, AttributeError):
         gi.require_version("WebKit2", "4.0")
-    from gi.repository import Gtk, WebKit2, Gdk
+    from gi.repository import Gtk, WebKit2, Gdk, GLib
+
+    GLib.set_prgname("com.antiagent.desktop")
+    GLib.set_application_name("AntiAgent Guard")
+
+    desktop_dir = Path(__file__).resolve().parent
+    try:
+        icon_theme = Gtk.IconTheme.get_default()
+        if icon_theme:
+            icon_theme.append_search_path(str(desktop_dir))
+    except Exception:
+        pass
+
+    try:
+        Gtk.Window.set_default_icon_name("antiagent")
+    except Exception:
+        pass
 
     # Apply dark background styling
     css = b"window { background-color: #0d1117; }"
@@ -107,11 +140,20 @@ def run_gtk3_window(url: str = "http://127.0.0.1:4242") -> int:
     win.set_default_size(1160, 800)
     win.set_size_request(800, 600)
     win.set_position(Gtk.WindowPosition.CENTER)
+    try:
+        win.set_wmclass("com.antiagent.desktop", "com.antiagent.desktop")
+    except Exception:
+        pass
 
     icon_path = _get_icon_path()
     if icon_path and icon_path.is_file():
         try:
             win.set_icon_from_file(str(icon_path))
+        except Exception:
+            pass
+    if hasattr(win, "set_icon_name"):
+        try:
+            win.set_icon_name("antiagent")
         except Exception:
             pass
 

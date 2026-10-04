@@ -61,6 +61,10 @@ class TestLinuxDesktopPackaging(unittest.TestCase):
             self.assertIn("Name=AntiAgent Guard", desk_content)
             self.assertIn("Exec=antiagent-app %U", desk_content)
             self.assertIn("Icon=antiagent", desk_content)
+            self.assertIn("StartupWMClass=com.antiagent.desktop", desk_content)
+            self.assertIn("AntiAgent/com.antiagent.desktop.desktop", names)
+            self.assertIn("AntiAgent/com.antiagent.desktop.png", names)
+            self.assertIn("AntiAgent/com.antiagent.desktop.svg", names)
 
 
 class TestLinuxDesktopInstallation(unittest.TestCase):
@@ -91,6 +95,11 @@ class TestLinuxDesktopInstallation(unittest.TestCase):
             self.assertIn("[Desktop Entry]", content)
             self.assertIn("Name=AntiAgent Guard", content)
             self.assertIn("Exec=antiagent-app %U", content)
+            self.assertIn("StartupWMClass=com.antiagent.desktop", content)
+
+            # Check reverse-DNS alias desktop file
+            alt_desktop = self.mock_home / ".local/share/applications/com.antiagent.desktop.desktop"
+            self.assertTrue(alt_desktop.exists(), "com.antiagent.desktop.desktop was not created")
 
             # Check launcher
             launcher = self.mock_home / ".local/bin/antiagent-app"
@@ -100,8 +109,12 @@ class TestLinuxDesktopInstallation(unittest.TestCase):
             # Check icons
             icon_png = self.mock_home / ".local/share/icons/hicolor/512x512/apps/antiagent.png"
             icon_svg = self.mock_home / ".local/share/icons/hicolor/scalable/apps/antiagent.svg"
+            icon_png_alt = self.mock_home / ".local/share/icons/hicolor/512x512/apps/com.antiagent.desktop.png"
+            icon_svg_alt = self.mock_home / ".local/share/icons/hicolor/scalable/apps/com.antiagent.desktop.svg"
             self.assertTrue(icon_png.is_file())
             self.assertTrue(icon_svg.is_file())
+            self.assertTrue(icon_png_alt.is_file())
+            self.assertTrue(icon_svg_alt.is_file())
 
     def test_install_app_routes_to_linux(self):
         with patch("sys.platform", "linux"), \
@@ -162,6 +175,7 @@ class TestLinuxDesktopLaunch(unittest.TestCase):
                     break
             self.assertIsNotNone(called_cmd, "google-chrome was not spawned in app mode")
             self.assertIn("--app=http://127.0.0.1:4242", called_cmd)
+            self.assertIn("--class=com.antiagent.desktop", called_cmd)
 
 
 class TestLinuxRuntimeAndUpdater(unittest.TestCase):

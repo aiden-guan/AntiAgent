@@ -560,6 +560,7 @@ def launch_linux_app() -> None:
             [py_exec, "-m", "antiagent.dashboard", "--no-open"],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
+            start_new_session=True,
         )
 
         for _ in range(25):
@@ -627,7 +628,7 @@ def launch_linux_app() -> None:
             existing_pp = env.get("PYTHONPATH", "")
             env["PYTHONPATH"] = f"{repo_root}:{existing_pp}" if existing_pp else str(repo_root)
             try:
-                proc = subprocess.Popen([py, "-m", "antiagent.desktop.linux_window", app_url], env=env)
+                proc = subprocess.Popen([py, "-m", "antiagent.desktop.linux_window", app_url], env=env, start_new_session=True)
                 try:
                     exit_code = proc.wait(timeout=0.6)
                     if exit_code != 0:
@@ -653,7 +654,7 @@ def launch_linux_app() -> None:
         bin_path = shutil.which(b)
         if bin_path:
             print(f"🖥️  Launching AntiAgent Guard window via {b} App Mode...")
-            subprocess.Popen([bin_path, f"--app={app_url}", "--window-size=1160,800"])
+            subprocess.Popen([bin_path, f"--app={app_url}", "--window-size=1160,800", "--class=com.antiagent.desktop"], start_new_session=True)
             return
 
     flatpak_candidates = [
@@ -665,14 +666,14 @@ def launch_linux_app() -> None:
     for app_id, exp_bin in flatpak_candidates:
         if os.path.isfile(exp_bin):
             print(f"🖥️  Launching AntiAgent Guard window via Flatpak {app_id} App Mode...")
-            subprocess.Popen([exp_bin, f"--app={app_url}", "--window-size=1160,800"])
+            subprocess.Popen([exp_bin, f"--app={app_url}", "--window-size=1160,800", "--class=com.antiagent.desktop"], start_new_session=True)
             return
         if shutil.which("flatpak"):
             try:
                 res = subprocess.run(["flatpak", "info", app_id], capture_output=True, timeout=1.0)
                 if res.returncode == 0:
                     print(f"🖥️  Launching AntiAgent Guard window via Flatpak {app_id} App Mode...")
-                    subprocess.Popen(["flatpak", "run", app_id, f"--app={app_url}", "--window-size=1160,800"])
+                    subprocess.Popen(["flatpak", "run", app_id, f"--app={app_url}", "--window-size=1160,800", "--class=com.antiagent.desktop"], start_new_session=True)
                     return
             except Exception:
                 pass
@@ -703,14 +704,24 @@ def install_linux_app(to_global: bool = False) -> Path:
 
     icon_png_dest = icons_root / "512x512/apps/antiagent.png"
     icon_svg_dest = icons_root / "scalable/apps/antiagent.svg"
+    icon_png_alt = icons_root / "512x512/apps/com.antiagent.desktop.png"
+    icon_svg_alt = icons_root / "scalable/apps/com.antiagent.desktop.svg"
 
     if png_src.is_file():
         icon_png_dest.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(png_src, icon_png_dest)
+        try:
+            shutil.copy2(png_src, icon_png_alt)
+        except Exception:
+            pass
 
     if svg_src.is_file():
         icon_svg_dest.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(svg_src, icon_svg_dest)
+        try:
+            shutil.copy2(svg_src, icon_svg_alt)
+        except Exception:
+            pass
 
     # 2. Write launcher script
     launcher_file = bin_dir / "antiagent-app"
@@ -734,11 +745,19 @@ Exec=antiagent-app %U
 Icon=antiagent
 Terminal=false
 Categories=Development;Security;System;Utility;
-StartupWMClass=antiagent
+StartupWMClass=com.antiagent.desktop
 Keywords=antigravity;agent;security;guard;ai;safety;
 """
     desktop_file.write_text(desktop_content, encoding="utf-8")
     desktop_file.chmod(0o644)
+
+    alt_desktop_file = apps_dir / "com.antiagent.desktop.desktop"
+    try:
+        if alt_desktop_file.is_symlink() or alt_desktop_file.exists():
+            alt_desktop_file.unlink()
+        alt_desktop_file.symlink_to(desktop_file.name)
+    except Exception:
+        pass
 
     # 4. Update desktop and icon caches if available
     try:
@@ -843,7 +862,7 @@ Exec=antiagent-app %U
 Icon=antiagent
 Terminal=false
 Categories=Development;Security;System;Utility;
-StartupWMClass=antiagent
+StartupWMClass=com.antiagent.desktop
 Keywords=antigravity;agent;security;guard;ai;safety;
 """
         desk_bytes = desktop_content.encode("utf-8")
@@ -853,13 +872,21 @@ Keywords=antigravity;agent;security;guard;ai;safety;
         ti_desk.mtime = int(time.time())
         tf.addfile(ti_desk, io.BytesIO(desk_bytes))
 
+        ti_desk_alt = tarfile.TarInfo(name="AntiAgent/com.antiagent.desktop.desktop")
+        ti_desk_alt.size = len(desk_bytes)
+        ti_desk_alt.mode = 0o644
+        ti_desk_alt.mtime = int(time.time())
+        tf.addfile(ti_desk_alt, io.BytesIO(desk_bytes))
+
         # 5. Add icons if available
         png_path = desktop_dir / "antiagent.png"
         if png_path.is_file():
             tf.add(png_path, arcname="AntiAgent/antiagent.png")
+            tf.add(png_path, arcname="AntiAgent/com.antiagent.desktop.png")
         svg_path = desktop_dir / "antiagent.svg"
         if svg_path.is_file():
             tf.add(svg_path, arcname="AntiAgent/antiagent.svg")
+            tf.add(svg_path, arcname="AntiAgent/com.antiagent.desktop.svg")
 
         # 6. Add README.txt
         readme_content = f"""============================================================

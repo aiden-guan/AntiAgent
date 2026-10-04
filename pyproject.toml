@@ -47,6 +47,7 @@ antiagent = [
   "desktop/*.swift",
   "desktop/*.icns",
   "desktop/*.png",
+  "desktop/*.svg",
 ]
 
 [tool.setuptools.dynamic]
