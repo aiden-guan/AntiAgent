@@ -127,81 +127,63 @@ def _find_relauncher_script(staged_path: Optional[Path] = None, app_path: Option
     return None
 
 
-def _find_desktop_app_pid() -> int:
+def _find_desktop_app_pid(app_path: Optional[Path] = None) -> int:
+    """Find the owner of this bundle without targeting unrelated desktop copies."""
+    expected_binary = str(app_path.resolve() / "Contents" / "MacOS" / "AntiAgent") if app_path else None
     try:
-        pids = subprocess.check_output(["pgrep", "-x", "AntiAgent"], text=True).strip().split()
-        if pids:
-            return int(pids[0])
+        rows = subprocess.check_output(["ps", "-axo", "pid=,comm="], text=True).splitlines()
+        for row in rows:
+            pid, _, command = row.strip().partition(" ")
+            command = command.strip()
+            if pid.isdigit() and (
+                command == expected_binary if expected_binary else command.endswith(".app/Contents/MacOS/AntiAgent")
+            ):
+                return int(pid)
     except Exception:
         pass
-    return os.getppid()
+    return 0
 
 
-def _relaunch_desktop_worker(
+def _spawn_desktop_relauncher(
     app_path: Path,
     staged_path: Optional[Path] = None,
     target_version: Optional[str] = None,
-) -> None:
+) -> subprocess.Popen:
+    """Start a standalone helper before acknowledging restart or stopping the server."""
+    if staged_path and not staged_path.is_dir():
+        raise RuntimeError("The staged update is missing. Retry the update before restarting.")
+    script = _find_relauncher_script(staged_path, app_path)
+    if script is None:
+        raise RuntimeError("The desktop restart helper is missing. Reinstall AntiAgent to repair it.")
+
+    log_file = Path.home() / ".antiagent" / "update_relaunch.log"
+    log_file.parent.mkdir(parents=True, exist_ok=True)
+    cmd = [
+        sys.executable or "python3", str(script),
+        "--target-app", str(app_path),
+        "--old-pid", str(os.getpid()),
+        "--parent-pid", str(_find_desktop_app_pid(app_path)),
+        "--target-version", str(target_version or __version__),
+        "--log-file", str(log_file),
+    ]
+    if staged_path:
+        cmd.extend([
+            "--staged-app", str(staged_path),
+            "--backup-app", str(app_path.parent / f"{app_path.name}.backup"),
+        ])
+    # The helper must survive the native app terminating its backend, and its
+    # import/launch errors must remain available after that backend has exited.
+    with open(log_file, "a", encoding="utf-8") as log:
+        return subprocess.Popen(
+            cmd, start_new_session=True, close_fds=True,
+            stdin=subprocess.DEVNULL, stdout=log, stderr=log,
+        )
+
+
+def _exit_dashboard_worker() -> None:
     time.sleep(0.3)
     if DashboardRequestHandler.server_instance:
-        try:
-            DashboardRequestHandler.server_instance.server_close()
-        except Exception:
-            pass
-
-    if staged_path and staged_path.exists():
-        backup_app = app_path.parent / f"{app_path.name}.backup"
-        relauncher_script = _find_relauncher_script(staged_path, app_path)
-        desktop_pid = _find_desktop_app_pid()
-        target_ver = str(target_version or __version__)
-        log_file = Path.home() / ".antiagent" / "update_relaunch.log"
-
-        if relauncher_script and relauncher_script.is_file():
-            cmd = [
-                sys.executable or "python3",
-                str(relauncher_script),
-                "--target-app", str(app_path),
-                "--staged-app", str(staged_path),
-                "--backup-app", str(backup_app),
-                "--old-pid", str(os.getpid()),
-                "--parent-pid", str(desktop_pid),
-                "--target-version", target_ver,
-                "--log-file", str(log_file),
-            ]
-        else:
-            cmd = [
-                sys.executable or "python3",
-                "-m", "antiagent.desktop.relauncher",
-                "--target-app", str(app_path),
-                "--staged-app", str(staged_path),
-                "--backup-app", str(backup_app),
-                "--old-pid", str(os.getpid()),
-                "--parent-pid", str(desktop_pid),
-                "--target-version", target_ver,
-                "--log-file", str(log_file),
-            ]
-        try:
-            subprocess.Popen(cmd, start_new_session=True, close_fds=True)
-        except Exception:
-            pass
-    else:
-        try:
-            subprocess.run(["osascript", "-e", 'quit app "AntiAgent"'], capture_output=True, timeout=3.0)
-        except Exception:
-            pass
-        # Wait up to 1.5s for existing desktop app instance to exit
-        try:
-            for _ in range(15):
-                pids = subprocess.check_output(["pgrep", "-x", "AntiAgent"], text=True).strip().split()
-                if not pids:
-                    break
-                time.sleep(0.1)
-        except Exception:
-            time.sleep(0.5)
-        try:
-            subprocess.Popen(["open", str(app_path)], start_new_session=True)
-        except Exception:
-            pass
+        DashboardRequestHandler.server_instance.server_close()
     os._exit(0)
 
 
@@ -949,6 +931,14 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
         is_bundle_mode = bool(is_macos_desktop and active_bundle)
         mode_str = "macos_bundle" if is_bundle_mode else runtime_info.install_mode.value
 
+        testing = os.environ.get("ANTIAGENT_TESTING") == "1"
+        if is_bundle_mode and active_bundle and not testing:
+            try:
+                _spawn_desktop_relauncher(active_bundle, staged_path_obj, target_ver)
+            except Exception as exc:
+                self._send_json({"ok": False, "error": f"Could not schedule restart: {exc}"}, status=500)
+                return
+
         resp_data = {
             "ok": True,
             "mode": mode_str,
@@ -965,13 +955,12 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
         }
         self._send_json(resp_data)
 
-        if os.environ.get("ANTIAGENT_TESTING") == "1":
+        if testing:
             return
 
         if is_bundle_mode and active_bundle:
             threading.Thread(
-                target=_relaunch_desktop_worker,
-                args=(active_bundle, staged_path_obj, target_ver),
+                target=_exit_dashboard_worker,
                 daemon=True,
             ).start()
         else:
