@@ -2,6 +2,7 @@
 
 import os
 import shutil
+import sys
 import tarfile
 import tempfile
 import unittest
@@ -121,6 +122,38 @@ class TestLinuxDesktopInstallation(unittest.TestCase):
             self.assertTrue(icon_svg.is_file())
             self.assertTrue(icon_png_alt.is_file())
             self.assertTrue(icon_svg_alt.is_file())
+
+    def test_install_linux_app_portable_includes_pythonpath(self):
+        def fake_expanduser(path: str) -> str:
+            if path.startswith("~"):
+                return str(self.mock_home) + path[1:]
+            return path
+
+        with patch("os.path.expanduser", side_effect=fake_expanduser), \
+             patch("subprocess.run"), \
+             patch("antiagent.cli._is_importable_without_pythonpath", return_value=False):
+            install_linux_app(to_global=False)
+            launcher = self.mock_home / ".local/bin/antiagent-app"
+            self.assertTrue(launcher.is_file())
+            content = launcher.read_text(encoding="utf-8")
+            self.assertIn("export PYTHONPATH=", content)
+            self.assertIn("antiagent app", content)
+
+    def test_install_linux_app_pip_installed_omits_pythonpath(self):
+        def fake_expanduser(path: str) -> str:
+            if path.startswith("~"):
+                return str(self.mock_home) + path[1:]
+            return path
+
+        with patch("os.path.expanduser", side_effect=fake_expanduser), \
+             patch("subprocess.run"), \
+             patch("antiagent.cli._is_importable_without_pythonpath", return_value=True):
+            install_linux_app(to_global=False)
+            launcher = self.mock_home / ".local/bin/antiagent-app"
+            self.assertTrue(launcher.is_file())
+            content = launcher.read_text(encoding="utf-8")
+            self.assertNotIn("export PYTHONPATH=", content)
+            self.assertIn("antiagent app", content)
 
     def test_install_linux_app_cleans_up_legacy_duplicate(self):
         """Verify installer migrates legacy antiagent.desktop and removes duplication."""
@@ -321,9 +354,131 @@ class TestLinuxRuntimeAndUpdater(unittest.TestCase):
             self.assertIsNotNone(selected)
             self.assertEqual(selected["name"], "AntiAgent-Linux.tar.gz")
 
+    def test_handle_linux_portable_update_flow(self):
+        import tarfile
+        import io
+        from antiagent.updater import InPlaceSelfUpdater
+        from antiagent.runtime import RuntimeInstallInfo
+
+        temp_dir = tempfile.mkdtemp()
+        try:
+            repo_root = Path(temp_dir)
+            pkg_dir = repo_root / "antiagent"
+            pkg_dir.mkdir(parents=True)
+            (pkg_dir / "__init__.py").write_text("# old\n")
+            (repo_root / "AntiAgent.sh").write_text("#!/bin/sh\n")
+
+            tar_buf = io.BytesIO()
+            with tarfile.open(fileobj=tar_buf, mode="w:gz") as tf:
+                content = b"# updated version 0.9.9\n"
+                ti = tarfile.TarInfo(name="AntiAgent/antiagent/__init__.py")
+                ti.size = len(content)
+                ti.mtime = 1000
+                tf.addfile(ti, io.BytesIO(content))
+
+                sh_content = b"#!/bin/sh\n# updated launcher\n"
+                ti_sh = tarfile.TarInfo(name="AntiAgent/AntiAgent.sh")
+                ti_sh.size = len(sh_content)
+                ti_sh.mode = 0o755
+                ti_sh.mtime = 1000
+                tf.addfile(ti_sh, io.BytesIO(sh_content))
+
+            tar_bytes = tar_buf.getvalue()
+
+            mock_resp = MagicMock()
+            mock_resp.headers = {"Content-Length": str(len(tar_bytes))}
+            mock_resp.read.side_effect = [tar_bytes, b""]
+            mock_resp.__enter__.return_value = mock_resp
+
+            updater = InPlaceSelfUpdater()
+            check_data = {
+                "ok": True,
+                "latest_version": "0.9.9",
+                "assets": [
+                    {
+                        "name": "AntiAgent-Linux.tar.gz",
+                        "download_url": "https://github.com/aiden-guan/AntiAgent/releases/download/v0.9.9/AntiAgent-Linux.tar.gz",
+                    }
+                ],
+            }
+
+            fake_runtime = RuntimeInstallInfo(
+                install_mode=InstallMode.LINUX_PORTABLE,
+                current_executable=sys.executable,
+                package_path=str(pkg_dir),
+                macos_bundle_path=None,
+                is_site_packages=False,
+                current_version="0.1.0",
+                launch_context={},
+            )
+
+            with patch("antiagent.updater.get_runtime_install_info", return_value=fake_runtime), \
+                 patch("antiagent.updater.safe_urlopen", return_value=mock_resp), \
+                 patch("antiagent.desktop.builder.install_linux_app"):
+                updater._handle_linux_portable_update("0.9.9", check_data)
+
+            self.assertEqual(updater.status, "success")
+            self.assertEqual(updater.progress, 100)
+            self.assertTrue(updater.update_verified)
+            self.assertTrue(updater.components_updated["desktop_bundle"])
+            self.assertTrue(updater.components_updated["python_package"])
+
+            updated_content = (pkg_dir / "__init__.py").read_text()
+            self.assertIn("updated version 0.9.9", updated_content)
+
+        finally:
+            shutil.rmtree(temp_dir, ignore_errors=True)
+
+    def test_handle_unsupported_mode_does_not_stay_stuck_checking(self):
+        from antiagent.updater import InPlaceSelfUpdater
+
+        updater = InPlaceSelfUpdater()
+        check_data = {
+            "ok": True,
+            "latest_version": "0.9.9",
+            "assets": [],
+        }
+
+        fake_runtime = MagicMock()
+        fake_runtime.install_mode = MagicMock(value="unknown_mode")
+        fake_runtime.package_path = "/unknown"
+
+        with patch("antiagent.updater.get_runtime_install_info", return_value=fake_runtime), \
+             patch("antiagent.updater.check_for_updates", return_value=check_data):
+            updater.status = "checking"
+            updater._update_worker(force=True, requested_version="0.9.9")
+
+        self.assertEqual(updater.status, "error")
+        self.assertIn("Unsupported installation mode", updater.error_message)
+        self.assertNotEqual(updater.status, "checking")
+
 
 class TestLinuxThemeDetection(unittest.TestCase):
     """Test detection and synchronization of system theme preference (dark/light) on Linux."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls._cleanup_modules = []
+        mock_gi = MagicMock()
+        mock_gio = MagicMock()
+        mock_glib = MagicMock()
+        mock_gi.repository.Gio = mock_gio
+        mock_gi.repository.GLib = mock_glib
+
+        for mod_name, mod_obj in [
+            ("gi", mock_gi),
+            ("gi.repository", mock_gi.repository),
+            ("gi.repository.Gio", mock_gio),
+            ("gi.repository.GLib", mock_glib),
+        ]:
+            if mod_name not in sys.modules:
+                sys.modules[mod_name] = mod_obj
+                cls._cleanup_modules.append(mod_name)
+
+    @classmethod
+    def tearDownClass(cls):
+        for mod_name in cls._cleanup_modules:
+            sys.modules.pop(mod_name, None)
 
     def test_detect_system_is_dark_portal_dark(self):
         from antiagent.desktop.linux_window import _detect_system_is_dark

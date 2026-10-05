@@ -726,9 +726,20 @@ def install_linux_app(to_global: bool = False) -> Path:
     # 2. Write launcher script
     launcher_file = bin_dir / "antiagent-app"
     py_exec = sys.executable or "python3"
-    launcher_content = f"""#!/bin/sh
+    pkg_dir = Path(__file__).resolve().parent
+    package_root = pkg_dir.parent.parent
+    from antiagent.cli import _is_importable_without_pythonpath, _quote_path
+
+    if not _is_importable_without_pythonpath(py_exec, package_root):
+        launcher_content = f"""#!/bin/sh
 # AntiAgent desktop launcher
-exec {py_exec} -m antiagent app "$@"
+export PYTHONPATH="{package_root}:$PYTHONPATH"
+exec {_quote_path(py_exec)} -m antiagent app "$@"
+"""
+    else:
+        launcher_content = f"""#!/bin/sh
+# AntiAgent desktop launcher
+exec {_quote_path(py_exec)} -m antiagent app "$@"
 """
     launcher_file.write_text(launcher_content, encoding="utf-8")
     launcher_file.chmod(0o755)
