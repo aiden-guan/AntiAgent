@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import plistlib
 import shutil
@@ -65,6 +66,61 @@ def _wait_pid(pid: int, timeout: float = 8.0, term_after: float = 2.0, log_file:
         return True
 
 
+def _stop_previous_processes(
+    target_app: Path,
+    old_pid: int = 0,
+    parent_pid: int = 0,
+    log_file: Optional[Path] = None,
+    timeout: float = 8.0,
+) -> None:
+    # 1. Wait for old backend PID to terminate
+    if old_pid > 0 and old_pid != os.getpid():
+        _log(f"Waiting for old backend process {old_pid} to terminate...", log_file)
+        _wait_pid(old_pid, timeout=timeout, term_after=2.0, log_file=log_file)
+
+    # 2. Wait for parent Swift app process if applicable
+    if parent_pid > 0 and parent_pid != os.getpid():
+        _log(f"Requesting desktop app {parent_pid} to gracefully terminate...", log_file)
+        try:
+            subprocess.run(
+                ["osascript", "-e", f"tell application {json.dumps(str(target_app))} to quit"],
+                capture_output=True, timeout=3.0,
+            )
+        except Exception:
+            pass
+        _wait_pid(parent_pid, timeout=timeout, term_after=2.0, log_file=log_file)
+
+    # Give OS a brief moment to release file locks
+    time.sleep(0.3)
+
+
+def _launch_app(target_app: Path, log_file: Optional[Path] = None) -> bool:
+    _log(f"Relaunching {target_app}...", log_file)
+    try:
+        subprocess.run(["open", str(target_app)], check=True, capture_output=True, timeout=10.0)
+        return True
+    except Exception as exc:
+        _log(f"Failed to relaunch application: {exc}", log_file)
+        return False
+
+
+def perform_relaunch(
+    target_app: Path,
+    old_pid: int = 0,
+    parent_pid: int = 0,
+    log_file: Optional[Path] = None,
+    no_relaunch: bool = False,
+    timeout: float = 8.0,
+) -> bool:
+    """Restart an installed app from outside the backend that its quit will kill."""
+    target_app = target_app.resolve()
+    if not (target_app / "Contents" / "MacOS" / "AntiAgent").is_file():
+        _log(f"Application executable missing at {target_app}", log_file)
+        return False
+    _stop_previous_processes(target_app, old_pid, parent_pid, log_file, timeout)
+    return no_relaunch or _launch_app(target_app, log_file)
+
+
 def perform_staged_swap_and_relaunch(
     target_app: Path,
     staged_app: Path,
@@ -85,39 +141,11 @@ def perform_staged_swap_and_relaunch(
     _log(f"Staged app source: {staged_app}", log_file)
     _log(f"Backup destination: {backup_app}", log_file)
 
-    # 1. Wait for old backend PID to terminate
-    if old_pid > 0 and old_pid != os.getpid():
-        _log(f"Waiting for old backend process {old_pid} to terminate...", log_file)
-        _wait_pid(old_pid, timeout=timeout, term_after=2.0, log_file=log_file)
-
-    # 2. Wait for parent Swift app process if applicable
-    if parent_pid > 0 and parent_pid != os.getpid():
-        _log(f"Requesting desktop app {parent_pid} to gracefully terminate...", log_file)
-        try:
-            subprocess.run(["osascript", "-e", 'tell application "AntiAgent" to quit'], capture_output=True, timeout=3.0)
-        except Exception:
-            pass
-        _wait_pid(parent_pid, timeout=timeout, term_after=2.0, log_file=log_file)
-
-    # Also check process table for any running AntiAgent processes and terminate them
-    try:
-        out = subprocess.check_output(["pgrep", "-x", "AntiAgent"], text=True)
-        for line in out.strip().splitlines():
-            pid_str = line.strip()
-            if pid_str.isdigit():
-                p = int(pid_str)
-                if p != os.getpid() and p != old_pid and p != parent_pid:
-                    _log(f"Waiting for AntiAgent desktop process {p} to terminate...", log_file)
-                    _wait_pid(p, timeout=timeout, term_after=2.0, log_file=log_file)
-    except Exception:
-        pass
-
-    # Give OS a brief moment to release file locks
-    time.sleep(0.3)
-
     if not staged_app.is_dir():
         _log(f"❌ Staged application bundle not found at {staged_app}", log_file)
         return False
+
+    _stop_previous_processes(target_app, old_pid, parent_pid, log_file, timeout)
 
     # 3. Clean up any leftover backup
     if backup_app.exists():
@@ -233,12 +261,7 @@ def perform_staged_swap_and_relaunch(
 
     # 8. Relaunch
     if not no_relaunch:
-        _log(f"🚀 Relaunching {target_app}...", log_file)
-        try:
-            subprocess.Popen(["open", str(target_app)])
-        except Exception as e:
-            _log(f"❌ Failed to relaunch application: {e}", log_file)
-            return False
+        return _launch_app(target_app, log_file)
 
     return True
 
@@ -246,8 +269,8 @@ def perform_staged_swap_and_relaunch(
 def main(argv: Optional[list] = None) -> None:
     parser = argparse.ArgumentParser(description="Detached helper to swap and relaunch AntiAgent.app")
     parser.add_argument("--target-app", required=True, help="Path to active installed .app bundle")
-    parser.add_argument("--staged-app", required=True, help="Path to staged update .app bundle")
-    parser.add_argument("--backup-app", required=True, help="Path for temporary backup")
+    parser.add_argument("--staged-app", help="Path to staged update .app bundle (omit for restart only)")
+    parser.add_argument("--backup-app", help="Path for temporary backup (required for staged updates)")
     parser.add_argument("--old-pid", type=int, default=0, help="PID of backend process to wait for")
     parser.add_argument("--parent-pid", type=int, default=0, help="PID of parent desktop app to wait for")
     parser.add_argument("--target-version", help="Expected version of target bundle")
@@ -256,20 +279,26 @@ def main(argv: Optional[list] = None) -> None:
     parser.add_argument("--timeout", type=float, default=8.0, help="Timeout waiting for processes")
 
     args = parser.parse_args(argv)
+    if args.staged_app and not args.backup_app:
+        parser.error("--backup-app is required with --staged-app")
 
     log_p = Path(args.log_file).resolve() if args.log_file else Path.home() / ".antiagent" / "update_relaunch.log"
 
-    success = perform_staged_swap_and_relaunch(
+    options = dict(
         target_app=Path(args.target_app),
-        staged_app=Path(args.staged_app),
-        backup_app=Path(args.backup_app),
         old_pid=args.old_pid,
         parent_pid=args.parent_pid,
-        target_version=args.target_version,
         log_file=log_p,
         no_relaunch=args.no_relaunch,
         timeout=args.timeout,
     )
+    if args.staged_app:
+        success = perform_staged_swap_and_relaunch(
+            staged_app=Path(args.staged_app), backup_app=Path(args.backup_app),
+            target_version=args.target_version, **options,
+        )
+    else:
+        success = perform_relaunch(**options)
 
     sys.exit(0 if success else 1)
 

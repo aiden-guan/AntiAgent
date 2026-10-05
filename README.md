@@ -396,6 +396,8 @@ AntiAgent supports three distinct safety profiles:
 | **`paranoid`** | 🟢 Auto-Approve | 🟡 Ask User | 🟡 Ask User | 🟡 Ask User | 🔴 Deny |
 | **`autonomous`** (OpenAI/Claude subagent review style)| 🟢 Auto-Approve | 🟢 Auto-Approve | 🟢 Auto-Approve | 🟢 Auto-Approve (if within bounds) | 🔴 Deny |
 
+Linux home directories under `/var` (for example, `/var/home/<user>`) follow the same file access policy as homes under `/home`. Ordinary reads and project edits can be auto-approved under the normal profile rules. Credentials, system paths outside the current user's home, and writes outside the active workspace still require review; paranoid mode still requires confirmation for edits.
+
 ### 🧠 Antigravity Conversation Artifact & Scratch Directory
 
 AntiAgent treats Antigravity's current per-conversation artifactDirectoryPath as an agent-owned write area. Routine file mutations inside that exact directory are auto-approved, while sibling conversations and other external filesystem paths remain protected.

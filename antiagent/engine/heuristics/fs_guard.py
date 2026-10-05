@@ -21,6 +21,7 @@ class FSGuard:
         workspace_paths: Optional[List[str]] = None,
         trusted_artifact_paths: Optional[List[str]] = None,
     ):
+        self.home_path = Path.home().resolve()
         raw_workspaces = (
             workspace_paths
             if (workspace_paths is not None and len(workspace_paths) > 0)
@@ -152,6 +153,17 @@ class FSGuard:
                 or norm_path == sroot
                 or norm_path.startswith(sroot + "/")
             ):
+                # Some Linux systems place user homes under /var (e.g. /var/home).
+                # Exempt only the current user's resolved home from that broad
+                # root rule; credential checks above and workspace checks still apply.
+                if sroot in ("/var", "/private/var"):
+                    system_root = Path(sroot).resolve()
+                    if (
+                        self.home_path != system_root
+                        and self._is_path_contained(self.home_path, system_root)
+                        and self._is_path_contained(resolved_path, self.home_path)
+                    ):
+                        continue
                 return True, f"Target is a protected system path: {sroot}"
 
         return False, ""

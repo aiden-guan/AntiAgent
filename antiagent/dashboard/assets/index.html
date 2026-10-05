@@ -5552,6 +5552,7 @@
 
         const targetVer = st.target_version || (latestUpdateData && latestUpdateData.latest_version) || curVer;
         const isPendingRestart = st.restart_pending || (targetVer && compareVersions(curVer, targetVer) < 0);
+        const isStagedUpdate = Boolean(st.staged_bundle_path);
 
         if (isPendingRestart) {
           if (actionArea) actionArea.style.display = 'none';
@@ -5559,9 +5560,11 @@
           if (errArea) errArea.style.display = 'none';
           if (succArea) succArea.style.display = 'block';
 
-          if (successTitle) successTitle.textContent = `v${targetVer} Installed — Restart Required`;
+          if (successTitle) successTitle.textContent = `v${targetVer} ${isStagedUpdate ? 'Ready to Install' : 'Installed'} — Restart Required`;
           if (successDetails) {
-            successDetails.textContent = `AntiAgent v${targetVer} has been installed in-place. Restart AntiAgent to switch from v${curVer} to v${targetVer}:`;
+            successDetails.textContent = isStagedUpdate
+              ? `AntiAgent v${targetVer} has been downloaded and verified. Restart AntiAgent to install it and switch from v${curVer} to v${targetVer}:`
+              : `AntiAgent v${targetVer} has been installed in-place. Restart AntiAgent to switch from v${curVer} to v${targetVer}:`;
           }
           if (reloadBtn) {
             reloadBtn.style.display = 'inline-flex';
@@ -5573,16 +5576,18 @@
             updateTitle.innerHTML = `<span style="color: #ffffff;">Update Ready: v${escapeHtml(targetVer)}</span> <span class="status-badge" style="background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); font-size: 10px; padding: 2px 8px; border-radius: 9999px;">Restart Required</span>`;
           }
           if (updateSub) {
-            updateSub.textContent = `Files installed on disk. Restart AntiAgent to switch from v${curVer} to v${targetVer}.`;
+            updateSub.textContent = isStagedUpdate
+              ? `Update ready to install. Restart AntiAgent to switch from v${curVer} to v${targetVer}.`
+              : `Files installed on disk. Restart AntiAgent to switch from v${curVer} to v${targetVer}.`;
           }
 
           if (componentsList) {
-            const comps = st.components_updated || {};
+            const comps = st.components || {};
             let html = '';
-            if (comps.desktop_app) {
-              html += '<div style="display: flex; align-items: center; gap: 6px;"><svg class="icon" viewBox="0 0 24 24" style="stroke: #22c55e; width: 14px; height: 14px;"><polyline points="20 6 9 17 4 12"/></svg><span>macOS Desktop App updated in-place</span></div>';
+            if (comps.desktop_bundle && comps.desktop_bundle.updated) {
+              html += '<div style="display: flex; align-items: center; gap: 6px;"><svg class="icon" viewBox="0 0 24 24" style="stroke: #22c55e; width: 14px; height: 14px;"><polyline points="20 6 9 17 4 12"/></svg><span>' + (isStagedUpdate ? 'macOS Desktop App downloaded & verified' : 'Desktop App updated in-place') + '</span></div>';
             }
-            if (comps.python_package) {
+            if (comps.python_package && comps.python_package.updated) {
               html += '<div style="display: flex; align-items: center; gap: 6px;"><svg class="icon" viewBox="0 0 24 24" style="stroke: #22c55e; width: 14px; height: 14px;"><polyline points="20 6 9 17 4 12"/></svg><span>Python package upgraded in-place</span></div>';
             }
             if (!html) {
