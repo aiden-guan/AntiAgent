@@ -627,6 +627,8 @@ def launch_linux_app() -> None:
             env = dict(os.environ)
             existing_pp = env.get("PYTHONPATH", "")
             env["PYTHONPATH"] = f"{repo_root}:{existing_pp}" if existing_pp else str(repo_root)
+            if "WEBKIT_DISABLE_SANDBOX_THIS_IS_DANGEROUS" not in env:
+                env["WEBKIT_DISABLE_SANDBOX_THIS_IS_DANGEROUS"] = "1"
             try:
                 proc = subprocess.Popen([py, "-m", "antiagent.desktop.linux_window", app_url], env=env, start_new_session=True)
                 try:
@@ -730,29 +732,32 @@ def install_linux_app(to_global: bool = False) -> Path:
     package_root = pkg_dir.parent.parent
     from antiagent.cli import _is_importable_without_pythonpath, _quote_path
 
-    if not _is_importable_without_pythonpath(py_exec, package_root):
-        launcher_content = f"""#!/bin/sh
+    launcher_header = """#!/bin/sh
 # AntiAgent desktop launcher
-export PYTHONPATH="{package_root}:$PYTHONPATH"
+if [ -z "$WEBKIT_DISABLE_SANDBOX_THIS_IS_DANGEROUS" ]; then
+    export WEBKIT_DISABLE_SANDBOX_THIS_IS_DANGEROUS="1"
+fi
+"""
+    if not _is_importable_without_pythonpath(py_exec, package_root):
+        launcher_content = f"""{launcher_header}export PYTHONPATH="{package_root}:$PYTHONPATH"
 exec {_quote_path(py_exec)} -m antiagent app "$@"
 """
     else:
-        launcher_content = f"""#!/bin/sh
-# AntiAgent desktop launcher
-exec {_quote_path(py_exec)} -m antiagent app "$@"
+        launcher_content = f"""{launcher_header}exec {_quote_path(py_exec)} -m antiagent app "$@"
 """
     launcher_file.write_text(launcher_content, encoding="utf-8")
     launcher_file.chmod(0o755)
 
     # 3. Write XDG .desktop entry
     desktop_file = apps_dir / "com.antiagent.desktop.desktop"
-    desktop_content = """[Desktop Entry]
+    exec_target = _quote_path(str(launcher_file.resolve()))
+    desktop_content = f"""[Desktop Entry]
 Version=1.0
 Type=Application
 Name=AntiAgent Guard
 GenericName=AI Agent Safety Guard
 Comment=Interactive security dashboard and real-time safety guard for Google Antigravity
-Exec=antiagent-app %U
+Exec={exec_target} %U
 Icon=antiagent
 Terminal=false
 Categories=Development;Security;System;Utility;
@@ -913,6 +918,9 @@ def build_linux_package(output_dir: Path = None) -> Path:
 set -e
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 export PYTHONPATH="$DIR:$PYTHONPATH"
+if [ -z "$WEBKIT_DISABLE_SANDBOX_THIS_IS_DANGEROUS" ]; then
+    export WEBKIT_DISABLE_SANDBOX_THIS_IS_DANGEROUS="1"
+fi
 if [ "$#" -eq 0 ]; then
     exec python3 -m antiagent app
 else

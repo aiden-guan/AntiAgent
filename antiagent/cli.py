@@ -652,6 +652,23 @@ def run_doctor(workspace_path: str = ".") -> None:
     else:
         print("\n🖥️  Native Desktop App: Not installed. Run: antiagent install-app")
 
+    # 6.1 Linux GUI Engine Diagnostics
+    if sys.platform.startswith("linux") and "gui_dependencies" in report:
+        gui = report["gui_dependencies"]
+        backend = gui.get("backend_name", "None")
+        status = gui.get("status", "unknown")
+        if status == "native":
+            sb_note = " (Sandbox: auto-bypass active for AppArmor userns)" if gui.get("apparmor_restricted") else ""
+            print(f"🖼️  Native GUI Engine: ACTIVE ({backend}){sb_note} [OK]")
+        elif status == "browser_app":
+            print(f"🖼️  Native GUI Engine: BROWSER APP MODE ({backend}) [OK]")
+            if gui.get("install_hint"):
+                print(f"   💡 To enable native GTK window: {gui['install_hint']}")
+        else:
+            print(f"🖼️  Native GUI Engine: FALLBACK (Default Web Browser)")
+            if gui.get("install_hint"):
+                print(f"   💡 To enable native GTK window: {gui['install_hint']}")
+
     # 7. Dashboard Daemon
     daemon = report["daemon"]
     if daemon["running"]:

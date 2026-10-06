@@ -9,6 +9,13 @@ import webbrowser
 from pathlib import Path
 from typing import Optional
 
+# Ubuntu 24.04+ AppArmor restricts unprivileged user namespaces by default
+# (kernel.apparmor_restrict_unprivileged_userns = 1), causing WebKit's
+# bubblewrap sandbox to fail on startup unless disabled or profiled.
+if sys.platform.startswith("linux") and "WEBKIT_DISABLE_SANDBOX_THIS_IS_DANGEROUS" not in os.environ:
+    os.environ["WEBKIT_DISABLE_SANDBOX_THIS_IS_DANGEROUS"] = "1"
+
+
 
 def _is_local_url(url_str: str) -> bool:
     """Check if the target URL is on local loopback."""
@@ -188,17 +195,21 @@ def run_gtk4_window(url: str = "http://127.0.0.1:4242") -> int:
     GLib.set_prgname("com.antiagent.desktop")
     GLib.set_application_name("AntiAgent Guard")
 
+    initial_dark = _detect_system_is_dark()
     if has_adw:
         try:
             style_mgr = Adw.StyleManager.get_default()
-            style_mgr.set_color_scheme(Adw.ColorScheme.FORCE_DARK)
+            if hasattr(style_mgr, "get_system_supports_color_schemes") and style_mgr.get_system_supports_color_schemes():
+                style_mgr.set_color_scheme(Adw.ColorScheme.DEFAULT)
+            else:
+                style_mgr.set_color_scheme(Adw.ColorScheme.FORCE_DARK if initial_dark else Adw.ColorScheme.FORCE_LIGHT)
         except Exception:
             pass
     else:
         settings = Gtk.Settings.get_default()
         if settings:
             try:
-                settings.set_property("gtk-application-prefer-dark-theme", True)
+                settings.set_property("gtk-application-prefer-dark-theme", initial_dark)
             except Exception:
                 pass
 
@@ -206,14 +217,17 @@ def run_gtk4_window(url: str = "http://127.0.0.1:4242") -> int:
         if has_adw:
             try:
                 sm = Adw.StyleManager.get_default()
-                sm.set_color_scheme(Adw.ColorScheme.FORCE_DARK)
+                if hasattr(sm, "get_system_supports_color_schemes") and sm.get_system_supports_color_schemes():
+                    sm.set_color_scheme(Adw.ColorScheme.DEFAULT)
+                else:
+                    sm.set_color_scheme(Adw.ColorScheme.FORCE_DARK if is_dark else Adw.ColorScheme.FORCE_LIGHT)
             except Exception:
                 pass
         else:
             s = Gtk.Settings.get_default()
             if s:
                 try:
-                    s.set_property("gtk-application-prefer-dark-theme", True)
+                    s.set_property("gtk-application-prefer-dark-theme", is_dark)
                 except Exception:
                     pass
 
@@ -290,10 +304,11 @@ def run_gtk3_window(url: str = "http://127.0.0.1:4242") -> int:
     GLib.set_prgname("com.antiagent.desktop")
     GLib.set_application_name("AntiAgent Guard")
 
+    initial_dark = _detect_system_is_dark()
     settings = Gtk.Settings.get_default()
     if settings:
         try:
-            settings.set_property("gtk-application-prefer-dark-theme", True)
+            settings.set_property("gtk-application-prefer-dark-theme", initial_dark)
         except Exception:
             pass
 
@@ -301,7 +316,7 @@ def run_gtk3_window(url: str = "http://127.0.0.1:4242") -> int:
         s = Gtk.Settings.get_default()
         if s:
             try:
-                s.set_property("gtk-application-prefer-dark-theme", True)
+                s.set_property("gtk-application-prefer-dark-theme", is_dark)
             except Exception:
                 pass
 

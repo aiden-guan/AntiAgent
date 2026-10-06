@@ -54,6 +54,8 @@ class TestLinuxDesktopPackaging(unittest.TestCase):
             # Check launcher executable permissions
             ti_sh = tf.getmember("AntiAgent/AntiAgent.sh")
             self.assertTrue(bool(ti_sh.mode & 0o111), "AntiAgent.sh must be executable")
+            sh_data = tf.extractfile(ti_sh).read().decode("utf-8")
+            self.assertIn("WEBKIT_DISABLE_SANDBOX_THIS_IS_DANGEROUS", sh_data)
 
             ti_inst = tf.getmember("AntiAgent/install-app.sh")
             self.assertTrue(bool(ti_inst.mode & 0o111), "install-app.sh must be executable")
@@ -101,7 +103,7 @@ class TestLinuxDesktopInstallation(unittest.TestCase):
             content = desktop_file.read_text(encoding="utf-8")
             self.assertIn("[Desktop Entry]", content)
             self.assertIn("Name=AntiAgent Guard", content)
-            self.assertIn("Exec=antiagent-app %U", content)
+            self.assertIn(str(self.mock_home / ".local/bin/antiagent-app"), content)
             self.assertIn("StartupWMClass=com.antiagent.desktop", content)
 
             # Ensure no duplicate unnamespaced antiagent.desktop exists
@@ -112,6 +114,7 @@ class TestLinuxDesktopInstallation(unittest.TestCase):
             launcher = self.mock_home / ".local/bin/antiagent-app"
             self.assertTrue(launcher.is_file())
             self.assertTrue(bool(launcher.stat().st_mode & 0o111))
+            self.assertIn("WEBKIT_DISABLE_SANDBOX_THIS_IS_DANGEROUS", launcher.read_text(encoding="utf-8"))
 
             # Check icons
             icon_png = self.mock_home / ".local/share/icons/hicolor/512x512/apps/antiagent.png"
@@ -588,6 +591,54 @@ class TestLinuxThemeDetection(unittest.TestCase):
             self.assertEqual(mock_settings.connect.call_count, 2)
 
 
+class TestLinuxDoctorGuiDiagnostics(unittest.TestCase):
+    """Test Linux GUI dependency diagnostics in doctor."""
+
+    def test_check_linux_gui_dependencies_native_gtk4(self):
+        from antiagent.engine.doctor import check_linux_gui_dependencies
+
+        mock_gi = MagicMock()
+        with patch.dict(sys.modules, {"gi": mock_gi}):
+            res = check_linux_gui_dependencies()
+            self.assertEqual(res["status"], "native")
+            self.assertEqual(res["backend_name"], "GTK 4 + WebKit 6")
+            self.assertTrue(res["has_gi"])
+            self.assertTrue(res["has_gtk4"])
+            self.assertTrue(res["has_webkit6"])
+
+    def test_check_linux_gui_dependencies_browser_fallback(self):
+        from antiagent.engine.doctor import check_linux_gui_dependencies
+
+        # Gi unavailable, but chrome installed
+        with patch.dict(sys.modules, {"gi": None}), \
+             patch("shutil.which", side_effect=lambda x: "/usr/bin/google-chrome" if "google-chrome" in x else None):
+            res = check_linux_gui_dependencies()
+            self.assertEqual(res["status"], "browser_app")
+            self.assertEqual(res["backend_name"], "Google Chrome")
+            self.assertFalse(res["has_gi"])
+
+    def test_check_linux_gui_dependencies_pure_fallback(self):
+        from antiagent.engine.doctor import check_linux_gui_dependencies
+
+        # Gi unavailable and no browsers installed
+        with patch.dict(sys.modules, {"gi": None}), \
+             patch("shutil.which", return_value=None):
+            res = check_linux_gui_dependencies()
+            self.assertEqual(res["status"], "fallback")
+            self.assertEqual(res["backend_name"], "Default Web Browser")
+            self.assertIn("apt install", res["install_hint"])
+
+    def test_get_doctor_report_includes_gui_on_linux(self):
+        from antiagent.engine.doctor import get_doctor_report
+
+        with patch("antiagent.engine.doctor.sys.platform", "linux"):
+            report = get_doctor_report()
+            self.assertIn("gui_dependencies", report)
+            self.assertIn("status", report["gui_dependencies"])
+            self.assertIn("backend_name", report["gui_dependencies"])
+
+
 if __name__ == "__main__":
     unittest.main()
+
 
