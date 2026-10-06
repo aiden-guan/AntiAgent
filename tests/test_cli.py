@@ -411,5 +411,74 @@ class TestRemoteCLI(unittest.TestCase):
                     mock_load_cfg.assert_called_once_with("/custom/ws")
 
 
+    def test_cli_uninstall_desktop_flag(self):
+        """Verify `antiagent uninstall --desktop` triggers uninstall_app without uninstalling hooks."""
+        import sys
+        from unittest.mock import patch
+        from antiagent.cli import main
+
+        test_args = ["antiagent", "uninstall", "--desktop"]
+        with patch.object(sys, "argv", test_args), \
+             patch("antiagent.cli.uninstall_hook") as mock_uninst_hook, \
+             patch("antiagent.desktop.builder.uninstall_app") as mock_uninst_app:
+            main()
+            mock_uninst_app.assert_called_once_with(to_global=False)
+            mock_uninst_hook.assert_not_called()
+
+    def test_cli_uninstall_desktop_global(self):
+        """Verify `antiagent uninstall --desktop --global` passes to_global=True."""
+        import sys
+        from unittest.mock import patch
+        from antiagent.cli import main
+
+        test_args = ["antiagent", "uninstall", "--desktop", "--global"]
+        with patch.object(sys, "argv", test_args), \
+             patch("antiagent.cli.uninstall_hook") as mock_uninst_hook, \
+             patch("antiagent.desktop.builder.uninstall_app") as mock_uninst_app:
+            main()
+            mock_uninst_app.assert_called_once_with(to_global=True)
+            mock_uninst_hook.assert_not_called()
+
+    def test_cli_uninstall_desktop_file_alias(self):
+        """Verify `antiagent uninstall --desktop-file` alias works identically."""
+        import sys
+        from unittest.mock import patch
+        from antiagent.cli import main
+
+        test_args = ["antiagent", "uninstall", "--desktop-file"]
+        with patch.object(sys, "argv", test_args), \
+             patch("antiagent.cli.uninstall_hook") as mock_uninst_hook, \
+             patch("antiagent.desktop.builder.uninstall_app") as mock_uninst_app:
+            main()
+            mock_uninst_app.assert_called_once_with(to_global=False)
+            mock_uninst_hook.assert_not_called()
+
+    def test_cli_uninstall_all(self):
+        """Verify `antiagent uninstall --all` calls both uninstall_hook and uninstall_app."""
+        import sys
+        from unittest.mock import patch
+        from antiagent.cli import main
+
+        test_args = ["antiagent", "uninstall", "--all", "--workspace", self.test_dir]
+        with patch.object(sys, "argv", test_args), \
+             patch("antiagent.cli.uninstall_hook") as mock_uninst_hook, \
+             patch("antiagent.desktop.builder.uninstall_app") as mock_uninst_app:
+            main()
+            mock_uninst_hook.assert_called_once_with(is_global=False, workspace_path=self.test_dir)
+            mock_uninst_app.assert_called_once_with(to_global=False)
+
+    def test_cli_uninstall_app_subcommand(self):
+        """Verify `antiagent uninstall-app` subcommand calls uninstall_app."""
+        import sys
+        from unittest.mock import patch
+        from antiagent.cli import main
+
+        test_args = ["antiagent", "uninstall-app", "--global"]
+        with patch.object(sys, "argv", test_args), \
+             patch("antiagent.desktop.builder.uninstall_app") as mock_uninst_app:
+            main()
+            mock_uninst_app.assert_called_once_with(to_global=True)
+
+
 if __name__ == "__main__":
     unittest.main()

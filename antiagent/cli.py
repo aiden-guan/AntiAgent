@@ -652,6 +652,23 @@ def run_doctor(workspace_path: str = ".") -> None:
     else:
         print("\n🖥️  Native Desktop App: Not installed. Run: antiagent install-app")
 
+    # 6.1 Linux GUI Engine Diagnostics
+    if sys.platform.startswith("linux") and "gui_dependencies" in report:
+        gui = report["gui_dependencies"]
+        backend = gui.get("backend_name", "None")
+        status = gui.get("status", "unknown")
+        if status == "native":
+            sb_note = " (Sandbox: auto-bypass active for AppArmor userns)" if gui.get("apparmor_restricted") else ""
+            print(f"🖼️  Native GUI Engine: ACTIVE ({backend}){sb_note} [OK]")
+        elif status == "browser_app":
+            print(f"🖼️  Native GUI Engine: BROWSER APP MODE ({backend}) [OK]")
+            if gui.get("install_hint"):
+                print(f"   💡 To enable native GTK window: {gui['install_hint']}")
+        else:
+            print(f"🖼️  Native GUI Engine: FALLBACK (Default Web Browser)")
+            if gui.get("install_hint"):
+                print(f"   💡 To enable native GTK window: {gui['install_hint']}")
+
     # 7. Dashboard Daemon
     daemon = report["daemon"]
     if daemon["running"]:
@@ -1642,18 +1659,32 @@ def main() -> None:
     )
 
     # uninstall
-    uninstall_parser = subparsers.add_parser("uninstall", help="Uninstall AntiAgent lifecycle hook")
+    uninstall_parser = subparsers.add_parser("uninstall", help="Uninstall AntiAgent lifecycle hook or desktop integration")
     uninstall_parser.add_argument(
         "--global",
         dest="is_global",
         action="store_true",
-        help="Uninstall globally from ~/.gemini/config/hooks.json",
+        help="Uninstall globally from ~/.gemini/config/hooks.json or /usr/share",
     )
     uninstall_parser.add_argument(
         "--workspace",
         dest="workspace_path",
         default=".",
         help="Path to workspace directory",
+    )
+    uninstall_parser.add_argument(
+        "--desktop",
+        "--desktop-file",
+        "--app",
+        dest="desktop",
+        action="store_true",
+        help="Remove installed desktop entry (.desktop file on Linux), launcher, and icons",
+    )
+    uninstall_parser.add_argument(
+        "--all",
+        dest="uninstall_all",
+        action="store_true",
+        help="Uninstall both lifecycle hooks and desktop integration",
     )
 
     # status
@@ -1721,7 +1752,7 @@ def main() -> None:
     dashboard_parser.add_argument("--workspace", default=".", help="Workspace path")
 
     # app
-    app_parser = subparsers.add_parser("app", help="Launch the native desktop application (macOS & Windows)")
+    app_parser = subparsers.add_parser("app", help="Launch the native desktop application (macOS, Linux & Windows)")
 
     # install-app
     install_app_parser = subparsers.add_parser("install-app", help="Install native AntiAgent desktop launcher/application")
@@ -1729,7 +1760,16 @@ def main() -> None:
         "--global",
         dest="is_global",
         action="store_true",
-        help="Install to /Applications instead of ~/Applications (macOS)",
+        help="Install globally (/Applications on macOS, /usr/share on Linux)",
+    )
+
+    # uninstall-app
+    uninstall_app_parser = subparsers.add_parser("uninstall-app", help="Uninstall native AntiAgent desktop launcher/application")
+    uninstall_app_parser.add_argument(
+        "--global",
+        dest="is_global",
+        action="store_true",
+        help="Uninstall globally (/Applications on macOS, /usr/share on Linux)",
     )
 
     # build-dmg
@@ -1739,6 +1779,10 @@ def main() -> None:
     # build-windows
     build_windows_parser = subparsers.add_parser("build-windows", help="Build standalone AntiAgent-Windows.zip (Windows)")
     build_windows_parser.add_argument("--out", default="dist", help="Output directory (default: dist)")
+
+    # build-linux
+    build_linux_parser = subparsers.add_parser("build-linux", help="Build standalone AntiAgent-Linux.tar.gz (Linux)")
+    build_linux_parser.add_argument("--out", default="dist", help="Output directory (default: dist)")
 
     # update
     update_parser = subparsers.add_parser("update", help="Check for and download AntiAgent updates")
@@ -1896,7 +1940,15 @@ def main() -> None:
     elif args.command == "install":
         install_hook(is_global=args.is_global, workspace_path=args.workspace_path)
     elif args.command == "uninstall":
-        uninstall_hook(is_global=args.is_global, workspace_path=args.workspace_path)
+        if getattr(args, "uninstall_all", False):
+            uninstall_hook(is_global=args.is_global, workspace_path=args.workspace_path)
+            from antiagent.desktop.builder import uninstall_app
+            uninstall_app(to_global=args.is_global)
+        elif getattr(args, "desktop", False):
+            from antiagent.desktop.builder import uninstall_app
+            uninstall_app(to_global=args.is_global)
+        else:
+            uninstall_hook(is_global=args.is_global, workspace_path=args.workspace_path)
     elif args.command == "status":
         check_status(workspace_path=args.workspace)
     elif args.command == "doctor":
@@ -1925,6 +1977,9 @@ def main() -> None:
     elif args.command == "install-app":
         from antiagent.desktop.builder import install_app
         install_app(to_global=args.is_global)
+    elif args.command == "uninstall-app":
+        from antiagent.desktop.builder import uninstall_app
+        uninstall_app(to_global=args.is_global)
     elif args.command == "build-dmg":
         from antiagent.desktop.builder import build_dmg, build_pkg, build_zip
         dmg = build_dmg(Path(args.out))
@@ -1935,6 +1990,10 @@ def main() -> None:
         from antiagent.desktop.builder import build_windows_package
         win_zip = build_windows_package(Path(args.out))
         print(f"\n📦 Windows release package ready:\n  • ZIP: {win_zip}")
+    elif args.command == "build-linux":
+        from antiagent.desktop.builder import build_linux_package
+        linux_tar = build_linux_package(Path(args.out))
+        print(f"\n📦 Linux release package ready:\n  • TAR.GZ: {linux_tar}")
     elif args.command == "update":
         handle_update_cli(args)
     else:

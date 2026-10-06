@@ -20,6 +20,8 @@ class InstallMode(str, Enum):
     PIP = "pip"
     EDITABLE_SOURCE = "editable_source"
     WINDOWS_PORTABLE = "windows_portable"
+    LINUX_PORTABLE = "linux_portable"
+
 
 
 @dataclass
@@ -215,7 +217,14 @@ def detect_install_mode(
         if not is_in_site_packages and has_bat:
             return InstallMode.WINDOWS_PORTABLE
 
-    # 4. Standard pip / site-packages install
+    # 4. Linux Portable
+    if sys.platform.startswith("linux"):
+        is_in_site_packages = any(p in pkg_path.parts for p in ("site-packages", "dist-packages"))
+        has_sh = (repo_root / "AntiAgent.sh").is_file() or (repo_root / "install-app.sh").is_file()
+        if not is_in_site_packages and has_sh:
+            return InstallMode.LINUX_PORTABLE
+
+    # 5. Standard pip / site-packages install
     return InstallMode.PIP
 
 

@@ -77,10 +77,21 @@ def get_doctor_report(workspace_path: str = ".") -> Dict[str, Any]:
                 desktop_app_path = str(candidate)
                 break
     else:
-        user_app = Path(os.path.expanduser("~/.local/share/applications/antiagent.desktop"))
-        if user_app.exists():
-            desktop_app_installed = True
-            desktop_app_path = str(user_app)
+        linux_candidates = [
+            Path(os.path.expanduser("~/.local/share/applications/com.antiagent.desktop.desktop")),
+            Path(os.path.expanduser("~/.local/share/applications/antiagent.desktop")),
+            Path("/usr/share/applications/com.antiagent.desktop.desktop"),
+            Path("/usr/share/applications/antiagent.desktop"),
+            Path("/usr/local/share/applications/com.antiagent.desktop.desktop"),
+            Path("/usr/local/share/applications/antiagent.desktop"),
+            Path(os.path.expanduser("~/.local/bin/antiagent-app")),
+            Path(os.getcwd()) / "AntiAgent.sh",
+        ]
+        for candidate in linux_candidates:
+            if candidate.exists():
+                desktop_app_installed = True
+                desktop_app_path = str(candidate)
+                break
 
     # 6. Daemon Status
     daemon_running = False
@@ -113,7 +124,7 @@ def get_doctor_report(workspace_path: str = ".") -> Dict[str, Any]:
     from antiagent.engine.pr_monitor import check_gh_cli_status
     gh_info = check_gh_cli_status()
 
-    return {
+    report = {
         "workspace_path": str(ws_resolved),
         "python": python_info,
         "global_hook": {
@@ -156,7 +167,96 @@ def get_doctor_report(workspace_path: str = ".") -> Dict[str, Any]:
         "modes": mode_recommendations,
         "github_cli": gh_info,
     }
+    if sys.platform.startswith("linux"):
+        report["gui_dependencies"] = check_linux_gui_dependencies()
+
+    return report
+
+
+def check_linux_gui_dependencies() -> Dict[str, Any]:
+    """Inspect availability of native PyGObject/WebKitGTK GUI dependencies and browser fallbacks on Linux."""
+    import shutil
+
+    result: Dict[str, Any] = {
+        "status": "fallback",  # 'native', 'browser_app', 'fallback'
+        "backend_name": "Default Web Browser",
+        "has_gi": False,
+        "has_gtk4": False,
+        "has_webkit6": False,
+        "has_gtk3": False,
+        "has_webkit2": False,
+        "apparmor_restricted": False,
+        "browser_fallbacks": [],
+        "install_hint": "sudo apt install python3-gi gir1.2-gtk-4.0 gir1.2-webkit-6.0",
+    }
+
+    # 1. Probe native GTK4/WebKit6 and GTK3/WebKit2
+    try:
+        import gi
+        result["has_gi"] = True
+        try:
+            gi.require_version("Gtk", "4.0")
+            gi.require_version("WebKit", "6.0")
+            result["has_gtk4"] = True
+            result["has_webkit6"] = True
+            result["status"] = "native"
+            result["backend_name"] = "GTK 4 + WebKit 6"
+        except (ValueError, AttributeError):
+            try:
+                gi.require_version("Gtk", "3.0")
+                result["has_gtk3"] = True
+                try:
+                    gi.require_version("WebKit2", "4.1")
+                    result["has_webkit2"] = True
+                except (ValueError, AttributeError):
+                    gi.require_version("WebKit2", "4.0")
+                    result["has_webkit2"] = True
+                result["status"] = "native"
+                result["backend_name"] = "GTK 3 + WebKit 2"
+            except (ValueError, AttributeError):
+                pass
+    except Exception:
+        pass
+
+    # 2. Check AppArmor unprivileged user namespace restriction (Ubuntu 24.04+)
+    try:
+        userns_path = Path("/proc/sys/kernel/apparmor_restrict_unprivileged_userns")
+        if userns_path.is_file() and userns_path.read_text().strip() == "1":
+            result["apparmor_restricted"] = True
+    except Exception:
+        pass
+
+    # 3. Probe Browser App Mode fallbacks
+    browser_bins = [
+        ("google-chrome", "Google Chrome"),
+        ("google-chrome-stable", "Google Chrome"),
+        ("chromium", "Chromium"),
+        ("chromium-browser", "Chromium"),
+        ("brave-browser", "Brave Browser"),
+        ("microsoft-edge", "Microsoft Edge"),
+        ("microsoft-edge-stable", "Microsoft Edge"),
+    ]
+    available_browsers = []
+    for bin_name, label in browser_bins:
+        if shutil.which(bin_name):
+            available_browsers.append(label)
+    result["browser_fallbacks"] = list(dict.fromkeys(available_browsers))
+
+    if result["status"] != "native" and result["browser_fallbacks"]:
+        result["status"] = "browser_app"
+        result["backend_name"] = result["browser_fallbacks"][0]
+
+    # Package manager install command hint
+    if shutil.which("dnf"):
+        result["install_hint"] = "sudo dnf install python3-gobject gtk4 webkitgtk6.0"
+    elif shutil.which("pacman"):
+        result["install_hint"] = "sudo pacman -S python-gobject gtk4 webkitgtk-6.0"
+    else:
+        result["install_hint"] = "sudo apt install python3-gi gir1.2-gtk-4.0 gir1.2-webkit-6.0"
+
+    return result
 
 
 run_doctor_check = get_doctor_report
+
 

@@ -398,6 +398,8 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
             self._send_json({"ok": True, "scope": scope})
         elif path == "/api/install_app":
             self._handle_api_install_app(body)
+        elif path == "/api/uninstall_app":
+            self._handle_api_uninstall_app(body)
         elif path == "/api/workspace":
             new_ws = body.get("path")
             if new_ws:
@@ -821,6 +823,15 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
             from antiagent.desktop.builder import install_app
             app_path = install_app(to_global=to_global)
             self._send_json({"ok": True, "app_path": str(app_path)})
+        except Exception as e:
+            self._send_json({"ok": False, "error": str(e)}, status=500)
+
+    def _handle_api_uninstall_app(self, body: Dict[str, Any]) -> None:
+        to_global = bool(body.get("global", False))
+        try:
+            from antiagent.desktop.builder import uninstall_app
+            removed = uninstall_app(to_global=to_global)
+            self._send_json({"ok": True, "removed": [str(p) for p in removed]})
         except Exception as e:
             self._send_json({"ok": False, "error": str(e)}, status=500)
 

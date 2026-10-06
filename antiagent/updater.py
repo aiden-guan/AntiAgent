@@ -160,6 +160,20 @@ def select_recommended_asset(assets: List[Dict[str, Any]]) -> Optional[Dict[str,
             if a.get("name", "").lower().endswith(".zip"):
                 return a
 
+    elif sys.platform.startswith("linux"):
+        for a in assets:
+            n = a.get("name", "").lower()
+            if "linux" in n and n.endswith(".tar.gz"):
+                return a
+        for a in assets:
+            n = a.get("name", "").lower()
+            if "linux" in n and n.endswith(".zip"):
+                return a
+        for a in assets:
+            n = a.get("name", "").lower()
+            if n.endswith(".tar.gz"):
+                return a
+
     for a in assets:
         n = a.get("name", "").lower()
         if n.endswith(".tar.gz") or n.endswith(".zip"):
@@ -989,6 +1003,16 @@ class InPlaceSelfUpdater:
             elif mode == InstallMode.WINDOWS_PORTABLE:
                 self._handle_windows_portable_update(latest_ver, check_data)
 
+            elif mode == InstallMode.LINUX_PORTABLE:
+                self._handle_linux_portable_update(latest_ver, check_data)
+
+            else:
+                with self._lock:
+                    self.status = "error"
+                    self.error_message = f"Unsupported installation mode for self-update: {mode.value}"
+                self._log(f"❌ {self.error_message}")
+                return
+
         except Exception as e:
             with self._lock:
                 self.status = "error"
@@ -1225,6 +1249,151 @@ class InPlaceSelfUpdater:
             f"Successfully verified Windows package v{latest_ver}! Click below to restart.",
         )
 
+    def _handle_linux_portable_update(self, latest_ver: str, check_data: Dict[str, Any]) -> None:
+        """Execute a staged and verified update for Linux portable installations."""
+        self._set_stage("downloading", 20, f"Connecting to GitHub release v{latest_ver}...")
+
+        assets = check_data.get("assets", [])
+        download_url = None
+        asset_filename = None
+
+        for a in assets:
+            name = a.get("name", "").lower()
+            if "linux" in name and name.endswith(".tar.gz"):
+                download_url = a.get("download_url")
+                asset_filename = a.get("name")
+                break
+
+        if not download_url:
+            for a in assets:
+                name = a.get("name", "").lower()
+                if name.endswith(".tar.gz"):
+                    download_url = a.get("download_url")
+                    asset_filename = a.get("name")
+                    break
+
+        if not download_url:
+            download_url = f"https://github.com/{GITHUB_REPO}/releases/download/v{latest_ver}/AntiAgent-Linux.tar.gz"
+            asset_filename = "AntiAgent-Linux.tar.gz"
+
+        if not is_safe_download_url(download_url):
+            raise RuntimeError("Security: Untrusted Linux update URL.")
+
+        self._log(f"📥 Downloading Linux portable package: {asset_filename} from {download_url}")
+
+        staging_parent = Path(tempfile.mkdtemp(prefix="antiagent_linux_stage_"))
+        archive_path = staging_parent / asset_filename
+
+        req = urllib.request.Request(
+            download_url,
+            headers={"User-Agent": f"AntiAgent/{__version__} (InPlaceUpdater)"},
+        )
+        with safe_urlopen(req, timeout=20.0) as resp:
+            total_len = resp.headers.get("Content-Length")
+            total_bytes = int(total_len) if total_len and total_len.isdigit() else 0
+            with self._lock:
+                self.total_bytes = total_bytes
+
+            downloaded = 0
+            chunk_size = 65536
+            with open(archive_path, "wb") as f_out:
+                while True:
+                    if self._cancel_event.is_set():
+                        shutil.rmtree(staging_parent, ignore_errors=True)
+                        self._set_stage("cancelled", 0, "Update cancelled.")
+                        return
+                    chunk = resp.read(chunk_size)
+                    if not chunk:
+                        break
+                    f_out.write(chunk)
+                    downloaded += len(chunk)
+                    pct = 20 + int((downloaded / total_bytes * 40)) if total_bytes > 0 else 40
+                    with self._lock:
+                        self.downloaded_bytes = downloaded
+                        self.progress = min(pct, 60)
+                        self.step_message = f"Downloading update archive: {downloaded // (1024*1024)} MB"
+
+        self._set_stage("extracting", 65, "Extracting and verifying Linux portable package...")
+        extract_dir = staging_parent / "extracted"
+        extract_dir.mkdir(parents=True, exist_ok=True)
+
+        import tarfile
+        with tarfile.open(archive_path, "r:*") as tf:
+            for member in tf.getmembers():
+                target_member_path = (extract_dir / member.name).resolve()
+                if not str(target_member_path).startswith(str(extract_dir.resolve())):
+                    raise RuntimeError(f"Path traversal detected in archive: {member.name}")
+            tf.extractall(extract_dir)
+
+        staged_pkg_root = None
+        for cand in [extract_dir / "AntiAgent", extract_dir]:
+            if (cand / "antiagent").is_dir():
+                staged_pkg_root = cand
+                break
+        if not staged_pkg_root:
+            for root, dirs, _ in os.walk(extract_dir):
+                if "antiagent" in dirs:
+                    staged_pkg_root = Path(root)
+                    break
+
+        if not staged_pkg_root or not (staged_pkg_root / "antiagent").is_dir():
+            raise RuntimeError("Staged package does not contain a valid AntiAgent package directory.")
+
+        runtime_info = get_runtime_install_info()
+        active_pkg = Path(runtime_info.package_path)
+        target_repo_root = active_pkg.parent
+
+        if not os.access(str(target_repo_root), os.W_OK) or not os.access(str(active_pkg), os.W_OK):
+            raise PermissionError(
+                f"Cannot update Linux portable installation: write permission denied for {target_repo_root}."
+            )
+
+        self._set_stage("staging", 80, f"Updating AntiAgent portable files to v{latest_ver}...")
+        staged_antiagent = staged_pkg_root / "antiagent"
+        target_antiagent = target_repo_root / "antiagent"
+
+        shutil.copytree(staged_antiagent, target_antiagent, dirs_exist_ok=True)
+
+        for script_name in ("AntiAgent.sh", "install-app.sh", "uninstall-app.sh"):
+            src_script = staged_pkg_root / script_name
+            dst_script = target_repo_root / script_name
+            if src_script.is_file():
+                shutil.copy2(src_script, dst_script)
+                try:
+                    dst_script.chmod(dst_script.stat().st_mode | 0o755)
+                except Exception:
+                    pass
+
+        try:
+            from antiagent.desktop.builder import install_linux_app
+            desktop_installed = (
+                (Path.home() / ".local/share/applications/com.antiagent.desktop.desktop").is_file()
+                or (Path.home() / ".local/bin/antiagent-app").is_file()
+            )
+            if desktop_installed:
+                install_linux_app(to_global=False)
+        except Exception as e:
+            self._log(f"⚠️ Note: Desktop launcher refresh encountered: {e}")
+
+        with self._lock:
+            self.components_updated = {"desktop_bundle": True, "python_package": True}
+            self.update_verified = True
+
+        save_pending_update({
+            "from_version": __version__,
+            "target_version": latest_ver,
+            "install_mode": "linux_portable",
+            "repo_root": str(target_repo_root),
+            "timestamp": time.time(),
+            "status": "ready_for_restart",
+        })
+
+        self._set_stage(
+            "success",
+            100,
+            f"Successfully updated AntiAgent Linux portable to v{latest_ver}! Click below to restart.",
+        )
+
     def get_status(self) -> Dict[str, Any]:
         info = get_runtime_install_info()
         desktop_running = is_desktop_app_running()
@@ -1253,11 +1422,11 @@ class InPlaceSelfUpdater:
                     "desktop_bundle": {
                         "updated": self.components_updated.get("desktop_bundle", False),
                         "staged": bool(self.staged_bundle_path),
-                        "verified": self.update_verified if info.install_mode == InstallMode.MACOS_BUNDLE else False,
+                        "verified": self.update_verified if info.install_mode in (InstallMode.MACOS_BUNDLE, InstallMode.WINDOWS_PORTABLE, InstallMode.LINUX_PORTABLE) else False,
                     },
                     "python_package": {
                         "updated": self.components_updated.get("python_package", False),
-                        "verified": self.update_verified if info.install_mode == InstallMode.PIP else False,
+                        "verified": self.update_verified if info.install_mode in (InstallMode.PIP, InstallMode.LINUX_PORTABLE) else False,
                     },
                 },
                 "desktop_app_running": desktop_running,

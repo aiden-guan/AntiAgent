@@ -66,11 +66,13 @@ AntiAgent **reviews each proposed command and tool call in real time**:
 > [!TIP]
 > ### ❓ Which download should I choose?
 > - **macOS**: Download **[`AntiAgent.dmg`](https://github.com/aiden-guan/AntiAgent/releases/latest/download/AntiAgent.dmg)** (recommended for 99% of Mac users). Drag to Applications and you're done.
+> - **Linux**: Download **[`AntiAgent-Linux.tar.gz`](https://github.com/aiden-guan/AntiAgent/releases/latest/download/AntiAgent-Linux.tar.gz)**. Extract and run `./AntiAgent.sh` or `./install-app.sh`.
 > - **Windows (Public Beta)**: Download **[`AntiAgent-Windows.zip`](https://github.com/aiden-guan/AntiAgent/releases/latest/download/AntiAgent-Windows.zip)**. Extract and double-click `AntiAgent.bat`.
-> - **What is the difference between DMG, PKG, and ZIP?**
+> - **What is the difference between downloads?**
 >   - **`.dmg` (macOS)**: Standard macOS disk image with custom drag-and-drop installer. **Choose this for Mac.**
 >   - **`.pkg` (macOS)**: Guided installer package with automated wizard. Best for enterprise / MDM deployment.
 >   - **`.zip` (macOS)**: Portable `.app` archive without disk image mounting.
+>   - **`AntiAgent-Linux.tar.gz` (Linux)**: Complete standalone package for Linux (Ubuntu, Debian, Fedora, Arch, Bazzite) with native GTK WebKit window, Chrome App Mode, and XDG `.desktop` launcher.
 >   - **`AntiAgent-Windows.zip` (Windows - Beta)**: Complete standalone package for Windows 10 & 11 with native desktop window launcher.
 
 ---
@@ -96,7 +98,31 @@ curl -fsSL https://raw.githubusercontent.com/aiden-guan/AntiAgent/main/install.s
 
 ---
 
-### 🪟 Option B: Windows Installation (Windows 10 & 11 — Public Beta)
+### 🐧 Option B: Linux Installation (Ubuntu, Debian, Fedora, Arch, Bazzite)
+
+#### 1. Download Standalone Desktop Package (Recommended)
+1. Download **[`AntiAgent-Linux.tar.gz`](https://github.com/aiden-guan/AntiAgent/releases/latest/download/AntiAgent-Linux.tar.gz)** from the latest release.
+2. Extract the archive:
+   ```bash
+   tar -xzf AntiAgent-Linux.tar.gz
+   cd AntiAgent
+   ```
+3. Run **`./AntiAgent.sh`** to launch the native desktop application.
+4. To install the system application menu entry (`AntiAgent Guard`) and enable the global hook automatically, run:
+   ```bash
+   ./install-app.sh
+   ```
+
+#### 2. Or 1-Line Terminal Install
+Run in terminal:
+```bash
+curl -fsSL https://raw.githubusercontent.com/aiden-guan/AntiAgent/main/install.sh | bash
+```
+*(This automatically unpacks AntiAgent to `~/.local/share/antiagent`, creates the desktop application shortcut, and registers the global safety hook).*
+
+---
+
+### 🪟 Option C: Windows Installation (Windows 10 & 11 — Public Beta)
 
 > [!NOTE]
 > **Windows Support is currently in Public Beta**: The safety engine, heuristics, and Antigravity lifecycle hooks are fully functioning on Windows. The standalone Windows desktop application mode is newly released in Beta. If you encounter any platform-specific quirks or edge cases, please report them via [GitHub Issues](https://github.com/aiden-guan/AntiAgent/issues) so we can continuously refine the Windows experience!
@@ -119,7 +145,7 @@ irm https://raw.githubusercontent.com/aiden-guan/AntiAgent/main/install.ps1 | ie
 
 ---
 
-### 💻 Option C: Command Line / Pip Install (All Platforms)
+### 💻 Option D: Command Line / Pip Install (All Platforms)
 
 If you prefer using the terminal or managing dependencies with `pip`:
 
@@ -484,16 +510,19 @@ Sample output:
 | `antiagent conversations export <id>` | Export clean session transcript (Markdown or JSON) without CoT |
 | `antiagent conversations resume <id>` | Resume conversation via `agy` or open workspace |
 | `antiagent remote conversations <machine>` | Browse conversations on remote SSH machines |
-| `antiagent app` | Launch the native desktop application (macOS & Windows) |
+| `antiagent app` | Launch the native desktop application (macOS, Linux & Windows) |
+| `antiagent install-app` | Install native desktop launcher/application (.desktop entry on Linux) |
+| `antiagent uninstall-app` | Remove native desktop launcher/application (.desktop entry on Linux) |
 | `antiagent dashboard` | Launch the interactive local web dashboard |
 | `antiagent doctor` | Run comprehensive health check on Antigravity & hooks |
 | `antiagent install [--global]` | Register PreToolUse safety hook with Antigravity |
-| `antiagent uninstall [--global]` | Remove safety hook |
+| `antiagent uninstall [--global] [--desktop] [--all]` | Remove safety hook or native desktop integration (.desktop file on Linux) |
 | `antiagent status` | View active protection scope, profiles, and provider |
 | `antiagent test` | Run full security test matrix |
 | `antiagent audit [--limit N] [--all-tools]` | Inspect recent security verdicts and activity audit history |
 | `antiagent config` | View and modify configuration settings |
 | `antiagent build-dmg` | Package macOS `.dmg`, `.pkg`, and `.zip` installers |
+| `antiagent build-linux` | Package standalone `AntiAgent-Linux.tar.gz` (Linux) |
 | `antiagent build-windows` | Package standalone `AntiAgent-Windows.zip` (Windows Beta) |
 
 ---

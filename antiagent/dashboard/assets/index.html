@@ -9,6 +9,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
     :root {
+      color-scheme: dark;
       --bg: #050507;
       --card-bg: rgba(14, 15, 18, 0.72);
       --card-bg-hover: rgba(20, 22, 27, 0.85);
@@ -625,7 +626,7 @@
     }
     .form-control {
       width: 100%;
-      background: rgba(255, 255, 255, 0.02);
+      background-color: rgba(255, 255, 255, 0.02);
       border: 1px solid rgba(255, 255, 255, 0.1);
       color: var(--text);
       padding: 10px 14px;
@@ -643,7 +644,7 @@
     }
     .form-control:focus {
       border-color: rgba(255, 255, 255, 0.45);
-      background: rgba(255, 255, 255, 0.04);
+      background-color: rgba(255, 255, 255, 0.04);
       box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.45), 0 0 20px rgba(255, 255, 255, 0.06);
     }
     textarea.form-control {
@@ -651,6 +652,52 @@
       font-size: 12px;
       resize: vertical;
       line-height: 1.6;
+    }
+
+    /* Select Dropdown Controls */
+    select.form-control {
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      appearance: none;
+      background-color: rgba(255, 255, 255, 0.03);
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2382828e' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+      background-repeat: no-repeat !important;
+      background-position: right 14px center !important;
+      background-size: 14px 14px !important;
+      padding-right: 38px !important;
+      cursor: pointer;
+      color: var(--text);
+    }
+    select.form-control:hover {
+      border-color: rgba(255, 255, 255, 0.2);
+      background-color: rgba(255, 255, 255, 0.05);
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23f4f4f5' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+      background-repeat: no-repeat !important;
+      background-position: right 14px center !important;
+      background-size: 14px 14px !important;
+    }
+    select.form-control:focus,
+    select.form-control:active {
+      border-color: rgba(255, 255, 255, 0.45);
+      background-color: rgba(255, 255, 255, 0.06);
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23f4f4f5' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+      background-repeat: no-repeat !important;
+      background-position: right 14px center !important;
+      background-size: 14px 14px !important;
+      box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.45), 0 0 20px rgba(255, 255, 255, 0.06);
+    }
+    select.form-control option {
+      background-color: #121316;
+      color: var(--text);
+      padding: 8px 12px;
+    }
+    select.form-control.compact,
+    select.form-control[style*="font-size: 12px"],
+    select.form-control[style*="font-size:12px"] {
+      background-repeat: no-repeat !important;
+      background-position: right 8px center !important;
+      background-size: 12px 12px !important;
+      padding-right: 28px !important;
     }
 
     /* Monochrome Toggle Row */
