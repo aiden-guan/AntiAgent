@@ -109,12 +109,17 @@ class TranscriptContextExtractor:
 
             # First check self.brain_dir (preserves base_brain_dir compatibility for tests)
             candidate = self.brain_dir / conversation_id / ".system_generated" / "logs" / "transcript.jsonl"
+            candidate_alt = self.brain_dir / conversation_id / "transcript.jsonl"
+            candidate_full = self.brain_dir / conversation_id / ".system_generated" / "logs" / "transcript_full.jsonl"
+            candidate_full_alt = self.brain_dir / conversation_id / "transcript_full.jsonl"
             if candidate.is_file():
                 transcript_file = candidate
-            else:
-                candidate_alt = self.brain_dir / conversation_id / "transcript.jsonl"
-                if candidate_alt.is_file():
-                    transcript_file = candidate_alt
+            elif candidate_alt.is_file():
+                transcript_file = candidate_alt
+            elif candidate_full.is_file():
+                transcript_file = candidate_full
+            elif candidate_full_alt.is_file():
+                transcript_file = candidate_full_alt
 
             # If not in self.brain_dir, discover across known Desktop, IDE, CLI sources
             if not transcript_file:

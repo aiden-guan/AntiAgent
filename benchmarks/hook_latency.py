@@ -156,7 +156,7 @@ def section_a(env: BenchEnv, hooks: Dict[str, Any], n: int) -> Dict[str, Any]:
     cwd = env.ws / ".agents"
     post = commands_for(hooks, "PostToolUse", "view_file")
     flow_post = [c for c in post if "flow_hook" in c]
-    guard = [c for c in commands_for(hooks, "PreToolUse", "view_file") if "antiagent.hook" in c]
+    guard = [c for c in commands_for(hooks, "PreToolUse", "view_file") if "antiagent.hook" in c or "hook_launcher" in c]
     pre_tool = {**env.common(), "toolCall": {"name": "view_file", "args": TOOLS[0][1](str(env.ws))}, "stepIdx": 3}
     post_tool = {**env.common(), "stepIdx": 3}
 

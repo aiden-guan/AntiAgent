@@ -314,6 +314,106 @@ class TestHookContract(unittest.TestCase):
             self.assertEqual(resp["decision"], DECISION_FORCE_ASK)
             self.assertIn("outside active workspace", resp.get("reason", ""))
 
+    def test_read_json_payload_without_eof(self):
+        """read_json_payload must return parsed JSON immediately without waiting for EOF."""
+        import io
+        from antiagent.hook import read_json_payload
+
+        # Single line JSON
+        stream = io.StringIO('{"toolCall": {"name": "view_file"}, "stepIdx": 70}\n')
+        payload = read_json_payload(stream)
+        self.assertEqual(payload.get("stepIdx"), 70)
+        self.assertEqual(payload.get("toolCall", {}).get("name"), "view_file")
+
+        # Multi-line formatted JSON
+        stream = io.StringIO('{\n  "toolCall": {\n    "name": "view_file"\n  },\n  "stepIdx": 71\n}\n')
+        payload = read_json_payload(stream)
+        self.assertEqual(payload.get("stepIdx"), 71)
+
+        # Leading blank lines and whitespace
+        stream = io.StringIO('\n\n  \n{"toolCall": {"name": "run_command"}}\n')
+        payload = read_json_payload(stream)
+        self.assertEqual(payload.get("toolCall", {}).get("name"), "run_command")
+
+        # Empty input
+        stream = io.StringIO('')
+        payload = read_json_payload(stream)
+        self.assertEqual(payload, {})
+
+    def test_parallel_hooks_with_unclosed_pipes(self):
+        """Concurrent hook invocations with open write handles (simulating Windows leaked pipe handles) must not deadlock or time out."""
+        import os
+        import subprocess
+        import sys
+        import time
+
+        pipes = [os.pipe() for _ in range(3)]
+        procs = []
+
+        try:
+            for i in range(3):
+                r, w = pipes[i]
+                p = subprocess.Popen(
+                    [sys.executable, "-m", "antiagent.hook"],
+                    stdin=r,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    env=dict(os.environ, PYTHONPATH=".")
+                )
+                procs.append(p)
+
+            payloads = [
+                {"toolCall": {"name": "view_file", "args": {"AbsolutePath": "file1.txt"}}, "stepIdx": 37, "conversationId": "cid-parallel"},
+                {"toolCall": {"name": "view_file", "args": {"AbsolutePath": "file2.txt"}}, "stepIdx": 38, "conversationId": "cid-parallel"},
+                {"toolCall": {"name": "view_file", "args": {"AbsolutePath": "file3.txt"}}, "stepIdx": 39, "conversationId": "cid-parallel"},
+            ]
+
+            # Write data without closing the write descriptors
+            for i in range(3):
+                _, w = pipes[i]
+                os.write(w, (json.dumps(payloads[i]) + "\n").encode())
+
+            # All processes must finish promptly (within 3 seconds) instead of waiting for 10s timeout
+            for i, p in enumerate(procs):
+                stdout, stderr = p.communicate(timeout=4)
+                self.assertEqual(p.returncode, 0, f"Process {i} failed: {stderr}")
+                res = json.loads(stdout.strip())
+                self.assertIn("decision", res)
+                self.assertEqual(res["decision"], DECISION_ALLOW)
+        finally:
+            for r, w in pipes:
+                try:
+                    os.close(w)
+                except OSError:
+                    pass
+                try:
+                    os.close(r)
+                except OSError:
+                    pass
+
+    def test_context_extractor_transcript_full_jsonl(self):
+        """TranscriptContextExtractor should resolve transcript_full.jsonl when transcript.jsonl is absent."""
+        import tempfile
+        from pathlib import Path
+        from antiagent.engine.context_extractor import TranscriptContextExtractor
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            brain_dir = Path(temp_dir)
+            cid = "test-conv-full-only"
+            logs_dir = brain_dir / cid / ".system_generated" / "logs"
+            logs_dir.mkdir(parents=True)
+            full_file = logs_dir / "transcript_full.jsonl"
+            full_file.write_text(
+                json.dumps({"type": "USER_INPUT", "content": "<USER_REQUEST>Build docs</USER_REQUEST>"}) + "\n",
+                encoding="utf-8"
+            )
+
+            extractor = TranscriptContextExtractor(base_brain_dir=str(brain_dir))
+            ctx = extractor.extract_context(cid)
+            self.assertEqual(ctx.user_prompt, "Build docs")
+            self.assertEqual(ctx.primary_goal, "Build docs")
+
 
 if __name__ == "__main__":
     unittest.main()

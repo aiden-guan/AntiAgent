@@ -146,6 +146,47 @@ def handle_pre_tool_use(payload: Dict[str, Any]) -> Dict[str, Any]:
     return result.to_antigravity_dict()
 
 
+def read_json_payload(stream=None) -> Dict[str, Any]:
+    """Reads a JSON payload from stream without blocking indefinitely on unclosed pipes.
+
+    On Windows and during parallel tool execution, child processes can inherit the
+    write end of a stdin pipe, preventing EOF from being signaled even after the
+    full payload has been written. Instead of blocking on stream.read(), this reads
+    line-by-line and incrementally parses the JSON object as soon as the closing
+    bracket is encountered.
+    """
+    if stream is None:
+        stream = sys.stdin
+
+    decoder = json.JSONDecoder()
+    buffer = ""
+    while True:
+        line = stream.readline()
+        if not line:
+            break
+        buffer += line
+        stripped = buffer.strip()
+        if not stripped:
+            continue
+        if stripped.startswith("{") or stripped.startswith("["):
+            try:
+                obj, _ = decoder.raw_decode(stripped)
+                if isinstance(obj, dict):
+                    return obj
+                return {}
+            except json.JSONDecodeError:
+                continue
+
+    stripped = buffer.strip()
+    if stripped:
+        try:
+            obj = json.loads(stripped)
+            return obj if isinstance(obj, dict) else {}
+        except Exception:
+            pass
+    return {}
+
+
 def main() -> None:
     """CLI / hook entrypoint reading from stdin and writing to stdout."""
     # Ensure UTF-8 on Windows standard streams to prevent CP1252 encoding crashes
@@ -169,29 +210,47 @@ def main() -> None:
     started_ns = time.perf_counter_ns()
     payload: Dict[str, Any] = {}
     try:
-        raw_input = sys.stdin.read()
-        if not raw_input.strip():
+        payload = read_json_payload(sys.stdin)
+        if not payload:
             fallback = {
                 "decision": DECISION_ASK,
                 "reason": "AntiAgent received empty input. Confirmation required for safety.",
             }
-            sys.stdout.write(json.dumps(fallback, ensure_ascii=True))
+            try:
+                sys.stdout.write(json.dumps(fallback, ensure_ascii=True))
+                sys.stdout.flush()
+            except (BrokenPipeError, IOError, OSError):
+                pass
             return
 
-        payload = json.loads(raw_input)
         response = handle_pre_tool_use(payload)
-        sys.stdout.write(json.dumps(response, ensure_ascii=True))
+        try:
+            sys.stdout.write(json.dumps(response, ensure_ascii=True))
+            sys.stdout.flush()
+        except (BrokenPipeError, IOError, OSError):
+            pass
     except Exception as e:
         # Failsafe: on unexpected crash, require confirmation and write to stderr
-        sys.stderr.write(f"[antiagent-hook error] {e}\n")
+        try:
+            sys.stderr.write(f"[antiagent-hook error] {e}\n")
+            sys.stderr.flush()
+        except (BrokenPipeError, IOError, OSError):
+            pass
         fallback = {
             "decision": DECISION_ASK,
             "reason": f"AntiAgent internal error: {e}. Confirmation required for safety.",
         }
-        sys.stdout.write(json.dumps(fallback, ensure_ascii=True))
+        try:
+            sys.stdout.write(json.dumps(fallback, ensure_ascii=True))
+            sys.stdout.flush()
+        except (BrokenPipeError, IOError, OSError):
+            pass
 
     if _prof.enabled():
-        sys.stdout.flush()
+        try:
+            sys.stdout.flush()
+        except (BrokenPipeError, IOError, OSError):
+            pass
         _prof.emit(
             "guard:pre-tool-use",
             started_ns,

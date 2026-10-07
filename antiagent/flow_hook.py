@@ -164,9 +164,10 @@ def main() -> None:
     event_type = sys.argv[1] if len(sys.argv) > 1 else ""
     event_type = event_type.lower().strip().replace("_", "-")
 
+    from antiagent.hook import read_json_payload
+
     try:
-        raw_input = sys.stdin.read()
-        payload = json.loads(raw_input) if raw_input.strip() else {}
+        payload = read_json_payload(sys.stdin)
     except Exception:
         payload = {}
 
@@ -175,7 +176,11 @@ def main() -> None:
     # Legacy (ungated) hook commands still reach here; without an active bridge the
     # state has no consumer, so skip all state I/O.
     if not any_bridge_active():
-        sys.stdout.write(json.dumps(response, ensure_ascii=True))
+        try:
+            sys.stdout.write(json.dumps(response, ensure_ascii=True))
+            sys.stdout.flush()
+        except (BrokenPipeError, IOError, OSError):
+            pass
         return
 
     store = InteractionStateStore.default()
@@ -193,11 +198,18 @@ def main() -> None:
             response = {}
     except Exception as e:
         # Failsafe: never crash or emit malformed stdout to AGY
-        sys.stderr.write(f"[antiagent-flow-hook error] {e}\n")
+        try:
+            sys.stderr.write(f"[antiagent-flow-hook error] {e}\n")
+            sys.stderr.flush()
+        except (BrokenPipeError, IOError, OSError):
+            pass
         response = {}
 
-    sys.stdout.write(json.dumps(response, ensure_ascii=True))
-    sys.stdout.flush()
+    try:
+        sys.stdout.write(json.dumps(response, ensure_ascii=True))
+        sys.stdout.flush()
+    except (BrokenPipeError, IOError, OSError):
+        pass
 
     if _prof.enabled():
         _prof.emit(
